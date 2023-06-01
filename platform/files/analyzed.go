@@ -8,7 +8,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -188,69 +187,4 @@ func (t *TargetMetadata) String() string {
 type OSDistribution struct {
 	Name    string `json:"name" toml:"name"`
 	Version string `json:"version" toml:"version"`
-}
-
-// FIXME: the target logic in this file might be better located in a dedicated package.
-
-// IsSatisfiedBy treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if all populated fields match
-func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
-	if (o.Arch != "*" && t.Arch != o.Arch) || (o.OS != "*" && t.OS != o.OS) {
-		return false
-	}
-	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
-		return false
-	}
-
-	// if either of the lengths of Distributions are zero, treat it as a wildcard.
-	if t.Distribution != nil && len(o.Distributions) > 0 {
-		// this could be more efficient but the lists are probably short...
-		found := false
-		for _, odist := range o.Distributions {
-			if t.Distribution.Name == odist.Name && t.Distribution.Version == odist.Version {
-				found = true
-				continue
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
-}
-
-// IsValidRebaseTargetFor treats optional fields (ArchVariant and Distribution fields) as wildcards if empty, returns true if all populated fields match
-func (t *TargetMetadata) IsValidRebaseTargetFor(appTargetMetadata *TargetMetadata) bool {
-	if t.Arch != appTargetMetadata.Arch || t.OS != appTargetMetadata.OS {
-		return false
-	}
-	if t.ArchVariant != "" && appTargetMetadata.ArchVariant != "" && t.ArchVariant != appTargetMetadata.ArchVariant {
-		return false
-	}
-
-	if t.Distribution != nil && appTargetMetadata.Distribution != nil {
-		if t.Distribution.Name != appTargetMetadata.Distribution.Name {
-			return false
-		}
-		if t.Distribution.Version != appTargetMetadata.Distribution.Version {
-			return false
-		}
-	}
-	return true
-}
-
-// PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available
-// returns a boolean indicating whether it populated any data.
-func PopulateTargetOSFromFileSystem(d fsutil.Detector, tm *TargetMetadata, logger log.Logger) {
-	if d.HasSystemdFile() {
-		contents, err := d.ReadSystemdFile()
-		if err != nil {
-			logger.Warnf("Encountered error trying to read /etc/os-release file: %s", err.Error())
-			return
-		}
-		info := d.GetInfo(contents)
-		if info.Version != "" || info.Name != "" {
-			tm.OS = "linux"
-			tm.Distribution = &OSDistribution{Name: info.Name, Version: info.Version}
-		}
-	}
 }

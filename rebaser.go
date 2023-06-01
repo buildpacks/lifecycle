@@ -181,7 +181,7 @@ func (r *Rebaser) validateRebaseable(appImg imgutil.Image, newBaseImg imgutil.Im
 			return errors.Wrap(err, "get new base image target")
 		}
 
-		if !newBaseTarget.IsValidRebaseTargetFor(appTarget) {
+		if !platform.TargetSatisfiedForRebase(*newBaseTarget, *appTarget) {
 			return fmt.Errorf("invalid base image target: '%s' is not equal to '%s'", newBaseTarget, appTarget)
 		}
 	}

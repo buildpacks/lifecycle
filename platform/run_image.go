@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -57,58 +56,6 @@ func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, erro
 	return runMD.Images[0], nil
 }
 
-func GetTargetMetadata(fromImage imgutil.Image) (*files.TargetMetadata, error) {
-	tm := files.TargetMetadata{}
-	if !fromImage.Found() {
-		return &tm, nil
-	}
-	var err error
-	tm.OS, err = fromImage.OS()
-	if err != nil {
-		return &tm, err
-	}
-	tm.Arch, err = fromImage.Architecture()
-	if err != nil {
-		return &tm, err
-	}
-	tm.ArchVariant, err = fromImage.Variant()
-	if err != nil {
-		return &tm, err
-	}
-	labels, err := fromImage.Labels()
-	if err != nil {
-		return &tm, err
-	}
-	distName, distNameExists := labels[OSDistributionNameLabel]
-	distVersion, distVersionExists := labels[OSDistributionVersionLabel]
-	if distNameExists || distVersionExists {
-		tm.Distribution = &files.OSDistribution{Name: distName, Version: distVersion}
-	}
-	if id, exists := labels[TargetLabel]; exists {
-		tm.ID = id
-	}
-
-	return &tm, nil
-}
-
-// Fulfills the prophecy set forth in https://github.com/buildpacks/rfcs/blob/b8abe33f2bdc58792acf0bd094dc4ce3c8a54dbb/text/0096-remove-stacks-mixins.md?plain=1#L97
-// by returning an array of "VARIABLE=value" strings suitable for inclusion in your environment or complete breakfast.
-func EnvVarsFor(tm files.TargetMetadata) []string {
-	ret := []string{"CNB_TARGET_OS=" + tm.OS, "CNB_TARGET_ARCH=" + tm.Arch}
-	ret = append(ret, "CNB_TARGET_VARIANT="+tm.ArchVariant)
-	var distName, distVersion string
-	if tm.Distribution != nil {
-		distName = tm.Distribution.Name
-		distVersion = tm.Distribution.Version
-	}
-	ret = append(ret, "CNB_TARGET_DISTRO_NAME="+distName)
-	ret = append(ret, "CNB_TARGET_DISTRO_VERSION="+distVersion)
-	if tm.ID != "" {
-		ret = append(ret, "CNB_TARGET_ID="+tm.ID)
-	}
-	return ret
-}
-
 type ImageStrategy interface {
 	CheckReadAccess(repo string, keychain authn.Keychain) (bool, error)
 }
@@ -130,16 +77,19 @@ func (a *NopImageStrategy) CheckReadAccess(_ string, _ authn.Keychain) (bool, er
 }
 
 func BestRunImageMirrorFor(registry string, runImage files.RunImageForExport, accessChecker ImageStrategy) (string, error) {
+	var runImageMirrors []string
 	if runImage.Image == "" {
-		return "", errors.New("missing run-image metadata")
+		return "", errors.New("missing run image metadata")
 	}
-	runImageMirrors := []string{runImage.Image}
+	runImageMirrors = append(runImageMirrors, runImage.Image)
 	runImageMirrors = append(runImageMirrors, runImage.Mirrors...)
 
 	keychain, err := auth.DefaultKeychain(runImageMirrors...)
 	if err != nil {
 		return "", fmt.Errorf("unable to create keychain: %w", err)
 	}
+
+	// FIXME: logic from byRegistry could probably be folded into this function
 	runImageRef := byRegistry(registry, runImageMirrors, accessChecker, keychain)
 	if runImageRef != "" {
 		return runImageRef, nil
@@ -169,12 +119,10 @@ func byRegistry(reg string, repos []string, accessChecker ImageStrategy, keychai
 			if err != nil {
 				return ""
 			}
-
 			if ok {
 				return repo
 			}
 		}
 	}
-
 	return ""
 }

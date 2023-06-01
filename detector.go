@@ -245,7 +245,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				} else {
 					for i := range bpDescriptor.Targets {
 						d.Logger.Debugf("Checking for match against descriptor:", bpDescriptor.Targets[i])
-						if d.AnalyzeMD.RunImage.TargetMetadata.IsSatisfiedBy(&bpDescriptor.Targets[i]) {
+						if platform.TargetSatisfiedForBuild(*d.AnalyzeMD.RunImage.TargetMetadata, bpDescriptor.Targets[i]) {
 							targetMatch = true
 							break
 						}
