@@ -133,7 +133,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("we want to get EnvVarsFor a files.TargetMetadata", func() {
+	when(".EnvVarsFor", func() {
 		it("returns the right thing", func() {
 			tm := files.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distribution: &files.OSDistribution{Name: "nix", Version: "22.11"}}
 			observed := platform.EnvVarsFor(tm)
@@ -145,6 +145,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
 			h.AssertEq(t, len(observed), 6)
 		})
+
 		it("does not return the wrong thing", func() {
 			tm := files.TargetMetadata{Arch: "pentium", OS: "linux"}
 			observed := platform.EnvVarsFor(tm)
@@ -156,6 +157,65 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME=")
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION=")
 			h.AssertEq(t, len(observed), 5)
+		})
+	})
+
+	when(".BestRunImageMirrorFor", func() {
+		var stackMD *files.Stack
+
+		it.Before(func() {
+			stackMD = &files.Stack{RunImage: files.RunImageForExport{
+				Image: "first.com/org/repo",
+				Mirrors: []string{
+					"myorg/myrepo",
+					"zonal.gcr.io/org/repo",
+					"gcr.io/org/repo",
+				},
+			}}
+		})
+
+		when("repoName is dockerhub", func() {
+			it("returns the dockerhub image", func() {
+				name, err := platform.BestRunImageMirrorFor("index.docker.io", stackMD.RunImage, &platform.NopImageStrategy{})
+				h.AssertNil(t, err)
+				h.AssertEq(t, name, "myorg/myrepo")
+			})
+		})
+
+		when("registry is gcr.io", func() {
+			it("returns the gcr.io image", func() {
+				name, err := platform.BestRunImageMirrorFor("gcr.io", stackMD.RunImage, &platform.NopImageStrategy{})
+				h.AssertNil(t, err)
+				h.AssertEq(t, name, "gcr.io/org/repo")
+			})
+
+			when("registry is zonal.gcr.io", func() {
+				it("returns the gcr image", func() {
+					name, err := platform.BestRunImageMirrorFor("zonal.gcr.io", stackMD.RunImage, &platform.NopImageStrategy{})
+					h.AssertNil(t, err)
+					h.AssertEq(t, name, "zonal.gcr.io/org/repo")
+				})
+			})
+
+			when("registry is missingzone.gcr.io", func() {
+				it("returns the run image", func() {
+					name, err := platform.BestRunImageMirrorFor("missingzone.gcr.io", stackMD.RunImage, &platform.NopImageStrategy{})
+					h.AssertNil(t, err)
+					h.AssertEq(t, name, "first.com/org/repo")
+				})
+			})
+		})
+
+		when("one of the images is non-parsable", func() {
+			it.Before(func() {
+				stackMD.RunImage.Mirrors = []string{"as@ohd@as@op", "gcr.io/myorg/myrepo"}
+			})
+
+			it("skips over it", func() {
+				name, err := platform.BestRunImageMirrorFor("gcr.io", stackMD.RunImage, &platform.NopImageStrategy{})
+				h.AssertNil(t, err)
+				h.AssertEq(t, name, "gcr.io/myorg/myrepo")
+			})
 		})
 	})
 }
