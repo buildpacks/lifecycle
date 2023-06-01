@@ -56,45 +56,26 @@ func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, erro
 	return runMD.Images[0], nil
 }
 
-type ImageStrategy interface {
-	CheckReadAccess(repo string, keychain authn.Keychain) (bool, error)
-}
-
-type RemoteImageStrategy struct{}
-
-func (s *RemoteImageStrategy) CheckReadAccess(repo string, keychain authn.Keychain) (bool, error) {
-	img, err := remote.NewImage(repo, keychain)
-	if err != nil {
-		return false, fmt.Errorf("failed to get remote image: %w", err)
-	}
-	return img.CheckReadAccess(), nil
-}
-
-type NopImageStrategy struct{}
-
-func (a *NopImageStrategy) CheckReadAccess(_ string, _ authn.Keychain) (bool, error) {
-	return true, nil
-}
-
-func BestRunImageMirrorFor(registry string, runImage files.RunImageForExport, accessChecker ImageStrategy) (string, error) {
+func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForExport, accessChecker ImageStrategy) (string, error) {
 	var runImageMirrors []string
-	if runImage.Image == "" {
+	if runImageMD.Image == "" {
 		return "", errors.New("missing run image metadata")
 	}
-	runImageMirrors = append(runImageMirrors, runImage.Image)
-	runImageMirrors = append(runImageMirrors, runImage.Mirrors...)
+	runImageMirrors = append(runImageMirrors, runImageMD.Image)
+	runImageMirrors = append(runImageMirrors, runImageMD.Mirrors...)
 
 	keychain, err := auth.DefaultKeychain(runImageMirrors...)
 	if err != nil {
 		return "", fmt.Errorf("unable to create keychain: %w", err)
 	}
 
-	// FIXME: logic from byRegistry could probably be folded into this function
-	runImageRef := byRegistry(registry, runImageMirrors, accessChecker, keychain)
+	// Try to select run image on the same registry as the target
+	runImageRef := byRegistry(targetRegistry, runImageMirrors, accessChecker, keychain)
 	if runImageRef != "" {
 		return runImageRef, nil
 	}
 
+	// Select the first run image we have access to
 	for _, image := range runImageMirrors {
 		ok, err := accessChecker.CheckReadAccess(image, keychain)
 		if err != nil {
@@ -125,4 +106,24 @@ func byRegistry(reg string, repos []string, accessChecker ImageStrategy, keychai
 		}
 	}
 	return ""
+}
+
+type ImageStrategy interface {
+	CheckReadAccess(repo string, keychain authn.Keychain) (bool, error)
+}
+
+type RemoteImageStrategy struct{}
+
+func (s *RemoteImageStrategy) CheckReadAccess(repo string, keychain authn.Keychain) (bool, error) {
+	img, err := remote.NewImage(repo, keychain)
+	if err != nil {
+		return false, fmt.Errorf("failed to get remote image: %w", err)
+	}
+	return img.CheckReadAccess(), nil
+}
+
+type NopImageStrategy struct{}
+
+func (a *NopImageStrategy) CheckReadAccess(_ string, _ authn.Keychain) (bool, error) {
+	return true, nil
 }
