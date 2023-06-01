@@ -124,6 +124,10 @@ func (d *BpDescriptor) String() string {
 	return d.Buildpack.Name + " " + d.Buildpack.Version
 }
 
+func (d *BpDescriptor) TargetsList() []TargetMetadata {
+	return d.Targets
+}
+
 func (bg Group) Append(group ...Group) Group {
 	for _, g := range group {
 		bg.Group = append(bg.Group, g.Group...)
