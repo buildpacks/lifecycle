@@ -4,16 +4,15 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/internal/fsutil"
-	"github.com/buildpacks/lifecycle/platform/files"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 type AnalyzerFactory struct {
@@ -198,22 +197,15 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 		previousImageRef string
 		runImageRef      string
 	)
+	appMeta, previousImageRef, err = a.retrieveAppMetadata()
+	if err != nil {
+		return files.Analyzed{}, err
+	}
 
-	if a.PreviousImage != nil { // Previous image is optional in Platform API >= 0.7
-		if previousImageRef, err = a.getImageIdentifier(a.PreviousImage); err != nil {
-			return files.Analyzed{}, errors.Wrap(err, "identifying previous image")
-		}
-
-		// continue even if the label cannot be decoded
-		if err = image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
-			appMeta = files.LayersMetadata{}
-		}
-
-		if err = a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, bomSHA(appMeta)); err != nil {
+	if sha := bomSHA(appMeta); sha != "" {
+		if err = a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, sha); err != nil {
 			return files.Analyzed{}, errors.Wrap(err, "retrieving launch SBOM layer")
 		}
-	} else {
-		appMeta = files.LayersMetadata{}
 	}
 
 	var (
@@ -227,7 +219,7 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 		}
 		if a.PlatformAPI.AtLeast("0.12") {
 			runImageName = a.RunImage.Name()
-			atm, err = platform.GetTargetFromImage(a.RunImage)
+			atm, err = platform.GetTargetMetadata(a.RunImage)
 			if err != nil {
 				return files.Analyzed{}, errors.Wrap(err, "unpacking metadata from image")
 			}
@@ -293,4 +285,25 @@ func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (platform.CacheMe
 	}
 
 	return cacheMeta, nil
+}
+
+func (a *Analyzer) retrieveAppMetadata() (files.LayersMetadata, string, error) {
+	if a.PreviousImage == nil { // Previous image is optional in Platform API >= 0.7
+		return files.LayersMetadata{}, "", nil
+	}
+	previousImageRef, err := a.getImageIdentifier(a.PreviousImage)
+	if err != nil {
+		return files.LayersMetadata{}, "", errors.Wrap(err, "identifying previous image")
+	}
+	if a.PreviousImage.Found() && !a.PreviousImage.Valid() {
+		a.Logger.Infof("Ignoring image %q because it was corrupt", a.PreviousImage.Name())
+		return files.LayersMetadata{}, "", nil
+	}
+
+	var appMeta files.LayersMetadata
+	// continue even if the label cannot be decoded
+	if err = image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
+		return files.LayersMetadata{}, "", nil
+	}
+	return appMeta, previousImageRef, nil
 }

@@ -243,27 +243,27 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 						ArtifactsDir: tarTempDir,
 						Logger:       nil,
 					}
-					layer, err := lf.DirLayer("buildpack.id:cache-only", filepath.Join(layersDir, "buildpack.id", "cache-only"))
+					layer, err := lf.DirLayer("buildpack.id:cache-only", filepath.Join(layersDir, "buildpack.id", "cache-only"), "")
 					h.AssertNil(t, err)
 					cacheOnlyLayerSHA = layer.Digest
 					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
-					layer, err = lf.DirLayer("buildpack.id:cache-false", filepath.Join(layersDir, "buildpack.id", "cache-false"))
+					layer, err = lf.DirLayer("buildpack.id:cache-false", filepath.Join(layersDir, "buildpack.id", "cache-false"), "")
 					h.AssertNil(t, err)
 					cacheFalseLayerSHA = layer.Digest
 					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
-					layer, err = lf.DirLayer("buildpack.id:cache-launch", filepath.Join(layersDir, "buildpack.id", "cache-launch"))
+					layer, err = lf.DirLayer("buildpack.id:cache-launch", filepath.Join(layersDir, "buildpack.id", "cache-launch"), "")
 					h.AssertNil(t, err)
 					cacheLaunchLayerSHA = layer.Digest
 					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
-					layer, err = lf.DirLayer("nogroup.buildpack.id:some-layer", filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer"))
+					layer, err = lf.DirLayer("nogroup.buildpack.id:some-layer", filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer"), "")
 					h.AssertNil(t, err)
 					noGroupLayerSHA = layer.Digest
 					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
-					layer, err = lf.DirLayer("escaped/buildpack/id.id:escaped-bp-layer", filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer"))
+					layer, err = lf.DirLayer("escaped/buildpack/id.id:escaped-bp-layer", filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer"), "")
 					h.AssertNil(t, err)
 					escapedLayerSHA = layer.Digest
 					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))

@@ -507,6 +507,28 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
+
+	when("It runs", func() {
+		it("sets CNB_TARGET_* vars", func() {
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				"--env", "CNB_LAYERS_DIR=/layers/03_layer",
+				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan_buildpack_3.toml",
+				builderImage,
+			)
+			output, err := command.CombinedOutput()
+			fmt.Println(string(output))
+			h.AssertNil(t, err)
+			h.AssertStringContains(t, string(output), "CNB_TARGET_ARCH: amd64")
+			h.AssertStringContains(t, string(output), "CNB_TARGET_OS: linux")
+			h.AssertStringContains(t, string(output), "CNB_TARGET_VARIANT: some-variant")
+			h.AssertStringContains(t, string(output), "CNB_TARGET_DISTRO_NAME: ubuntu")
+			h.AssertStringContains(t, string(output), "CNB_TARGET_DISTRO_VERSION: some-cute-version")
+		})
+	})
 }
 
 func getBuilderMetadata(t *testing.T, path string) (string, *files.BuildMetadata) {

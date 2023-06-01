@@ -94,7 +94,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			h.Mkdir(t, filepath.Join(layersDir, "sbom", "launch"))
 			h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "launch", "some-file"))
 			factory := &layers.Factory{ArtifactsDir: artifactsDir}
-			layer, err := factory.DirLayer("launch.sbom", filepath.Join(layersDir, "sbom", "launch"))
+			layer, err := factory.DirLayer("launch.sbom", filepath.Join(layersDir, "sbom", "launch"), "")
 			h.AssertNil(t, err)
 			layerDigest = layer.Digest
 
@@ -158,7 +158,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			h.Mkdir(t, filepath.Join(layersDir, "sbom", "cache"))
 			h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "cache", "some-file"))
 			factory := &layers.Factory{ArtifactsDir: artifactsDir}
-			layer, err := factory.DirLayer("cache.sbom", filepath.Join(layersDir, "sbom", "cache"))
+			layer, err := factory.DirLayer("cache.sbom", filepath.Join(layersDir, "sbom", "cache"), "")
 			h.AssertNil(t, err)
 			layerDigest = layer.Digest
 

@@ -89,6 +89,8 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 					Linkname: launch.LauncherPath,
 				},
 			})
+			// it returns history
+			h.AssertEq(t, configLayer.History.CreatedBy, "Buildpacks Process Types")
 		})
 
 		when("process-type contains invalid character", func() {
@@ -144,6 +146,8 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 				},
 			})
 			assertEntryContent(t, launcherLayer.TarPath, tarPath(launch.LauncherPath), "launcher-content")
+			// it returns history
+			h.AssertEq(t, launcherLayer.History.CreatedBy, "Buildpacks Application Launcher")
 		})
 	})
 }

@@ -1,6 +1,7 @@
 package lifecycle_test
 
 import (
+	"encoding/json"
 	"math/rand"
 	"testing"
 	"time"
@@ -128,6 +129,117 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(md.Buildpacks), 1)
 				h.AssertEq(t, md.Buildpacks[0].ID, "buildpack.id")
 				h.AssertEq(t, md.App, []interface{}{map[string]interface{}{"sha": "123456"}})
+			})
+
+			when("new base image is not found in run image metadata", func() {
+				it.Before(func() {
+					lifecycleMD := files.LayersMetadata{
+						RunImage: files.RunImageForRebase{
+							TopLayer:  "some-top-layer",
+							Reference: "some-run-image-digest-reference",
+							Image:     "some-run-image-tag-reference",
+							Mirrors:   []string{"some-run-image-mirror"},
+						},
+						Stack: &files.Stack{RunImage: files.RunImageForExport{
+							Image:   "some-run-image-tag-reference",
+							Mirrors: []string{"some-run-image-mirror"},
+						}},
+					}
+					label, err := json.Marshal(lifecycleMD)
+					h.AssertNil(t, err)
+					h.AssertNil(t, fakeAppImage.SetLabel(platform.LayerMetadataLabel, string(label)))
+				})
+
+				when("platform API < 0.12", func() {
+					it.Before(func() {
+						rebaser.PlatformAPI = api.MustParse("0.11")
+					})
+
+					it("preserves the existing metadata", func() {
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+
+						h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
+						h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
+						h.AssertEq(t, md.RunImage.Reference, "new-run-id")
+						h.AssertEq(t, md.RunImage.Image, "some-run-image-tag-reference")
+						h.AssertEq(t, md.RunImage.Mirrors, []string{"some-run-image-mirror"})
+						h.AssertEq(t, md.Stack.RunImage.Image, "some-run-image-tag-reference")
+						h.AssertEq(t, md.Stack.RunImage.Mirrors, []string{"some-run-image-mirror"})
+					})
+				})
+
+				when("platform API >= 0.12", func() {
+					it.Before(func() {
+						rebaser.PlatformAPI = api.MustParse("0.12")
+					})
+
+					it("overrides the existing metadata", func() {
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+
+						h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
+						var empty []string
+						h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
+						h.AssertEq(t, md.RunImage.Reference, "new-run-id")
+						h.AssertEq(t, md.RunImage.Image, "some-repo/new-base-image")
+						h.AssertEq(t, md.RunImage.Mirrors, empty)
+						h.AssertEq(t, md.Stack.RunImage.Image, "some-repo/new-base-image")
+						h.AssertEq(t, md.Stack.RunImage.Mirrors, empty)
+					})
+
+					when("new base image is an existing mirror", func() {
+						it.Before(func() {
+							fakeNewBaseImage = fakes.NewImage(
+								"some-run-image-mirror",
+								"new-top-layer-sha",
+								local.IDIdentifier{
+									ImageID: "new-run-id",
+								},
+							)
+							h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
+						})
+
+						it("preserves the existing metadata", func() {
+							_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+							h.AssertNil(t, err)
+
+							h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
+							h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
+							h.AssertEq(t, md.RunImage.Reference, "new-run-id")
+							h.AssertEq(t, md.RunImage.Image, "some-run-image-tag-reference")
+							h.AssertEq(t, md.RunImage.Mirrors, []string{"some-run-image-mirror"})
+							h.AssertEq(t, md.Stack.RunImage.Image, "some-run-image-tag-reference")
+							h.AssertEq(t, md.Stack.RunImage.Mirrors, []string{"some-run-image-mirror"})
+						})
+					})
+
+					when("reference includes docker registry", func() {
+						it.Before(func() {
+							fakeNewBaseImage = fakes.NewImage(
+								"index.docker.io/some-run-image-mirror",
+								"new-top-layer-sha",
+								local.IDIdentifier{
+									ImageID: "new-run-id",
+								},
+							)
+							h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
+						})
+
+						it("still matches", func() {
+							_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+							h.AssertNil(t, err)
+
+							h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
+							h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
+							h.AssertEq(t, md.RunImage.Reference, "new-run-id")
+							h.AssertEq(t, md.RunImage.Image, "some-run-image-tag-reference")
+							h.AssertEq(t, md.RunImage.Mirrors, []string{"some-run-image-mirror"})
+							h.AssertEq(t, md.Stack.RunImage.Image, "some-run-image-tag-reference")
+							h.AssertEq(t, md.Stack.RunImage.Mirrors, []string{"some-run-image-mirror"})
+						})
+					})
+				})
 			})
 
 			when("image has io.buildpacks.stack.* labels", func() {
@@ -483,7 +595,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeNewBaseImage.SetOS("notlinux"))
 
 					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-					h.AssertError(t, err, "invalid base image target: 'OS: notlinux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: )'")
+					h.AssertError(t, err, "invalid base image target: 'OS: notlinux, Arch: amd64, ArchVariant: ' is not equal to 'OS: linux, Arch: amd64, ArchVariant: '")
 				})
 
 				it("returns an error and prevents the rebase from taking place when the architecture are different", func() {
@@ -491,7 +603,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeNewBaseImage.SetArchitecture("arm64"))
 
 					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: arm64, ArchVariant: , Distribution: (Name: , Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: )'")
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: arm64, ArchVariant: ' is not equal to 'OS: linux, Arch: amd64, ArchVariant: '")
 				})
 
 				it("returns an error and prevents the rebase from taking place when the architecture variant are different", func() {
@@ -499,7 +611,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeNewBaseImage.SetVariant("variant2"))
 
 					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: amd64, ArchVariant: variant2, Distribution: (Name: , Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: variant1, Distribution: (Name: , Version: )'")
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: amd64, ArchVariant: variant2' is not equal to 'OS: linux, Arch: amd64, ArchVariant: variant1'")
 				})
 
 				it("returns an error and prevents the rebase from taking place when the io.buildpacks.distribution.name are different", func() {
@@ -545,8 +657,9 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("outputImageRef is different than workingImage name", func() {
+			var outputImageRef = "fizz"
+
 			it("saves using outputImageRef, not the app image name", func() {
-				outputImageRef := "fizz"
 				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, outputImageRef, additionalNames)
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(additionalNames, outputImageRef)...)

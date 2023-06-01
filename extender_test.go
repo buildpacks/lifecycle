@@ -222,16 +222,17 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "build", "B", "extend-config.toml"))
 
 				fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
-				firstConfig := &v1.ConfigFile{Config: v1.Config{
-					User: "1234:5678",
-				}}
-				someFakeImage.ConfigFileReturnsOnCall(0, firstConfig, nil)
+				someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
 
 				// first dockerfile
 
+				firstConfig := &v1.ConfigFile{Config: v1.Config{
+					User: "0:5678",
+				}}
+				someFakeImage.ConfigFileReturnsOnCall(0, firstConfig, nil)
 				fakeDockerfileApplier.EXPECT().Apply(
 					gomock.Any(),
-					someFakeImage,
+					gomock.Any(), // we mutate the provided image so we can't expect the fake image
 					extend.Options{
 						BuildContext: "some-app-dir",
 						IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
@@ -246,7 +247,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						_, err := uuid.Parse(dockerfile.Args[0].Value)
 						h.AssertNil(t, err)
 						h.AssertEq(t, dockerfile.Args[1].Name, "user_id")
-						h.AssertEq(t, dockerfile.Args[1].Value, "1234")
+						h.AssertEq(t, dockerfile.Args[1].Value, "0")
 						h.AssertEq(t, dockerfile.Args[2].Name, "group_id")
 						h.AssertEq(t, dockerfile.Args[2].Value, "5678")
 						h.AssertEq(t, dockerfile.Args[3], expectedDockerfileA.Args[0])
@@ -261,6 +262,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 				// second dockerfile
 
+				someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
 				fakeDockerfileApplier.EXPECT().Apply(
 					gomock.Any(),
 					someFakeImage,
@@ -285,8 +287,6 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						return someFakeImage, nil
 					})
-				someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
-
 				someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
 
 				fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
@@ -294,6 +294,49 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, extender.Extend("build", logger))
 				h.AssertEq(t, os.Getenv("SOME_VAR"), "some-val")
 				h.AssertNil(t, os.Unsetenv("SOME_VAR"))
+			})
+			it("errors if the last extension leaves the user as root", func() {
+				expectedDockerfileA := extend.Dockerfile{
+					Path: filepath.Join(generatedDir, "build", "A", "Dockerfile"),
+					Args: []extend.Arg{{Name: "argA", Value: "valueA"}},
+				}
+				h.Mkdir(t, filepath.Join(generatedDir, "build", "A"))
+				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "build", "A", "Dockerfile"))
+				buf := new(bytes.Buffer)
+				data := extend.Config{Build: extend.BuildConfig{Args: expectedDockerfileA.Args}}
+				h.AssertNil(t, toml.NewEncoder(buf).Encode(data))
+				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "build", "A", "extend-config.toml"))
+
+				fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+				firstConfig := &v1.ConfigFile{Config: v1.Config{
+					User: "0:5678",
+				}}
+				someFakeImage.ConfigFileReturns(firstConfig, nil)
+				someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
+
+				fakeDockerfileApplier.EXPECT().Apply(
+					gomock.Any(),
+					gomock.Any(),
+					gomock.Any(),
+					logger,
+				).DoAndReturn(
+					func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+						h.AssertEq(t, dockerfile.Path, expectedDockerfileA.Path)
+						h.AssertEq(t, len(dockerfile.Args), 4)
+						h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
+						_, err := uuid.Parse(dockerfile.Args[0].Value)
+						h.AssertNil(t, err)
+						h.AssertEq(t, dockerfile.Args[1].Name, "user_id")
+						h.AssertEq(t, dockerfile.Args[1].Value, "0")
+						h.AssertEq(t, dockerfile.Args[2].Name, "group_id")
+						h.AssertEq(t, dockerfile.Args[2].Value, "5678")
+						h.AssertEq(t, dockerfile.Args[3], expectedDockerfileA.Args[0])
+
+						return someFakeImage, nil
+					})
+
+				err := extender.Extend("build", logger)
+				h.AssertError(t, err, "extending build image: the final user ID is 0 (root); please add another extension that resets the user to non-root")
 			})
 		})
 
@@ -371,7 +414,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						fakeDockerfileApplier.EXPECT().Apply(
 							gomock.Any(),
-							someFakeImage,
+							gomock.Any(), // we mutate the provided image so we can't expect the fake image
 							extend.Options{
 								BuildContext: "some-app-dir",
 								IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},

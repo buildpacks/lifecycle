@@ -96,8 +96,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		// mock LayerFactory returns layer with deterministic characteristic for a give layer it
 		h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "artifacts"), 0777))
 		layerFactory.EXPECT().
-			DirLayer(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(id string, dir string) (layers.Layer, error) {
+			DirLayer(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(id string, dir string, createdBy string) (layers.Layer, error) {
 				return createTestLayer(id, tmpDir)
 			}).AnyTimes()
 
@@ -412,6 +412,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					h.AssertEq(t, meta.RunImage.Image, "some/run")
 					h.AssertEq(t, meta.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
+					h.AssertEq(t, meta.Stack, (*files.Stack)(nil))
 				})
 
 				when("platform api < 0.12", func() {
@@ -437,6 +438,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						h.AssertEq(t, meta.Stack.RunImage.Image, "some/run")
 						h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
+						h.AssertEq(t, meta.RunImage.Image, "")
+						h.AssertEq(t, meta.RunImage.Mirrors, []string(nil))
 					})
 				})
 			})

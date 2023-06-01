@@ -16,6 +16,7 @@ import (
 // Fields are the cumulative total of inputs across all lifecycle phases and all supported Platform APIs.
 type LifecycleInputs struct {
 	PlatformAPI           *api.Version
+	AccessChecker         ImageStrategy
 	AnalyzedPath          string
 	AppDir                string
 	BuildConfigDir        string

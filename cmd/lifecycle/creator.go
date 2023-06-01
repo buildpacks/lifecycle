@@ -231,7 +231,7 @@ func (c *createCmd) Exec() error {
 	stopPinging := startPinging(c.docker) // send pings to docker daemon while building to prevent connection closure
 	cmd.DefaultLogger.Phase("BUILDING")
 	buildCmd := &buildCmd{Platform: c.Platform}
-	err = buildCmd.build(group, plan)
+	err = buildCmd.build(group, plan, analyzedMD)
 	stopPinging()
 	if err != nil {
 		return err

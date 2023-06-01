@@ -200,7 +200,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		return err
 	}
 
-	runImageForExport, err := e.getRunImageForExport()
+	runImageForExport, err := platform.GetRunImageForExport(*e.LifecycleInputs)
 	if err != nil {
 		return err
 	}
@@ -256,6 +256,10 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		if extendedConfig != nil {
 			opts = append(opts, local.WithConfig(toContainerConfig(extendedConfig)))
 		}
+	}
+
+	if e.supportsHistory() {
+		opts = append(opts, local.WithHistory())
 	}
 
 	if analyzedMD.PreviousImageRef() != "" {
@@ -365,6 +369,10 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		}
 	}
 
+	if e.supportsHistory() {
+		opts = append(opts, remote.WithHistory())
+	}
+
 	if analyzedMD.PreviousImageRef() != "" {
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImageRef())
 		opts = append(opts, remote.WithPreviousImage(analyzedMD.PreviousImageRef()))
@@ -402,6 +410,10 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image
 
 	var opts = []layout.ImageOption{
 		layout.FromBaseImagePath(runImageIdentifier.Path),
+	}
+
+	if e.supportsHistory() {
+		opts = append(opts, layout.WithHistory())
 	}
 
 	if analyzedMD.PreviousImageRef() != "" {
@@ -485,6 +497,10 @@ func (e *exportCmd) supportsRunImageExtension() bool {
 	return e.PlatformAPI.AtLeast("0.12") && !e.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1057
 }
 
+func (e *exportCmd) supportsHistory() bool {
+	return e.PlatformAPI.AtLeast("0.12")
+}
+
 func (e *exportCmd) getExtendedConfig(runImage *files.RunImage) (*v1.Config, error) {
 	if runImage == nil {
 		return nil, errors.New("missing analyzed run image")
@@ -507,33 +523,6 @@ func (e *exportCmd) getExtendedConfig(runImage *files.RunImage) (*v1.Config, err
 		return nil, errors.New("missing extended run image config")
 	}
 	return &extendedConfig.Config, nil
-}
-
-func (e *exportCmd) getRunImageForExport() (files.RunImageForExport, error) {
-	if e.PlatformAPI.LessThan("0.12") {
-		stackMD, err := files.ReadStack(e.StackPath, cmd.DefaultLogger)
-		if err != nil {
-			return files.RunImageForExport{}, err
-		}
-		return stackMD.RunImage, nil
-	}
-	runMD, err := files.ReadRun(e.RunPath, cmd.DefaultLogger)
-	if err != nil {
-		return files.RunImageForExport{}, err
-	}
-	if len(runMD.Images) == 0 {
-		return files.RunImageForExport{Image: e.RunImageRef}, nil
-	}
-	runRef, err := name.ParseReference(e.RunImageRef)
-	if err != nil {
-		return files.RunImageForExport{}, err
-	}
-	for _, runImage := range runMD.Images {
-		if runImage.Image == runRef.Context().Name() {
-			return runImage, nil
-		}
-	}
-	return files.RunImageForExport{Image: e.RunImageRef}, nil
 }
 
 func (e *exportCmd) hasExtendedLayers() bool {

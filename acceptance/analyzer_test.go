@@ -271,7 +271,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				output, err := cmd.CombinedOutput()
 
 				h.AssertNotNil(t, err)
-				expected := "ensure registry read access to some-run-image-from-run-toml"
+				expected := "failed to find accessible run image"
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})
@@ -1033,7 +1033,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					analyzer := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
 					h.AssertNotNil(t, analyzer.RunImage)
 					analyzedImagePath := filepath.Join(path.RootDir, "layout-repo", "index.docker.io", "library", "busybox", "latest")
-					reference := fmt.Sprintf("%s@%s", analyzedImagePath, "sha256:1afaac0c6907aaf5fce478e2e82c00a5ce58deca23bf34739509f29affb2c631")
+					reference := fmt.Sprintf("%s@%s", analyzedImagePath, "sha256:834f8848308af7090ed7b2270071d28411afc42078e3ba395b1b0a78e2f8b0e2")
 					h.AssertEq(t, analyzer.RunImage.Reference, reference)
 				})
 			})

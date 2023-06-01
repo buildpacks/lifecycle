@@ -1,6 +1,8 @@
 package platform
 
-import "github.com/buildpacks/lifecycle/api"
+import (
+	"github.com/buildpacks/lifecycle/api"
+)
 
 type LifecyclePhase int
 

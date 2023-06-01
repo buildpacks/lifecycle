@@ -23,14 +23,12 @@ type buildCmd struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (b *buildCmd) DefineFlags() {
 	switch {
+	case b.PlatformAPI.AtLeast("0.12"):
+		cli.FlagAnalyzedPath(&b.AnalyzedPath)
+		fallthrough
 	case b.PlatformAPI.AtLeast("0.11"):
-		cli.FlagAppDir(&b.AppDir)
 		cli.FlagBuildConfigDir(&b.BuildConfigDir)
-		cli.FlagBuildpacksDir(&b.BuildpacksDir)
-		cli.FlagGroupPath(&b.GroupPath)
-		cli.FlagLayersDir(&b.LayersDir)
-		cli.FlagPlanPath(&b.PlanPath)
-		cli.FlagPlatformDir(&b.PlatformDir)
+		fallthrough
 	default:
 		cli.FlagAppDir(&b.AppDir)
 		cli.FlagBuildpacksDir(&b.BuildpacksDir)
@@ -68,10 +66,14 @@ func (b *buildCmd) Exec() error {
 	if err = verifyBuildpackApis(group); err != nil {
 		return err
 	}
-	return b.build(group, plan)
+	amd, err := files.ReadAnalyzed(b.AnalyzedPath, cmd.DefaultLogger)
+	if err != nil {
+		return unwrapErrorFailWithMessage(err, "reading analyzed.toml")
+	}
+	return b.build(group, plan, amd)
 }
 
-func (b *buildCmd) build(group buildpack.Group, plan files.Plan) error {
+func (b *buildCmd) build(group buildpack.Group, plan files.Plan, analyzedMD files.Analyzed) error {
 	builder := &lifecycle.Builder{
 		AppDir:         b.AppDir,
 		BuildConfigDir: b.BuildConfigDir,
@@ -85,6 +87,7 @@ func (b *buildCmd) build(group buildpack.Group, plan files.Plan) error {
 		Err:            cmd.Stderr,
 		Plan:           plan,
 		PlatformAPI:    b.PlatformAPI,
+		AnalyzeMD:      analyzedMD,
 	}
 	md, err := builder.Build()
 	if err != nil {

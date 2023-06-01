@@ -77,6 +77,10 @@ func (c *ImageCache) SetMetadata(metadata platform.CacheMetadata) error {
 }
 
 func (c *ImageCache) RetrieveMetadata() (platform.CacheMetadata, error) {
+	if !c.origImage.Valid() {
+		c.logger.Infof("Ignoring cache image %q because it was corrupt", c.origImage.Name())
+		return platform.CacheMetadata{}, nil
+	}
 	var meta platform.CacheMetadata
 	if err := image.DecodeLabel(c.origImage, MetadataLabel, &meta); err != nil {
 		return platform.CacheMetadata{}, nil

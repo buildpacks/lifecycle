@@ -86,6 +86,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 				},
 				"some-output-dir",
 				providedPlan,
+				api.Platform.Latest(),
 				"some-platform-dir",
 				"some-run-path",
 				stdout, stderr,
@@ -154,6 +155,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			Logger:       &log.Logger{Handler: logHandler},
 			GeneratedDir: generatedDir,
 			Plan:         files.Plan{},
+			PlatformAPI:  api.Platform.Latest(),
 			PlatformDir:  platformDir,
 			Err:          stderr,
 			Out:          stdout,
@@ -161,7 +163,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 		mockCtrl.Finish()
 	})
 
@@ -248,7 +250,47 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			_, err := generator.Generate()
 			h.AssertNil(t, err)
 		})
-
+		it("passes through CNB_TARGET environment variables", func() {
+			generator.AnalyzedMD = files.Analyzed{
+				RunImage: &files.RunImage{
+					TargetMetadata: &files.TargetMetadata{
+						OS:   "linux",
+						Arch: "amd64",
+					},
+				},
+			}
+			// mock generate for extensions  - these are tested elsewhere, so we just need to return anything...
+			dirStore.EXPECT().LookupExt(gomock.Any(), gomock.Any()).Return(&extA, nil)
+			dirStore.EXPECT().LookupExt(gomock.Any(), gomock.Any()).Return(&extB, nil)
+			// extension A has a build.Dockerfile and an extend-config.toml
+			h.Mkdir(t, filepath.Join(tmpDir, "A"))
+			buildDockerfilePathA := filepath.Join(tmpDir, "A", "build.Dockerfile")
+			h.Mkfile(t, "some-build.Dockerfile-content-A", buildDockerfilePathA)
+			extendConfigPathA := filepath.Join(tmpDir, "A", "extend-config.toml")
+			h.Mkfile(t, "some-extend-config.toml-content-A", extendConfigPathA)
+			executor.EXPECT().Generate(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(d buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ *log.Logger) (buildpack.GenerateOutputs, error) {
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_ARCH=amd64")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_NAME=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_VERSION=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_OS=linux")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_VARIANT=")
+					return buildpack.GenerateOutputs{Dockerfiles: []buildpack.DockerfileInfo{{ExtensionID: d.Extension.ID,
+						Kind: "build", Path: buildDockerfilePathA}}}, nil
+				})
+			executor.EXPECT().Generate(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(d buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ *log.Logger) (buildpack.GenerateOutputs, error) {
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_ARCH=amd64")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_NAME=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_VERSION=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_OS=linux")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_VARIANT=")
+					return buildpack.GenerateOutputs{Dockerfiles: []buildpack.DockerfileInfo{{ExtensionID: d.Extension.ID,
+						Kind: "build", Path: buildDockerfilePathA}}}, nil
+				})
+			_, err := generator.Generate()
+			h.AssertNil(t, err)
+		})
 		it("copies Dockerfiles and extend-config.toml files to the correct locations", func() {
 			// mock generate for extension A
 			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)

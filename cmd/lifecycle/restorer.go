@@ -106,7 +106,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
-			targetData, err := platform.GetTargetFromImage(runImage)
+			targetData, err := platform.GetTargetMetadata(runImage)
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}
@@ -126,7 +126,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
-			targetData, err := platform.GetTargetFromImage(runImage)
+			targetData, err := platform.GetTargetMetadata(runImage)
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}

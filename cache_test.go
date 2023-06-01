@@ -82,8 +82,8 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 		when("the layers are valid", func() {
 			it.Before(func() {
 				layerFactory.EXPECT().
-					DirLayer(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(id string, dir string) (layers.Layer, error) {
+					DirLayer(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(id string, dir string, createdBy string) (layers.Layer, error) {
 						return createTestLayer(id, tmpDir)
 					}).AnyTimes()
 
@@ -262,11 +262,11 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 		when("there are invalid layers", func() {
 			it.Before(func() {
 				layerFactory.EXPECT().
-					DirLayer("buildpack.id:layer-1", gomock.Any()).
+					DirLayer("buildpack.id:layer-1", gomock.Any(), gomock.Any()).
 					Return(layers.Layer{}, errors.New("test error"))
 				layerFactory.EXPECT().
-					DirLayer("buildpack.id:layer-2", gomock.Any()).
-					DoAndReturn(func(id string, dir string) (layers.Layer, error) {
+					DirLayer("buildpack.id:layer-2", gomock.Any(), gomock.Any()).
+					DoAndReturn(func(id string, dir string, createdBy string) (layers.Layer, error) {
 						return createTestLayer(id, tmpDir)
 					}).
 					AnyTimes()
@@ -296,8 +296,8 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			when("the layers are valid", func() {
 				it.Before(func() {
 					layerFactory.EXPECT().
-						DirLayer(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(id string, dir string) (layers.Layer, error) {
+						DirLayer(gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(id string, dir string, createdBy string) (layers.Layer, error) {
 							return createTestLayer(id, tmpDir)
 						}).AnyTimes()
 

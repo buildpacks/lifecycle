@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/imgutil"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -21,6 +22,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -290,24 +292,30 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	}
 
 	var (
-		configFile *v1.ConfigFile
-		rebasable  = true // we don't require the initial base image to have io.buildpacks.rebasable=true
+		configFile     *v1.ConfigFile
+		rebasable      = true // we don't require the initial base image to have io.buildpacks.rebasable=true
+		workingHistory []v1.History
 	)
-	configFile, err = baseImage.ConfigFile()
-	if err != nil || configFile == nil {
-		return nil, fmt.Errorf("getting image config: %w", err)
+	// get config
+	baseImage, err = imgutil.OverrideHistoryIfNeeded(baseImage)
+	if err != nil {
+		return nil, err
 	}
+	configFile, err = baseImage.ConfigFile()
+	if err != nil {
+		return nil, err
+	}
+	workingHistory = configFile.History
 	buildOptions := e.extendOptions()
+	userID, groupID := userFrom(*configFile)
+	origUserID := userID
 	for _, dockerfile := range dockerfiles {
-		userID, groupID := userFrom(*configFile)
 		dockerfile.Args = append([]extend.Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
 			{Name: argUserID, Value: userID},
 			{Name: argGroupID, Value: groupID},
 		}, dockerfile.Args...)
-
 		// apply Dockerfile
-
 		if baseImage, err = e.DockerfileApplier.Apply(
 			dockerfile,
 			baseImage,
@@ -316,21 +324,46 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		); err != nil {
 			return nil, fmt.Errorf("applying Dockerfile to image: %w", err)
 		}
-
-		// get config & update rebasable
-
+		// update rebasable, history in config, and user/group IDs
 		configFile, err = baseImage.ConfigFile()
 		if err != nil || configFile == nil {
 			return nil, fmt.Errorf("getting image config: %w", err)
 		}
-		if !rebasable || !isRebasable(*configFile) {
+		// rebasable
+		if !rebasable || !isRebasable(configFile) {
 			rebasable = false
 		}
+		if configFile.Config.Labels == nil {
+			configFile.Config.Labels = map[string]string{}
+		}
+		configFile.Config.Labels[RebasableLabel] = fmt.Sprintf("%t", rebasable)
+		// history
+		newHistory := imgutil.NormalizedHistory(configFile.History, len(configFile.RootFS.DiffIDs))
+		for i := len(workingHistory); i < len(newHistory); i++ {
+			workingHistory = append(
+				workingHistory,
+				v1.History{
+					CreatedBy: fmt.Sprintf(layers.ExtensionLayerName, newHistory[i].CreatedBy, dockerfile.ExtensionID),
+				},
+			)
+		}
+		configFile.History = workingHistory
+		prevUserID := userID
+		userID, groupID = userFrom(*configFile)
+		if userID == "0" {
+			logger.Warnf("Extension from %s changed the user ID from %d to %d; this must not be the final user ID (a following extension must reset the user).", prevUserID, userID, dockerfile.Path)
+		}
+	}
+	if userID == "0" {
+		return baseImage, fmt.Errorf("the final user ID is 0 (root); please add another extension that resets the user to non-root")
+	}
+	if userID != origUserID {
+		logger.Warnf("The original user ID was %s but the final extension left the user ID set to %s.", origUserID, userID)
 	}
 	if kind == buildpack.DockerfileKindBuild {
 		return baseImage, nil
 	}
-	return setLabel(baseImage, RebasableLabel, fmt.Sprintf("%t", rebasable))
+	return mutate.ConfigFile(baseImage, configFile)
 }
 
 func userFrom(config v1.ConfigFile) (string, string) {
@@ -343,7 +376,7 @@ func userFrom(config v1.ConfigFile) (string, string) {
 
 const RebasableLabel = "io.buildpacks.rebasable"
 
-func isRebasable(config v1.ConfigFile) bool {
+func isRebasable(config *v1.ConfigFile) bool {
 	val, ok := config.Config.Labels[RebasableLabel]
 	if !ok {
 		// label unset
@@ -355,19 +388,6 @@ func isRebasable(config v1.ConfigFile) bool {
 		return false
 	}
 	return b
-}
-
-func setLabel(image v1.Image, key string, val string) (v1.Image, error) {
-	configFile, err := image.ConfigFile()
-	if err != nil || configFile == nil {
-		return nil, fmt.Errorf("getting image config: %w", err)
-	}
-	config := *configFile.Config.DeepCopy()
-	if config.Labels == nil {
-		config.Labels = map[string]string{}
-	}
-	config.Labels[key] = val
-	return mutate.Config(image, config)
 }
 
 func (e *Extender) dockerfilesFor(kind string, logger log.Logger) ([]extend.Dockerfile, error) {
@@ -408,8 +428,9 @@ func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error)
 	}
 
 	return &extend.Dockerfile{
-		Path: dockerfilePath,
-		Args: args,
+		ExtensionID: extID,
+		Path:        dockerfilePath,
+		Args:        args,
 	}, nil
 }
 

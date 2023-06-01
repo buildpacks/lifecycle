@@ -172,12 +172,12 @@ func (r *rebaseCmd) setAppImage() error {
 
 		// for backwards compatibility, we need to fallback to the stack metadata
 		// fail if there is no run image metadata available from either location
-		if md.Stack.RunImage.Image == "" {
+		if md.Stack == nil || md.Stack.RunImage.Image == "" {
 			return cmd.FailErrCode(errors.New("-run-image is required when there is no run image metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
 		}
 
 		// for older platforms, we find the best mirror for the run image as this point
-		r.RunImageRef, err = md.Stack.BestRunImageMirrorFor(registry)
+		r.RunImageRef, err = platform.BestRunImageMirrorFor(registry, md.Stack.RunImage, r.LifecycleInputs.AccessChecker)
 		if err != nil {
 			return err
 		}

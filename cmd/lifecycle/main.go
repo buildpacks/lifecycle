@@ -21,21 +21,21 @@ func main() {
 	phase := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
 	switch phase {
 	case "detector":
-		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, phase, false)
 	case "analyzer":
-		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, phase, false)
 	case "restorer":
-		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, phase, false)
 	case "builder":
-		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, phase, false)
 	case "exporter":
-		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, phase, false)
 	case "creator":
-		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, phase, false)
 	case "extender":
-		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, phase, false)
 	case "rebaser":
-		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, phase, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "parse arguments"))
@@ -59,21 +59,21 @@ func subcommand(platformAPI string) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPI)}, phase, true)
 	case "analyze":
-		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPI)}, phase, true)
 	case "restore":
-		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPI)}, phase, true)
 	case "build":
-		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPI)}, phase, true)
 	case "export":
-		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPI)}, phase, true)
 	case "rebase":
-		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPI)}, phase, true)
 	case "create":
-		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPI)}, phase, true)
 	case "extend":
-		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPI)}, phase, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
 	}

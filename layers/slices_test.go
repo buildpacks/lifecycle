@@ -2,6 +2,7 @@ package layers_test
 
 import (
 	"archive/tar"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -111,6 +112,8 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 						Typeflag: tar.TypeReg,
 					},
 				}...))
+				// it returns history
+				h.AssertEq(t, sliceLayers[0].History.CreatedBy, "Application Layer")
 			})
 
 			it("resolves relative paths", func() {
@@ -213,6 +216,8 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, sliceLayers[2].ID, "slice-3")
 				h.AssertEq(t, sliceLayers[3].ID, "slice-4")
 				h.AssertEq(t, sliceLayers[4].ID, "slice-5")
+				// it returns history
+				h.AssertEq(t, sliceLayers[0].History.CreatedBy, "Application Slice: 1")
 			})
 
 			it("creates slice from pattern", func() {
@@ -319,6 +324,12 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 						Typeflag: tar.TypeReg,
 					},
 				}...))
+			})
+
+			it("returns history", func() {
+				for idx, s := range sliceLayers {
+					h.AssertEq(t, s.History.CreatedBy, fmt.Sprintf("Application Slice: %d", idx+1))
+				}
 			})
 		})
 

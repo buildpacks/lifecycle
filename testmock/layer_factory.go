@@ -37,18 +37,18 @@ func (m *MockLayerFactory) EXPECT() *MockLayerFactoryMockRecorder {
 }
 
 // DirLayer mocks base method.
-func (m *MockLayerFactory) DirLayer(arg0, arg1 string) (layers.Layer, error) {
+func (m *MockLayerFactory) DirLayer(arg0, arg1, arg2 string) (layers.Layer, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DirLayer", arg0, arg1)
+	ret := m.ctrl.Call(m, "DirLayer", arg0, arg1, arg2)
 	ret0, _ := ret[0].(layers.Layer)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DirLayer indicates an expected call of DirLayer.
-func (mr *MockLayerFactoryMockRecorder) DirLayer(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockLayerFactoryMockRecorder) DirLayer(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DirLayer", reflect.TypeOf((*MockLayerFactory)(nil).DirLayer), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DirLayer", reflect.TypeOf((*MockLayerFactory)(nil).DirLayer), arg0, arg1, arg2)
 }
 
 // LauncherLayer mocks base method.

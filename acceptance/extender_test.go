@@ -219,7 +219,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					images, err := os.ReadDir(filepath.Join(extendedDir, "run"))
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(images), 1) // sha256:<extended image digest>
-					assertExpectedImage(t, filepath.Join(extendedDir, "run", images[0].Name()))
+					assertExpectedImage(t, filepath.Join(extendedDir, "run", images[0].Name()), platformAPI)
 					t.Log("cleans the kaniko directory")
 					caches, err := os.ReadDir(kanikoDir)
 					h.AssertNil(t, err)
@@ -240,6 +240,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					images, err = os.ReadDir(filepath.Join(extendedDir, "run"))
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(images), 1) // sha256:<first extended image digest>
+					assertExpectedImage(t, filepath.Join(extendedDir, "run", images[0].Name()), platformAPI)
 					t.Log("cleans the kaniko directory")
 					caches, err = os.ReadDir(kanikoDir)
 					h.AssertNil(t, err)
@@ -250,7 +251,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 	}
 }
 
-func assertExpectedImage(t *testing.T, imagePath string) {
+func assertExpectedImage(t *testing.T, imagePath, platformAPI string) {
 	image, err := readOCI(imagePath)
 	h.AssertNil(t, err)
 	configFile, err := image.ConfigFile()
@@ -259,6 +260,12 @@ func assertExpectedImage(t *testing.T, imagePath string) {
 	layers, err := image.Layers()
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(layers), 5) // base (3), curl (1), tree (1)
+	if api.MustParse(platformAPI).AtLeast("0.12") {
+		history := configFile.History
+		h.AssertEq(t, len(history), len(configFile.RootFS.DiffIDs))
+		h.AssertEq(t, history[3].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl")
+		h.AssertEq(t, history[4].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree")
+	}
 }
 
 func readOCI(fromPath string) (v1.Image, error) {

@@ -28,7 +28,7 @@ func testAnalyzed(t *testing.T, when spec.G, it spec.S) {
 				amd := files.Analyzed{
 					PreviousImage: &files.ImageIdentifier{Reference: "previous-img"},
 					LayersMetadata: files.LayersMetadata{
-						Stack: files.Stack{
+						Stack: &files.Stack{
 							RunImage: files.RunImageForExport{Image: "imagine that"},
 						},
 					},
@@ -47,7 +47,7 @@ func testAnalyzed(t *testing.T, when spec.G, it spec.S) {
 				amd := files.Analyzed{
 					PreviousImage: &files.ImageIdentifier{Reference: "previous-img"},
 					LayersMetadata: files.LayersMetadata{
-						Stack: files.Stack{
+						Stack: &files.Stack{
 							RunImage: files.RunImageForExport{Image: "imagine that"},
 						},
 					},
@@ -161,9 +161,11 @@ type mockDetector struct {
 func (d *mockDetector) HasSystemdFile() bool {
 	return d.HasFile
 }
+
 func (d *mockDetector) ReadSystemdFile() (string, error) {
 	return d.contents, d.ReadFileErr
 }
+
 func (d *mockDetector) GetInfo(osReleaseContents string) fsutil.OSInfo {
 	h.AssertEq(d.t, osReleaseContents, d.contents)
 	return fsutil.OSInfo{

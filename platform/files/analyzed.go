@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
@@ -89,7 +90,7 @@ type LayersMetadata struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        Stack                      `json:"stack,omitempty" toml:"stack,omitempty"`
+	Stack        *Stack                     `json:"stack,omitempty" toml:"stack,omitempty"`
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.
@@ -103,12 +104,12 @@ type LayersMetadataCompat struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        Stack                      `json:"stack" toml:"stack"`
+	Stack        *Stack                     `json:"stack,omitempty" toml:"stack,omitempty"`
 }
 
-func (m *LayersMetadata) LayersMetadataFor(id string) buildpack.LayersMetadata {
+func (m *LayersMetadata) LayersMetadataFor(bpID string) buildpack.LayersMetadata {
 	for _, bpMD := range m.Buildpacks {
-		if bpMD.ID == id {
+		if bpMD.ID == bpID {
 			return bpMD
 		}
 	}
@@ -126,6 +127,35 @@ type RunImageForRebase struct {
 	// added in Platform 0.12
 	Image   string   `toml:"image,omitempty" json:"image,omitempty"`
 	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
+}
+
+func (r *RunImageForRebase) Contains(ref string) bool {
+	ref = parseMaybe(ref)
+	if parseMaybe(r.Image) == ref {
+		return true
+	}
+	for _, m := range r.Mirrors {
+		if parseMaybe(m) == ref {
+			return true
+		}
+	}
+	return false
+}
+
+func parseMaybe(ref string) string {
+	if nameRef, err := name.ParseReference(ref); err == nil {
+		return nameRef.Context().Name()
+	}
+	return ref
+}
+
+func (r *RunImageForRebase) ToStack() Stack {
+	return Stack{
+		RunImage: RunImageForExport{
+			Image:   r.Image,
+			Mirrors: r.Mirrors,
+		},
+	}
 }
 
 type RunImage struct {
@@ -149,12 +179,10 @@ type TargetMetadata struct {
 }
 
 func (t *TargetMetadata) String() string {
-	var distName, distVersion string
 	if t.Distribution != nil {
-		distName = t.Distribution.Name
-		distVersion = t.Distribution.Version
+		return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s, Distribution: (Name: %s, Version: %s)", t.OS, t.Arch, t.ArchVariant, t.Distribution.Name, t.Distribution.Version)
 	}
-	return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s, Distribution: (Name: %s, Version: %s)", t.OS, t.Arch, t.ArchVariant, distName, distVersion)
+	return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s", t.OS, t.Arch, t.ArchVariant)
 }
 
 type OSDistribution struct {

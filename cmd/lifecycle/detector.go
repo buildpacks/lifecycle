@@ -104,6 +104,7 @@ func (d *detectCmd) Exec() error {
 			group.GroupExtensions,
 			d.GeneratedDir,
 			plan,
+			d.PlatformAPI,
 			d.PlatformDir,
 			d.RunPath,
 			cmd.Stdout, cmd.Stderr,
