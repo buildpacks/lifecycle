@@ -229,6 +229,26 @@ type RunImageForRebase struct {
 	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
 }
 
+func (r *RunImageForRebase) Contains(ref string) bool {
+	ref = parseMaybe(ref)
+	if parseMaybe(r.Image) == ref {
+		return true
+	}
+	for _, m := range r.Mirrors {
+		if parseMaybe(m) == ref {
+			return true
+		}
+	}
+	return false
+}
+
+func parseMaybe(ref string) string {
+	if nameRef, err := name.ParseReference(ref); err == nil {
+		return nameRef.Context().Name()
+	}
+	return ref
+}
+
 func (r *RunImageForRebase) ToStackMetadata() StackMetadata {
 	return StackMetadata{
 		RunImage: RunImageForExport{
