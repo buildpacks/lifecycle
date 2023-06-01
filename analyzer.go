@@ -295,7 +295,7 @@ func (a *Analyzer) retrieveAppMetadata() (platform.LayersMetadata, string, error
 	if err != nil {
 		return platform.LayersMetadata{}, "", errors.Wrap(err, "identifying previous image")
 	}
-	if !a.PreviousImage.Valid() {
+	if a.PreviousImage.Found() && !a.PreviousImage.Valid() {
 		a.Logger.Infof("Ignoring image %q because it was corrupt", a.PreviousImage.Name())
 		return platform.LayersMetadata{}, "", nil
 	}
