@@ -130,7 +130,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, md.App, []interface{}{map[string]interface{}{"sha": "123456"}})
 			})
 
-			when("new base image has no run image metadata", func() {
+			when("new base image is not found in run image metadata", func() {
 				it.Before(func() {
 					lifecycleMD := platform.LayersMetadata{
 						RunImage: platform.RunImageForRebase{
