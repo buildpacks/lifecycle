@@ -12,6 +12,7 @@ import (
 // that may be used during export.
 // Data from the selected run image is serialized by the exporter as the `runImage` key in the `io.buildpacks.lifecycle.metadata` label
 // on the output image for use during rebase.
+// The location of the file can be specified by providing `-run <path>` to the lifecycle.
 type Run struct {
 	Images []RunImageForExport `json:"-" toml:"images"`
 }

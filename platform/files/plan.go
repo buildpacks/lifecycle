@@ -7,6 +7,7 @@ import "github.com/buildpacks/lifecycle/buildpack"
 // A subset of the plan is presented to each image extension (during the `generate` phase)
 // or buildpack (during the `build` phase)
 // with the entries that the module is expected to provide.
+// The location of the file can be specified by providing `-plan <path>` to the lifecycle.
 type Plan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
 }

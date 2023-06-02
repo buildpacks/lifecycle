@@ -15,6 +15,7 @@ import (
 // * the previous image (if it exists),
 // * the run image,
 // * the build image (if provided).
+// The location of the file can be specified by providing `-analyzed <path>` to the lifecycle.
 type Analyzed struct {
 	// PreviousImage is the build image identifier, if the previous image exists.
 	PreviousImage *ImageIdentifier `toml:"image,omitempty"`

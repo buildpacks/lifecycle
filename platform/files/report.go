@@ -4,6 +4,7 @@ import "github.com/buildpacks/lifecycle/buildpack"
 
 // Report is written by the exporter as report.toml to record information about the build.
 // It is not included in the output image, but can be saved off by the platform before the build container exits.
+// The location of the file can be specified by providing `-report <path>` to the lifecycle.
 type Report struct {
 	Build BuildReport `toml:"build,omitempty"`
 	Image ImageReport `toml:"image"`

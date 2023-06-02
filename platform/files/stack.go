@@ -12,6 +12,7 @@ import (
 // that may be used during export.
 // It is also serialized by the exporter as the `stack` key in the `io.buildpacks.lifecycle.metadata` label on the output image
 // for use during rebase.
+// The location of the file can be specified by providing `-stack <path>` to the lifecycle.
 type Stack struct {
 	RunImage RunImageForExport `json:"runImage" toml:"run-image"`
 }
