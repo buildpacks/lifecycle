@@ -30,6 +30,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -43,7 +44,7 @@ type exportCmd struct {
 }
 
 type exportData struct {
-	analyzedMD platform.AnalyzedMetadata
+	analyzedMD files.Analyzed
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
@@ -90,7 +91,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 	// read analyzed metadata for use in later stages
 	var err error
-	e.persistedData.analyzedMD, err = platform.ReadAnalyzed(e.AnalyzedPath, cmd.DefaultLogger)
+	e.persistedData.analyzedMD, err = files.ReadAnalyzed(e.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return err
 	}
@@ -154,7 +155,7 @@ func (e *exportCmd) registryImages() []string {
 	return registryImages
 }
 
-func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD platform.AnalyzedMetadata) error {
+func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD files.Analyzed) error {
 	artifactsDir, err := os.MkdirTemp("", "lifecycle.exporter.layer")
 
 	if err != nil {
@@ -162,7 +163,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 	}
 	defer os.RemoveAll(artifactsDir)
 
-	var projectMD platform.ProjectMetadata
+	var projectMD files.ProjectMetadata
 	_, err = toml.DecodeFile(e.ProjectMetadataPath, &projectMD)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -211,11 +212,11 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		ExtendedDir:        e.ExtendedDir,
 		LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
 		LayersDir:          e.LayersDir,
-		OrigMetadata:       analyzedMD.Metadata,
+		OrigMetadata:       analyzedMD.LayersMetadata,
 		Project:            projectMD,
 		RunImageRef:        runImageID,
 		RunImageForExport:  runImageForExport,
-		Stack:              platform.StackMetadata{RunImage: runImageForExport}, // for backwards compat
+		Stack:              files.Stack{RunImage: runImageForExport}, // for backwards compat
 		WorkingImage:       appImage,
 	})
 	if err != nil {
@@ -233,7 +234,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 	return nil
 }
 
-func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
 	if isDigestRef(e.RunImageRef) {
 		// If extensions were used to extend the runtime base image, the run image reference will contain a digest.
 		// The restorer uses a name reference to pull the image from the registry (because the extender needs a manifest),
@@ -354,7 +355,7 @@ func toNATPortSet(v1Ps map[string]struct{}) nat.PortSet {
 	return portSet
 }
 
-func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(e.RunImageRef),
 	}
@@ -401,7 +402,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	return appImage, runImageID.String(), nil
 }
 
-func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
 	runImageIdentifier, err := layout.ParseIdentifier(analyzedMD.RunImage.Reference)
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "parsing run image reference")
@@ -464,10 +465,10 @@ func launcherConfig(launcherPath, launcherSBOMDir string) lifecycle.LauncherConf
 	return lifecycle.LauncherConfig{
 		Path:    launcherPath,
 		SBOMDir: launcherSBOMDir,
-		Metadata: platform.LauncherMetadata{
+		Metadata: files.LauncherMetadata{
 			Version: cmd.Version,
-			Source: platform.SourceMetadata{
-				Git: platform.GitMetadata{
+			Source: files.SourceMetadata{
+				Git: files.GitMetadata{
 					Repository: cmd.SCMRepository,
 					Commit:     cmd.SCMCommit,
 				},
@@ -500,7 +501,7 @@ func (e *exportCmd) supportsHistory() bool {
 	return e.PlatformAPI.AtLeast("0.12")
 }
 
-func (e *exportCmd) getExtendedConfig(runImage *platform.RunImage) (*v1.Config, error) {
+func (e *exportCmd) getExtendedConfig(runImage *files.RunImage) (*v1.Config, error) {
 	if runImage == nil {
 		return nil, errors.New("missing analyzed run image")
 	}

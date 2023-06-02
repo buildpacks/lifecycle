@@ -19,7 +19,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -169,7 +169,7 @@ fail: fail_detect_buildpack@some_version
 
 			// check plan.toml
 			tempPlanToml := filepath.Join(copyDir, "layers", "plan.toml")
-			var buildPlan platform.BuildPlan
+			var buildPlan files.Plan
 			_, err = toml.DecodeFile(tempPlanToml, &buildPlan)
 			h.AssertNil(t, err)
 			h.AssertEq(t, buildPlan.Entries[0].Providers[0].ID, "simple_buildpack")
@@ -383,7 +383,7 @@ fail: fail_detect_buildpack@some_version
 			h.AssertEq(t, buildpackGroup.Group[0].Extension, false)
 			t.Log("writes plan.toml")
 			foundPlanTOML := filepath.Join(copyDir, "layers", "plan.toml")
-			var plan platform.BuildPlan
+			var plan files.Plan
 			_, err = toml.DecodeFile(foundPlanTOML, &plan)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(plan.Entries), 0) // this shows that the plan was filtered to remove `requires` provided by extensions
@@ -397,7 +397,7 @@ fail: fail_detect_buildpack@some_version
 			h.AssertEq(t, string(contents), "FROM some-run-image-from-extension\n")
 			t.Log("records the new run image in analyzed.toml")
 			foundAnalyzedTOML := filepath.Join(copyDir, "layers", "analyzed.toml")
-			var analyzed platform.AnalyzedMetadata
+			var analyzed files.Analyzed
 			_, err = toml.DecodeFile(foundAnalyzedTOML, &analyzed)
 			h.AssertNil(t, err)
 			h.AssertEq(t, analyzed.RunImage.Reference, "some-run-image-from-extension")

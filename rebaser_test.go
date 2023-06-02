@@ -19,6 +19,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -34,7 +35,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		fakeNewBaseImage  *fakes.Image
 		fakePreviousImage *fakes.Image
 		additionalNames   []string
-		md                platform.LayersMetadataCompat
+		md                files.LayersMetadataCompat
 	)
 
 	it.Before(func() {
@@ -132,14 +133,14 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 
 			when("new base image is not found in run image metadata", func() {
 				it.Before(func() {
-					lifecycleMD := platform.LayersMetadata{
-						RunImage: platform.RunImageForRebase{
+					lifecycleMD := files.LayersMetadata{
+						RunImage: files.RunImageForRebase{
 							TopLayer:  "some-top-layer",
 							Reference: "some-run-image-digest-reference",
 							Image:     "some-run-image-tag-reference",
 							Mirrors:   []string{"some-run-image-mirror"},
 						},
-						Stack: &platform.StackMetadata{RunImage: platform.RunImageForExport{
+						Stack: &files.Stack{RunImage: files.RunImageForExport{
 							Image:   "some-run-image-tag-reference",
 							Mirrors: []string{"some-run-image-mirror"},
 						}},

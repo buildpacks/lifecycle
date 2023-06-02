@@ -24,7 +24,7 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	llog "github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -105,8 +105,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("provides a subset of the build plan to each buildpack", func() {
-			builder.Plan = platform.BuildPlan{
-				Entries: []platform.BuildPlanEntry{
+			builder.Plan = files.Plan{
+				Entries: []files.BuildPlanEntry{
 					{
 						Providers: []buildpack.GroupElement{
 							{ID: "A", Version: "v1", Extension: true}, // not provided to any buildpack
@@ -178,7 +178,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		})
 		it("gets the correct env vars", func() {
-			builder.AnalyzeMD.RunImage = &platform.RunImage{Reference: "foo", TargetMetadata: &platform.TargetMetadata{
+			builder.AnalyzeMD.RunImage = &files.RunImage{Reference: "foo", TargetMetadata: &files.TargetMetadata{
 				OS:   "linux",
 				Arch: "amd64",
 			}}
@@ -214,7 +214,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 		it("doesnt gets the new env vars if its old", func() {
 			builder.PlatformAPI = api.MustParse("0.8")
-			builder.AnalyzeMD.RunImage = &platform.RunImage{Reference: "foo", TargetMetadata: &platform.TargetMetadata{
+			builder.AnalyzeMD.RunImage = &files.RunImage{Reference: "foo", TargetMetadata: &files.TargetMetadata{
 				OS:   "linux",
 				Arch: "amd64",
 			}}

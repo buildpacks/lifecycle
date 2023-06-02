@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -131,7 +132,7 @@ func (a *analyzeCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErrCode(err, a.CodeFor(platform.AnalyzeError), "analyze")
 	}
-	if err = analyzedMD.WriteTOML(a.AnalyzedPath); err != nil {
+	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
 		return cmd.FailErr(err, "write analyzed")
 	}
 	return nil

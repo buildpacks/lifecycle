@@ -17,7 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/path"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -1062,12 +1062,12 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 	}
 }
 
-func assertAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadata {
+func assertAnalyzedMetadata(t *testing.T, path string) *files.Analyzed {
 	contents, err := os.ReadFile(path)
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	analyzedMD, err := platform.ReadAnalyzed(path, cmd.DefaultLogger)
+	analyzedMD, err := files.ReadAnalyzed(path, cmd.DefaultLogger)
 	h.AssertNil(t, err)
 
 	return &analyzedMD

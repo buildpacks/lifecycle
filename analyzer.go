@@ -4,15 +4,15 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/internal/fsutil"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 type AnalyzerFactory struct {
@@ -189,42 +189,42 @@ func (f *AnalyzerFactory) setRun(analyzer *Analyzer, imageRef string) error {
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
-func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
+func (a *Analyzer) Analyze() (files.Analyzed, error) {
 	var (
 		err              error
-		appMeta          platform.LayersMetadata
+		appMeta          files.LayersMetadata
 		cacheMeta        platform.CacheMetadata
 		previousImageRef string
 		runImageRef      string
 	)
 	appMeta, previousImageRef, err = a.retrieveAppMetadata()
 	if err != nil {
-		return platform.AnalyzedMetadata{}, err
+		return files.Analyzed{}, err
 	}
 
 	if sha := bomSHA(appMeta); sha != "" {
 		if err = a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, sha); err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch SBOM layer")
+			return files.Analyzed{}, errors.Wrap(err, "retrieving launch SBOM layer")
 		}
 	}
 
 	var (
-		atm          *platform.TargetMetadata
+		atm          *files.TargetMetadata
 		runImageName string
 	)
 	if a.RunImage != nil {
 		runImageRef, err = a.getImageIdentifier(a.RunImage)
 		if err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying run image")
+			return files.Analyzed{}, errors.Wrap(err, "identifying run image")
 		}
 		if a.PlatformAPI.AtLeast("0.12") {
 			runImageName = a.RunImage.Name()
-			atm, err = platform.GetTargetFromImage(a.RunImage)
+			atm, err = platform.GetTargetMetadata(a.RunImage)
 			if err != nil {
-				return platform.AnalyzedMetadata{}, errors.Wrap(err, "unpacking metadata from image")
+				return files.Analyzed{}, errors.Wrap(err, "unpacking metadata from image")
 			}
 			if atm.OS == "" {
-				platform.PopulateTargetOSFromFileSystem(&fsutil.Detect{}, atm, a.Logger)
+				platform.GetTargetOSFromFileSystem(&fsutil.Detect{}, atm, a.Logger)
 			}
 		}
 	}
@@ -232,19 +232,19 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	if a.RestoresLayerMetadata {
 		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
 		if err != nil {
-			return platform.AnalyzedMetadata{}, err
+			return files.Analyzed{}, err
 		}
 
 		useShaFiles := true
 		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layer.NewSHAStore(useShaFiles)); err != nil {
-			return platform.AnalyzedMetadata{}, err
+			return files.Analyzed{}, err
 		}
 	}
 
-	return platform.AnalyzedMetadata{
-		PreviousImage: &platform.ImageIdentifier{Reference: previousImageRef},
-		RunImage:      &platform.RunImage{Reference: runImageRef, TargetMetadata: atm, Image: runImageName},
-		Metadata:      appMeta,
+	return files.Analyzed{
+		PreviousImage:  &files.ImageIdentifier{Reference: previousImageRef},
+		RunImage:       &files.RunImage{Reference: runImageRef, TargetMetadata: atm, Image: runImageName},
+		LayersMetadata: appMeta,
 	}, nil
 }
 
@@ -261,7 +261,7 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (string, error) {
 	return identifier.String(), nil
 }
 
-func bomSHA(appMeta platform.LayersMetadata) string {
+func bomSHA(appMeta files.LayersMetadata) string {
 	if appMeta.BOM == nil {
 		return ""
 	}
@@ -287,23 +287,23 @@ func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (platform.CacheMe
 	return cacheMeta, nil
 }
 
-func (a *Analyzer) retrieveAppMetadata() (platform.LayersMetadata, string, error) {
+func (a *Analyzer) retrieveAppMetadata() (files.LayersMetadata, string, error) {
 	if a.PreviousImage == nil { // Previous image is optional in Platform API >= 0.7
-		return platform.LayersMetadata{}, "", nil
+		return files.LayersMetadata{}, "", nil
 	}
 	previousImageRef, err := a.getImageIdentifier(a.PreviousImage)
 	if err != nil {
-		return platform.LayersMetadata{}, "", errors.Wrap(err, "identifying previous image")
+		return files.LayersMetadata{}, "", errors.Wrap(err, "identifying previous image")
 	}
 	if a.PreviousImage.Found() && !a.PreviousImage.Valid() {
 		a.Logger.Infof("Ignoring image %q because it was corrupt", a.PreviousImage.Name())
-		return platform.LayersMetadata{}, "", nil
+		return files.LayersMetadata{}, "", nil
 	}
 
-	var appMeta platform.LayersMetadata
+	var appMeta files.LayersMetadata
 	// continue even if the label cannot be decoded
 	if err = image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
-		return platform.LayersMetadata{}, "", nil
+		return files.LayersMetadata{}, "", nil
 	}
 	return appMeta, previousImageRef, nil
 }

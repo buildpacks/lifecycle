@@ -11,7 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
-	platform "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 // MockDetectResolver is a mock of DetectResolver interface.
@@ -38,11 +38,11 @@ func (m *MockDetectResolver) EXPECT() *MockDetectResolverMockRecorder {
 }
 
 // Resolve mocks base method.
-func (m *MockDetectResolver) Resolve(arg0 []buildpack.GroupElement, arg1 *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+func (m *MockDetectResolver) Resolve(arg0 []buildpack.GroupElement, arg1 *sync.Map) ([]buildpack.GroupElement, []files.BuildPlanEntry, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Resolve", arg0, arg1)
 	ret0, _ := ret[0].([]buildpack.GroupElement)
-	ret1, _ := ret[1].([]platform.BuildPlanEntry)
+	ret1, _ := ret[1].([]files.BuildPlanEntry)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }

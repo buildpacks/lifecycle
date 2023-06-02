@@ -25,7 +25,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/selective"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -114,11 +114,11 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertNil(t, layoutPath.AppendImage(remoteImage))
 
 				// write image reference in analyzed.toml
-				analyzedMD := platform.AnalyzedMetadata{
-					BuildImage: &platform.ImageIdentifier{
+				analyzedMD := files.Analyzed{
+					BuildImage: &files.ImageIdentifier{
 						Reference: fmt.Sprintf("%s@%s", extendTest.RegRepoName(extendImage), baseImageDigest),
 					},
-					RunImage: &platform.RunImage{
+					RunImage: &files.RunImage{
 						Reference: fmt.Sprintf("%s@%s", extendTest.RegRepoName(extendImage), baseImageDigest),
 						Extend:    true,
 					},

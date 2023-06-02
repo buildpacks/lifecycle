@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/platform/files"
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -113,9 +114,9 @@ func (c *createCmd) Exec() error {
 
 	// Analyze, Detect
 	var (
-		analyzedMD platform.AnalyzedMetadata
+		analyzedMD files.Analyzed
 		group      buildpack.Group
-		plan       platform.BuildPlan
+		plan       files.Plan
 	)
 	if c.PlatformAPI.AtLeast("0.7") {
 		cmd.DefaultLogger.Phase("ANALYZING")
@@ -172,7 +173,7 @@ func (c *createCmd) Exec() error {
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
-		detector, err := detectorFactory.NewDetector(platform.AnalyzedMetadata{}, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
+		detector, err := detectorFactory.NewDetector(files.Analyzed{}, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}
@@ -220,7 +221,7 @@ func (c *createCmd) Exec() error {
 			Platform: c.Platform,
 			keychain: c.keychain,
 		}
-		err := restoreCmd.restore(analyzedMD.Metadata, group, cacheStore)
+		err := restoreCmd.restore(analyzedMD.LayersMetadata, group, cacheStore)
 		if err != nil {
 			return err
 		}

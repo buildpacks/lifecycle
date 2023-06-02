@@ -4,7 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/authn"
+
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 
 	"github.com/sclevine/spec"
@@ -34,7 +37,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				it("returns empty info", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
-					h.AssertEq(t, result, platform.RunImageForExport{})
+					h.AssertEq(t, result, files.RunImageForExport{})
 				})
 			})
 
@@ -44,7 +47,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				it("returns empty info", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
-					h.AssertEq(t, result, platform.RunImageForExport{})
+					h.AssertEq(t, result, files.RunImageForExport{})
 				})
 			})
 
@@ -54,7 +57,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				it("returns the image", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
-					h.AssertEq(t, result, platform.RunImageForExport{
+					h.AssertEq(t, result, files.RunImageForExport{
 						Image:   "some-run-image-from-run-toml",
 						Mirrors: []string{"some-run-image-mirror-from-run-toml", "some-other-run-image-mirror-from-run-toml"},
 					})
@@ -67,7 +70,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				it("returns the image", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
-					h.AssertEq(t, result, platform.RunImageForExport{
+					h.AssertEq(t, result, files.RunImageForExport{
 						Image:   "some-run-image-from-run-toml",
 						Mirrors: []string{"some-run-image-mirror-from-run-toml", "some-other-run-image-mirror-from-run-toml"},
 					})
@@ -78,7 +81,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				it("returns the first image in run.toml", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
-					h.AssertEq(t, result, platform.RunImageForExport{
+					h.AssertEq(t, result, files.RunImageForExport{
 						Image:   "some-run-image-from-run-toml",
 						Mirrors: []string{"some-run-image-mirror-from-run-toml", "some-other-run-image-mirror-from-run-toml"},
 					})
@@ -90,7 +93,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 					it("returns the run image ref", func() {
 						result, err := platform.GetRunImageForExport(inputs)
 						h.AssertNil(t, err)
-						h.AssertEq(t, result, platform.RunImageForExport{Image: "some-run-image-ref"})
+						h.AssertEq(t, result, files.RunImageForExport{Image: "some-run-image-ref"})
 					})
 				})
 			})
@@ -103,7 +106,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				it("returns the data in stack.toml", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
-					h.AssertEq(t, result, platform.RunImageForExport{
+					h.AssertEq(t, result, files.RunImageForExport{
 						Image:   "some-run-image-from-stack-toml",
 						Mirrors: []string{"some-run-image-mirror-from-stack-toml", "some-other-run-image-mirror-from-stack-toml"},
 					})
@@ -115,7 +118,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 					it("returns empty info", func() {
 						result, err := platform.GetRunImageForExport(inputs)
 						h.AssertNil(t, err)
-						h.AssertEq(t, result, platform.RunImageForExport{})
+						h.AssertEq(t, result, files.RunImageForExport{})
 					})
 				})
 
@@ -125,17 +128,17 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 					it("returns empty info", func() {
 						result, err := platform.GetRunImageForExport(inputs)
 						h.AssertNil(t, err)
-						h.AssertEq(t, result, platform.RunImageForExport{})
+						h.AssertEq(t, result, files.RunImageForExport{})
 					})
 				})
 			})
 		})
 	})
 
-	when("we want to get EnvVarsFor a platform.TargetMetadata", func() {
+	when(".EnvVarsFor", func() {
 		it("returns the right thing", func() {
-			tm := platform.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distribution: &platform.OSDistribution{Name: "nix", Version: "22.11"}}
-			observed := platform.EnvVarsFor(&tm)
+			tm := files.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distribution: &files.OSDistribution{Name: "nix", Version: "22.11"}}
+			observed := platform.EnvVarsFor(tm)
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
 			h.AssertContains(t, observed, "CNB_TARGET_VARIANT="+tm.ArchVariant)
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME="+tm.Distribution.Name)
@@ -144,9 +147,10 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
 			h.AssertEq(t, len(observed), 6)
 		})
+
 		it("does not return the wrong thing", func() {
-			tm := platform.TargetMetadata{Arch: "pentium", OS: "linux"}
-			observed := platform.EnvVarsFor(&tm)
+			tm := files.TargetMetadata{Arch: "pentium", OS: "linux"}
+			observed := platform.EnvVarsFor(tm)
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
 			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
 			// note: per the spec only the ID field is optional, so I guess the others should always be set: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md#runtime-metadata
@@ -155,6 +159,70 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME=")
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION=")
 			h.AssertEq(t, len(observed), 5)
+		})
+	})
+
+	when(".BestRunImageMirrorFor", func() {
+		var (
+			stackMD            *files.Stack
+			nopCheckReadAccess = func(_ string, _ authn.Keychain) (bool, error) {
+				return true, nil
+			}
+		)
+
+		it.Before(func() {
+			stackMD = &files.Stack{RunImage: files.RunImageForExport{
+				Image: "first.com/org/repo",
+				Mirrors: []string{
+					"myorg/myrepo",
+					"zonal.gcr.io/org/repo",
+					"gcr.io/org/repo",
+				},
+			}}
+		})
+
+		when("repoName is dockerhub", func() {
+			it("returns the dockerhub image", func() {
+				name, err := platform.BestRunImageMirrorFor("index.docker.io", stackMD.RunImage, nopCheckReadAccess)
+				h.AssertNil(t, err)
+				h.AssertEq(t, name, "myorg/myrepo")
+			})
+		})
+
+		when("registry is gcr.io", func() {
+			it("returns the gcr.io image", func() {
+				name, err := platform.BestRunImageMirrorFor("gcr.io", stackMD.RunImage, nopCheckReadAccess)
+				h.AssertNil(t, err)
+				h.AssertEq(t, name, "gcr.io/org/repo")
+			})
+
+			when("registry is zonal.gcr.io", func() {
+				it("returns the gcr image", func() {
+					name, err := platform.BestRunImageMirrorFor("zonal.gcr.io", stackMD.RunImage, nopCheckReadAccess)
+					h.AssertNil(t, err)
+					h.AssertEq(t, name, "zonal.gcr.io/org/repo")
+				})
+			})
+
+			when("registry is missingzone.gcr.io", func() {
+				it("returns the run image", func() {
+					name, err := platform.BestRunImageMirrorFor("missingzone.gcr.io", stackMD.RunImage, nopCheckReadAccess)
+					h.AssertNil(t, err)
+					h.AssertEq(t, name, "first.com/org/repo")
+				})
+			})
+		})
+
+		when("one of the images is non-parsable", func() {
+			it.Before(func() {
+				stackMD.RunImage.Mirrors = []string{"as@ohd@as@op", "gcr.io/myorg/myrepo"}
+			})
+
+			it("skips over it", func() {
+				name, err := platform.BestRunImageMirrorFor("gcr.io", stackMD.RunImage, nopCheckReadAccess)
+				h.AssertNil(t, err)
+				h.AssertEq(t, name, "gcr.io/myorg/myrepo")
+			})
 		})
 	})
 }

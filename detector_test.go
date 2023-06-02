@@ -19,7 +19,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -71,7 +71,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpA1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
 			dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 			apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
-			amd := platform.AnalyzedMetadata{}
+			amd := files.Analyzed{}
 
 			detector, err := detectorFactory.NewDetector(amd, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 			h.AssertNil(t, err)
@@ -133,7 +133,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				dirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
 				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
-				amd := platform.AnalyzedMetadata{}
+				amd := files.Analyzed{}
 				detector, err := detectorFactory.NewDetector(amd, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
 
@@ -158,7 +158,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			configHandler.EXPECT().ReadOrder(gomock.Any()).Return(buildpack.Order{}, buildpack.Order{}, nil)
-			amd := platform.AnalyzedMetadata{}
+			amd := files.Analyzed{}
 			var err error
 			detector, err = detectorFactory.NewDetector(
 				amd,
@@ -204,7 +204,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				WithAPI:   "0.8",
 				Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 			}
-			detector.AnalyzeMD = platform.AnalyzedMetadata{RunImage: &platform.RunImage{TargetMetadata: &platform.TargetMetadata{OS: "linux", Arch: "amd64"}}}
+			detector.AnalyzeMD = files.Analyzed{RunImage: &files.RunImage{TargetMetadata: &files.TargetMetadata{OS: "linux", Arch: "amd64"}}}
 			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
 			executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Do(
 				func(_ buildpack.Descriptor, inputs buildpack.DetectInputs, _ log.Logger) buildpack.DetectOutputs {
@@ -328,7 +328,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupElement{},
-				[]platform.BuildPlanEntry{},
+				[]files.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			)
 
@@ -344,7 +344,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupElement{},
-				[]platform.BuildPlanEntry{},
+				[]files.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(firstResolve)
 
@@ -364,7 +364,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupElement{},
-				[]platform.BuildPlanEntry{},
+				[]files.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(secondResolve)
 
@@ -380,7 +380,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupElement{},
-				[]platform.BuildPlanEntry{},
+				[]files.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(thirdResolve)
 
@@ -398,7 +398,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupElement{},
-				[]platform.BuildPlanEntry{},
+				[]files.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(fourthResolve)
 
@@ -510,7 +510,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupElement{},
-				[]platform.BuildPlanEntry{},
+				[]files.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			)
 
@@ -526,7 +526,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupElement{},
-				[]platform.BuildPlanEntry{},
+				[]files.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(firstResolve)
 
@@ -546,7 +546,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupElement{},
-				[]platform.BuildPlanEntry{},
+				[]files.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(secondResolve)
 
@@ -562,7 +562,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				fourthGroup,
-				[]platform.BuildPlanEntry{},
+				[]files.BuildPlanEntry{},
 				nil,
 			).After(thirdResolve)
 
@@ -584,7 +584,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(plan.Entries, []platform.BuildPlanEntry(nil)) {
+			if !hasEntries(plan.Entries, []files.BuildPlanEntry(nil)) {
 				t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 			}
 		})
@@ -609,7 +609,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "B", Version: "v1", API: "0.2"},
 			}
-			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []platform.BuildPlanEntry{
+			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []files.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupElement{
 						{ID: "A", Version: "v1"},
@@ -645,7 +645,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(plan.Entries, []platform.BuildPlanEntry{
+			if !hasEntries(plan.Entries, []files.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupElement{
 						{ID: "A", Version: "v1"},
@@ -706,7 +706,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "B", Version: "v1", API: "0.2"},
 			}
-			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []platform.BuildPlanEntry{}, nil)
+			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []files.BuildPlanEntry{}, nil)
 
 			detector.Order = buildpack.Order{{Group: group}}
 			_, _, err := detector.Detect()
@@ -783,7 +783,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					}
 					resolver.EXPECT().Resolve(group, detector.Runs).Return(
 						[]buildpack.GroupElement{},
-						[]platform.BuildPlanEntry{},
+						[]files.BuildPlanEntry{},
 						lifecycle.ErrBuildpack,
 					)
 
@@ -809,7 +809,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					}
 					resolver.EXPECT().Resolve(group, detector.Runs).Return(
 						[]buildpack.GroupElement{},
-						[]platform.BuildPlanEntry{},
+						[]files.BuildPlanEntry{},
 						lifecycle.ErrFailedDetection,
 					)
 
@@ -824,11 +824,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		when("target resolution", func() {
 			it("totally works if the constraints are met", func() {
-				detector.AnalyzeMD.RunImage = &platform.RunImage{
-					TargetMetadata: &platform.TargetMetadata{
+				detector.AnalyzeMD.RunImage = &files.RunImage{
+					TargetMetadata: &files.TargetMetadata{
 						OS:           "MacOS",
 						Arch:         "ARM64",
-						Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
+						Distribution: &files.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
 					},
 				}
 
@@ -850,7 +850,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				// the most meaningful assertion in this test is that `group` is the first argument to Resolve, meaning that the buildpack matched.
 				resolver.EXPECT().Resolve(group, detector.Runs).Return(
 					[]buildpack.GroupElement{},
-					[]platform.BuildPlanEntry{},
+					[]files.BuildPlanEntry{},
 					nil,
 				)
 
@@ -860,11 +860,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("was born to be wildcard compliant", func() {
-				detector.AnalyzeMD.RunImage = &platform.RunImage{
-					TargetMetadata: &platform.TargetMetadata{
+				detector.AnalyzeMD.RunImage = &files.RunImage{
+					TargetMetadata: &files.TargetMetadata{
 						OS:           "MacOS",
 						Arch:         "ARM64",
-						Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
+						Distribution: &files.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
 					},
 				}
 
@@ -883,7 +883,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				// the most meaningful assertion in this test is that `group` is the first argument to Resolve, meaning that the buildpack matched.
 				resolver.EXPECT().Resolve(group, detector.Runs).Return(
 					[]buildpack.GroupElement{},
-					[]platform.BuildPlanEntry{},
+					[]files.BuildPlanEntry{},
 					nil,
 				)
 
@@ -894,11 +894,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			when("there is a composite buildpack", func() {
 				it("totally works if the constraints are met", func() {
-					detector.AnalyzeMD.RunImage = &platform.RunImage{
-						TargetMetadata: &platform.TargetMetadata{
+					detector.AnalyzeMD.RunImage = &files.RunImage{
+						TargetMetadata: &files.TargetMetadata{
 							OS:           "MacOS",
 							Arch:         "ARM64",
-							Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
+							Distribution: &files.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
 						},
 					}
 
@@ -931,7 +931,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					// the most meaningful assertion in this test is that `expectedGroup` is the first argument to Resolve, meaning that the buildpack matched.
 					resolver.EXPECT().Resolve(expectedGroup, detector.Runs).Return(
 						[]buildpack.GroupElement{},
-						[]platform.BuildPlanEntry{},
+						[]files.BuildPlanEntry{},
 						nil,
 					)
 
@@ -944,11 +944,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("errors if the buildpacks don't share that target arch/os", func() {
-				detector.AnalyzeMD.RunImage = &platform.RunImage{
-					TargetMetadata: &platform.TargetMetadata{
+				detector.AnalyzeMD.RunImage = &files.RunImage{
+					TargetMetadata: &files.TargetMetadata{
 						OS:           "MacOS",
 						Arch:         "ARM64",
-						Distribution: &platform.OSDistribution{Name: "MacOS", Version: "some kind of big cat"},
+						Distribution: &files.OSDistribution{Name: "MacOS", Version: "some kind of big cat"},
 					},
 				}
 
@@ -966,14 +966,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
 
 				resolver.EXPECT().Resolve(gomock.Any(), gomock.Any()).DoAndReturn(
-					func(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+					func(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []files.BuildPlanEntry, error) {
 						h.AssertEq(t, len(done), 1)
 						val, ok := detectRuns.Load("Buildpack A@v1")
 						h.AssertEq(t, ok, true)
 						outs := val.(buildpack.DetectOutputs)
 						h.AssertEq(t, outs.Code, -1)
 						h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constraints")
-						return []buildpack.GroupElement{}, []platform.BuildPlanEntry{}, nil
+						return []buildpack.GroupElement{}, []files.BuildPlanEntry{}, nil
 					})
 
 				group := []buildpack.GroupElement{
@@ -1023,7 +1023,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					detector.Runs,
 				).Return(
 					[]buildpack.GroupElement{},
-					[]platform.BuildPlanEntry{},
+					[]files.BuildPlanEntry{},
 					lifecycle.ErrFailedDetection,
 				)
 
@@ -1039,7 +1039,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					detector.Runs,
 				).Return(
 					[]buildpack.GroupElement{},
-					[]platform.BuildPlanEntry{},
+					[]files.BuildPlanEntry{},
 					lifecycle.ErrFailedDetection,
 				).After(firstResolve)
 
@@ -1053,7 +1053,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					detector.Runs,
 				).Return(
 					[]buildpack.GroupElement{},
-					[]platform.BuildPlanEntry{},
+					[]files.BuildPlanEntry{},
 					lifecycle.ErrFailedDetection,
 				).After(secondResolve)
 
@@ -1069,7 +1069,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					detector.Runs,
 				).Return(
 					[]buildpack.GroupElement{},
-					[]platform.BuildPlanEntry{},
+					[]files.BuildPlanEntry{},
 					lifecycle.ErrFailedDetection,
 				).After(thirdResolve)
 
@@ -1088,7 +1088,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						{ID: "B", Version: "v1", API: "0.9", Extension: true}, // optional removed
 						{ID: "B", Version: "v1", API: "0.8"},
 					},
-					[]platform.BuildPlanEntry{},
+					[]files.BuildPlanEntry{},
 					nil,
 				).After(fourthResolve)
 
@@ -1351,7 +1351,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(entries, []platform.BuildPlanEntry{
+			if !hasEntries(entries, []files.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupElement{
 						{ID: "A", Version: "v1"},
@@ -1551,7 +1551,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(entries, []platform.BuildPlanEntry{
+			if !hasEntries(entries, []files.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupElement{{ID: "B", Version: "v1"}},
 					Requires:  []buildpack.Require{{Name: "dep-present"}},
@@ -1674,7 +1674,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(entries, []platform.BuildPlanEntry{
+			if !hasEntries(entries, []files.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupElement{{ID: "A", Version: "v1"}},
 					Requires:  []buildpack.Require{{Name: "dep1-present"}},
@@ -1765,7 +1765,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func hasEntry(l []platform.BuildPlanEntry, entry platform.BuildPlanEntry) bool {
+func hasEntry(l []files.BuildPlanEntry, entry files.BuildPlanEntry) bool {
 	for _, e := range l {
 		if reflect.DeepEqual(e, entry) {
 			return true
@@ -1774,7 +1774,7 @@ func hasEntry(l []platform.BuildPlanEntry, entry platform.BuildPlanEntry) bool {
 	return false
 }
 
-func hasEntries(a, b []platform.BuildPlanEntry) bool {
+func hasEntries(a, b []files.BuildPlanEntry) bool {
 	if len(a) != len(b) {
 		return false
 	}

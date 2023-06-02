@@ -21,6 +21,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -79,10 +80,10 @@ func (r *restoreCmd) Privileges() error {
 
 func (r *restoreCmd) Exec() error {
 	var (
-		analyzedMD platform.AnalyzedMetadata
+		analyzedMD files.Analyzed
 		err        error
 	)
-	if analyzedMD, err = platform.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
+	if analyzedMD, err = files.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
 		if r.supportsBuildImageExtension() && r.BuildImageRef != "" {
 			cmd.DefaultLogger.Debugf("Pulling builder image metadata...")
 			buildImage, err := r.pullSparse(r.BuildImageRef)
@@ -93,7 +94,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "get digest reference for builder image")
 			}
-			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: digestRef}
+			analyzedMD.BuildImage = &files.ImageIdentifier{Reference: digestRef}
 		}
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
@@ -105,7 +106,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
-			targetData, err := platform.GetTargetFromImage(runImage)
+			targetData, err := platform.GetTargetMetadata(runImage)
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}
@@ -113,7 +114,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "get digest reference for builder image")
 			}
-			analyzedMD.RunImage = &platform.RunImage{
+			analyzedMD.RunImage = &files.RunImage{
 				Reference:      digestRef,
 				Image:          analyzedMD.RunImageImage(),
 				Extend:         true,
@@ -125,7 +126,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
-			targetData, err := platform.GetTargetFromImage(runImage)
+			targetData, err := platform.GetTargetMetadata(runImage)
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}
@@ -133,7 +134,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "get digest reference for builder image")
 			}
-			analyzedMD.RunImage = &platform.RunImage{
+			analyzedMD.RunImage = &files.RunImage{
 				Reference:      digestRef,
 				Image:          analyzedMD.RunImageImage(),
 				Extend:         analyzedMD.RunImage.Extend,
@@ -160,19 +161,19 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	var appMeta platform.LayersMetadata
+	var appMeta files.LayersMetadata
 	if r.restoresLayerMetadata() {
-		appMeta = analyzedMD.Metadata
+		appMeta = analyzedMD.LayersMetadata
 	}
 
 	return r.restore(appMeta, group, cacheStore)
 }
 
-func needsPulling(runImage *platform.RunImage) bool {
+func needsPulling(runImage *files.RunImage) bool {
 	return runImage != nil && runImage.Extend
 }
 
-func needsUpdating(runImage *platform.RunImage) bool {
+func needsUpdating(runImage *files.RunImage) bool {
 	if runImage == nil {
 		return false
 	}
@@ -259,7 +260,7 @@ func (r *restoreCmd) restoresLayerMetadata() bool {
 	return r.PlatformAPI.AtLeast("0.7")
 }
 
-func (r *restoreCmd) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
+func (r *restoreCmd) restore(layerMetadata files.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:             r.LayersDir,
 		Buildpacks:            group.Group,

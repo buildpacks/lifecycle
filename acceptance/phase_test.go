@@ -23,6 +23,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -148,7 +149,7 @@ func (d *targetDaemon) createFixtures(t *testing.T) {
 
 	var fixtures daemonImageFixtures
 
-	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), platform.LayersMetadata{})
+	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), files.LayersMetadata{})
 	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "cache_image_metadata.json"), platform.CacheMetadata{})
 
 	fixtures.AppImage = "some-app-image-" + h.RandString(10)
@@ -221,7 +222,7 @@ func (r *targetRegistry) start(t *testing.T) {
 func (r *targetRegistry) createFixtures(t *testing.T) {
 	var fixtures regImageFixtures
 
-	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), platform.LayersMetadata{})
+	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), files.LayersMetadata{})
 	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "cache_image_metadata.json"), platform.CacheMetadata{})
 
 	// With Permissions
@@ -416,12 +417,12 @@ func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest 
 	h.AssertEq(t, inspect.Created, expectedCreatedAt.Format(time.RFC3339))
 }
 
-func assertRunMetadata(t *testing.T, path string) *platform.RunMetadata { //nolint
+func assertRunMetadata(t *testing.T, path string) *files.Run { //nolint
 	contents, err := os.ReadFile(path)
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var runMD platform.RunMetadata
+	var runMD files.Run
 	_, err = toml.Decode(string(contents), &runMD)
 	h.AssertNil(t, err)
 
@@ -474,7 +475,7 @@ func updateTOMLFixturesWithTestRegistry(t *testing.T, phaseTest *PhaseTest) { //
 		analyzedMD := assertAnalyzedMetadata(t, pPath)
 		if analyzedMD.RunImage != nil {
 			// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
-			analyzedMD.RunImage = &platform.RunImage{Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33"}
+			analyzedMD.RunImage = &files.RunImage{Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33"}
 		}
 		h.AssertNil(t, encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD))
 	}

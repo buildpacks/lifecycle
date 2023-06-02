@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 var (
@@ -20,12 +21,6 @@ var (
 )
 
 func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) error {
-	if i.UseDaemon || i.UseLayout {
-		i.AccessChecker = &LocalImageStrategy{}
-	} else {
-		i.AccessChecker = &RemoteImageStrategy{}
-	}
-
 	// order of operations is important
 	ops := []LifecycleInputsOperation{UpdatePlaceholderPaths, ResolveAbsoluteDirPaths}
 	switch phase {
@@ -153,7 +148,7 @@ func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
 		case i.DeprecatedRunImageRef != "":
 			return errors.New(ErrImageUnsupported)
 		default:
-			analyzedMD, err := ReadAnalyzed(i.AnalyzedPath, logger)
+			analyzedMD, err := files.ReadAnalyzed(i.AnalyzedPath, logger)
 			if err != nil {
 				return err
 			}
@@ -177,14 +172,14 @@ func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) erro
 	if err != nil {
 		return err
 	}
-	runMD, err := ReadRun(i.RunPath, logger)
+	runMD, err := files.ReadRun(i.RunPath, logger)
 	if err != nil {
 		return err
 	}
 	if len(runMD.Images) == 0 {
 		return errors.New(ErrRunImageRequiredWhenNoRunMD)
 	}
-	i.RunImageRef, err = runMD.Images[0].BestRunImageMirror(targetRegistry, i.AccessChecker)
+	i.RunImageRef, err = BestRunImageMirrorFor(targetRegistry, runMD.Images[0], i.AccessChecker())
 	return err
 }
 
@@ -198,11 +193,11 @@ func fillRunImageFromStackTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) er
 	if err != nil {
 		return err
 	}
-	stackMD, err := ReadStack(i.StackPath, logger)
+	stackMD, err := files.ReadStack(i.StackPath, logger)
 	if err != nil {
 		return err
 	}
-	i.RunImageRef, err = stackMD.BestRunImageMirror(targetRegistry, i.AccessChecker)
+	i.RunImageRef, err = BestRunImageMirrorFor(targetRegistry, stackMD.RunImage, i.AccessChecker())
 	if err != nil {
 		return errors.New(ErrRunImageRequiredWhenNoStackMD)
 	}

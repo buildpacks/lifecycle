@@ -14,6 +14,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 type Rebaser struct {
@@ -23,11 +24,11 @@ type Rebaser struct {
 }
 
 type RebaseReport struct {
-	Image platform.ImageReport `toml:"image"`
+	Image files.ImageReport `toml:"image"`
 }
 
 func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, outputImageRef string, additionalNames []string) (RebaseReport, error) {
-	var origMetadata platform.LayersMetadataCompat
+	var origMetadata files.LayersMetadataCompat
 	if err := image.DecodeLabel(workingImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
 	}
@@ -82,7 +83,7 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		if !origMetadata.RunImage.Contains(newBaseImage.Name()) {
 			origMetadata.RunImage.Image = newBaseImage.Name()
 			origMetadata.RunImage.Mirrors = []string{}
-			newStackMD := origMetadata.RunImage.ToStackMetadata()
+			newStackMD := origMetadata.RunImage.ToStack()
 			origMetadata.Stack = &newStackMD
 		}
 	}
@@ -170,17 +171,17 @@ func (r *Rebaser) validateRebaseable(appImg imgutil.Image, newBaseImg imgutil.Im
 	// check the OS, architecture, and variant values
 	// if they are not the same, the image cannot be rebased unless the force flag is set
 	if !r.Force {
-		appTarget, err := platform.GetTargetFromImage(appImg)
+		appTarget, err := platform.GetTargetMetadata(appImg)
 		if err != nil {
 			return errors.Wrap(err, "get app image target")
 		}
 
-		newBaseTarget, err := platform.GetTargetFromImage(newBaseImg)
+		newBaseTarget, err := platform.GetTargetMetadata(newBaseImg)
 		if err != nil {
 			return errors.Wrap(err, "get new base image target")
 		}
 
-		if !newBaseTarget.IsValidRebaseTargetFor(appTarget) {
+		if !platform.TargetSatisfiedForRebase(*newBaseTarget, *appTarget) {
 			return fmt.Errorf("invalid base image target: '%s' is not equal to '%s'", newBaseTarget, appTarget)
 		}
 	}

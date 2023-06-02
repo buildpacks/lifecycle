@@ -7,7 +7,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 var Config = &DefaultConfigHandler{}
@@ -39,10 +39,10 @@ type BuildpackAPIVerifier interface {
 
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
-	ReadAnalyzed(path string, logr log.Logger) (platform.AnalyzedMetadata, error)
+	ReadAnalyzed(path string, logr log.Logger) (files.Analyzed, error)
 	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
-	ReadRun(runPath string, logger log.Logger) (platform.RunMetadata, error)
+	ReadRun(runPath string, logger log.Logger) (files.Run, error)
 }
 
 type DefaultConfigHandler struct{}
@@ -51,8 +51,8 @@ func NewConfigHandler() *DefaultConfigHandler {
 	return &DefaultConfigHandler{}
 }
 
-func (h *DefaultConfigHandler) ReadAnalyzed(path string, logr log.Logger) (platform.AnalyzedMetadata, error) {
-	return platform.ReadAnalyzed(path, logr)
+func (h *DefaultConfigHandler) ReadAnalyzed(path string, logr log.Logger) (files.Analyzed, error) {
+	return files.ReadAnalyzed(path, logr)
 }
 
 func (h *DefaultConfigHandler) ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error) {
@@ -101,6 +101,6 @@ func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	return order.Order, order.OrderExtensions, err
 }
 
-func (h *DefaultConfigHandler) ReadRun(runPath string, logger log.Logger) (platform.RunMetadata, error) {
-	return platform.ReadRun(runPath, logger)
+func (h *DefaultConfigHandler) ReadRun(runPath string, logger log.Logger) (files.Run, error) {
+	return files.ReadRun(runPath, logger)
 }

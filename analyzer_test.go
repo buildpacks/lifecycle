@@ -16,6 +16,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/platform/files"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
@@ -542,7 +543,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 		when("#Analyze", func() {
 			var (
-				expectedAppMetadata   platform.LayersMetadata
+				expectedAppMetadata   files.LayersMetadata
 				expectedCacheMetadata platform.CacheMetadata
 				ref                   *testmock.MockReference
 			)
@@ -574,7 +575,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, md.PreviousImageRef(), "s0m3D1g3sT")
-					h.AssertEq(t, md.Metadata, expectedAppMetadata)
+					h.AssertEq(t, md.LayersMetadata, expectedAppMetadata)
 				})
 
 				when("cache exists", func() {
@@ -592,7 +593,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 						md, err := analyzer.Analyze()
 						h.AssertNil(t, err)
 
-						h.AssertEq(t, md.Metadata, expectedAppMetadata)
+						h.AssertEq(t, md.LayersMetadata, expectedAppMetadata)
 					})
 				})
 			})
@@ -608,7 +609,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, md.PreviousImageRef(), "")
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.LayersMetadata, files.LayersMetadata{})
 				})
 			})
 
@@ -621,7 +622,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.LayersMetadata, files.LayersMetadata{})
 				})
 			})
 
@@ -634,7 +635,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.LayersMetadata, files.LayersMetadata{})
 				})
 			})
 
