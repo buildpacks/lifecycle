@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/authn"
+
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -161,7 +163,12 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when(".BestRunImageMirrorFor", func() {
-		var stackMD *files.Stack
+		var (
+			stackMD            *files.Stack
+			nopCheckReadAccess = func(_ string, _ authn.Keychain) (bool, error) {
+				return true, nil
+			}
+		)
 
 		it.Before(func() {
 			stackMD = &files.Stack{RunImage: files.RunImageForExport{
@@ -176,7 +183,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 
 		when("repoName is dockerhub", func() {
 			it("returns the dockerhub image", func() {
-				name, err := platform.BestRunImageMirrorFor("index.docker.io", stackMD.RunImage, &platform.NopImageStrategy{})
+				name, err := platform.BestRunImageMirrorFor("index.docker.io", stackMD.RunImage, nopCheckReadAccess)
 				h.AssertNil(t, err)
 				h.AssertEq(t, name, "myorg/myrepo")
 			})
@@ -184,14 +191,14 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 
 		when("registry is gcr.io", func() {
 			it("returns the gcr.io image", func() {
-				name, err := platform.BestRunImageMirrorFor("gcr.io", stackMD.RunImage, &platform.NopImageStrategy{})
+				name, err := platform.BestRunImageMirrorFor("gcr.io", stackMD.RunImage, nopCheckReadAccess)
 				h.AssertNil(t, err)
 				h.AssertEq(t, name, "gcr.io/org/repo")
 			})
 
 			when("registry is zonal.gcr.io", func() {
 				it("returns the gcr image", func() {
-					name, err := platform.BestRunImageMirrorFor("zonal.gcr.io", stackMD.RunImage, &platform.NopImageStrategy{})
+					name, err := platform.BestRunImageMirrorFor("zonal.gcr.io", stackMD.RunImage, nopCheckReadAccess)
 					h.AssertNil(t, err)
 					h.AssertEq(t, name, "zonal.gcr.io/org/repo")
 				})
@@ -199,7 +206,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 
 			when("registry is missingzone.gcr.io", func() {
 				it("returns the run image", func() {
-					name, err := platform.BestRunImageMirrorFor("missingzone.gcr.io", stackMD.RunImage, &platform.NopImageStrategy{})
+					name, err := platform.BestRunImageMirrorFor("missingzone.gcr.io", stackMD.RunImage, nopCheckReadAccess)
 					h.AssertNil(t, err)
 					h.AssertEq(t, name, "first.com/org/repo")
 				})
@@ -212,7 +219,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("skips over it", func() {
-				name, err := platform.BestRunImageMirrorFor("gcr.io", stackMD.RunImage, &platform.NopImageStrategy{})
+				name, err := platform.BestRunImageMirrorFor("gcr.io", stackMD.RunImage, nopCheckReadAccess)
 				h.AssertNil(t, err)
 				h.AssertEq(t, name, "gcr.io/myorg/myrepo")
 			})

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 
@@ -56,7 +55,7 @@ func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, erro
 	return runMD.Images[0], nil
 }
 
-func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForExport, accessChecker ImageStrategy) (string, error) {
+func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForExport, checkReadAccess CheckReadAccess) (string, error) {
 	var runImageMirrors []string
 	if runImageMD.Image == "" {
 		return "", errors.New("missing run image metadata")
@@ -70,14 +69,14 @@ func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForEx
 	}
 
 	// Try to select run image on the same registry as the target
-	runImageRef := byRegistry(targetRegistry, runImageMirrors, accessChecker, keychain)
+	runImageRef := byRegistry(targetRegistry, runImageMirrors, checkReadAccess, keychain)
 	if runImageRef != "" {
 		return runImageRef, nil
 	}
 
 	// Select the first run image we have access to
 	for _, image := range runImageMirrors {
-		ok, err := accessChecker.CheckReadAccess(image, keychain)
+		ok, err := checkReadAccess(image, keychain)
 		if err != nil {
 			return "", err
 		}
@@ -89,14 +88,14 @@ func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForEx
 	return "", errors.New("failed to find accessible run image")
 }
 
-func byRegistry(reg string, repos []string, accessChecker ImageStrategy, keychain authn.Keychain) string {
+func byRegistry(reg string, repos []string, checkReadAccess CheckReadAccess, keychain authn.Keychain) string {
 	for _, repo := range repos {
 		ref, err := name.ParseReference(repo, name.WeakValidation)
 		if err != nil {
 			continue
 		}
 		if reg == ref.Context().RegistryStr() {
-			ok, err := accessChecker.CheckReadAccess(repo, keychain)
+			ok, err := checkReadAccess(repo, keychain)
 			if err != nil {
 				return ""
 			}
@@ -106,24 +105,4 @@ func byRegistry(reg string, repos []string, accessChecker ImageStrategy, keychai
 		}
 	}
 	return ""
-}
-
-type ImageStrategy interface {
-	CheckReadAccess(repo string, keychain authn.Keychain) (bool, error)
-}
-
-type RemoteImageStrategy struct{}
-
-func (s *RemoteImageStrategy) CheckReadAccess(repo string, keychain authn.Keychain) (bool, error) {
-	img, err := remote.NewImage(repo, keychain)
-	if err != nil {
-		return false, fmt.Errorf("failed to get remote image: %w", err)
-	}
-	return img.CheckReadAccess(), nil
-}
-
-type NopImageStrategy struct{}
-
-func (a *NopImageStrategy) CheckReadAccess(_ string, _ authn.Keychain) (bool, error) {
-	return true, nil
 }

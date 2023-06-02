@@ -1,11 +1,15 @@
 package platform
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/buildpacks/imgutil/remote"
+	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/str"
@@ -16,7 +20,6 @@ import (
 // Fields are the cumulative total of inputs across all lifecycle phases and all supported Platform APIs.
 type LifecycleInputs struct {
 	PlatformAPI           *api.Version
-	AccessChecker         ImageStrategy
 	AnalyzedPath          string
 	AppDir                string
 	BuildConfigDir        string
@@ -163,6 +166,25 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 
 	return inputs
 }
+
+func (i *LifecycleInputs) AccessChecker() CheckReadAccess {
+	if i.UseDaemon || i.UseLayout {
+		// nop checker
+		return func(_ string, _ authn.Keychain) (bool, error) {
+			return true, nil
+		}
+	}
+	// remote access checker
+	return func(repo string, keychain authn.Keychain) (bool, error) {
+		img, err := remote.NewImage(repo, keychain)
+		if err != nil {
+			return false, fmt.Errorf("failed to get remote image: %w", err)
+		}
+		return img.CheckReadAccess(), nil
+	}
+}
+
+type CheckReadAccess func(repo string, keychain authn.Keychain) (bool, error)
 
 func (i *LifecycleInputs) DestinationImages() []string {
 	var ret []string
