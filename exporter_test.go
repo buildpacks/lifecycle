@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
@@ -34,7 +32,6 @@ import (
 )
 
 func TestExporter(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "Exporter", testExporter, spec.Parallel(), spec.Report(specreport.Terminal{}))
 }
 
@@ -412,13 +409,12 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					h.AssertEq(t, meta.RunImage.Image, "some/run")
 					h.AssertEq(t, meta.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
-					h.AssertEq(t, meta.Stack, (*files.Stack)(nil))
+					h.AssertEq(t, meta.Stack.RunImage.Image, meta.RunImage.Image)
+					h.AssertEq(t, meta.Stack.RunImage.Mirrors, meta.RunImage.Mirrors)
 				})
-
 				when("platform api < 0.12", func() {
 					platformAPI = api.MustParse("0.11")
-
-					it("saves run image metadata to the stack key", func() {
+					it("doesnt add new keys to the json", func() {
 						opts.Stack = files.Stack{
 							RunImage: files.RunImageForExport{
 								Image:   "some/run",
@@ -441,6 +437,28 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, meta.RunImage.Image, "")
 						h.AssertEq(t, meta.RunImage.Mirrors, []string(nil))
 					})
+				})
+			})
+			when("platform api >= 0.12", func() {
+				platformAPI = api.MustParse("0.12")
+				it("saves run image metadata to the stack key even if it's a target", func() {
+					opts.RunImageForExport = files.RunImageForExport{
+						Image: "some/run",
+					}
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
+
+					metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+					h.AssertNil(t, err)
+
+					var meta files.LayersMetadata
+					if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
+						t.Fatalf("badly formatted metadata: %s", err)
+					}
+					h.AssertNil(t, err)
+					h.AssertEq(t, meta.RunImage.Image, "some/run")
+					h.AssertNotNil(t, meta.Stack)
+					h.AssertEq(t, meta.Stack.RunImage.Image, "some/run")
 				})
 			})
 

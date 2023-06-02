@@ -115,9 +115,18 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	meta.RunImage.Reference = opts.RunImageRef
 
 	if e.PlatformAPI.AtLeast("0.12") {
+		// if it's new API version but only using Stack still, then normalize the model by copying stack into the RunImage
+		if opts.RunImageForExport.Image == "" && len(opts.RunImageForExport.Mirrors) == 0 {
+			opts.RunImageForExport.Image = opts.Stack.RunImage.Image
+			opts.RunImageForExport.Mirrors = opts.Stack.RunImage.Mirrors
+		}
 		meta.RunImage.Image = opts.RunImageForExport.Image
 		meta.RunImage.Mirrors = opts.RunImageForExport.Mirrors
-	} else {
+		// ensure we always copy the new RunImage into the old stack to preserve old behavior
+		meta.Stack = &files.Stack{}
+		meta.Stack.RunImage.Image = meta.RunImage.Image
+		meta.Stack.RunImage.Mirrors = meta.RunImage.Mirrors
+	} else { // the past was a simpler time, but in fairness the eventual stack-less future will also be simpler.
 		meta.Stack = &opts.Stack
 	}
 
@@ -528,8 +537,8 @@ func (e *Exporter) setLabels(opts ExportOptions, meta files.LayersMetadata, buil
 		return errors.Wrap(err, "marshall metadata")
 	}
 
-	e.Logger.Infof("Adding label '%s'", platform.LayerMetadataLabel)
-	if err = opts.WorkingImage.SetLabel(platform.LayerMetadataLabel, string(data)); err != nil {
+	e.Logger.Infof("Adding label '%s'", platform.LifecycleMetadataLabel)
+	if err = opts.WorkingImage.SetLabel(platform.LifecycleMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 
