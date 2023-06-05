@@ -52,27 +52,53 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("contains an image matching run image ref", func() {
-				inputs.RunImageRef = "some-run-image-from-run-toml"
+				inputs.RunImageRef = "some-run-image-from-run-toml-1"
 
 				it("returns the image", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
 					h.AssertEq(t, result, files.RunImageForExport{
-						Image:   "some-run-image-from-run-toml",
-						Mirrors: []string{"some-run-image-mirror-from-run-toml", "some-other-run-image-mirror-from-run-toml"},
+						Image:   "some-run-image-from-run-toml-1",
+						Mirrors: []string{"some-run-image-mirror-from-run-toml-1", "some-other-run-image-mirror-from-run-toml-1"},
+					})
+				})
+
+				when("reference includes docker registry", func() {
+					inputs.RunImageRef = "index.docker.io/some-run-image-from-run-toml-1"
+
+					it("still matches", func() {
+						result, err := platform.GetRunImageForExport(inputs)
+						h.AssertNil(t, err)
+						h.AssertEq(t, result, files.RunImageForExport{
+							Image:   "some-run-image-from-run-toml-1",
+							Mirrors: []string{"some-run-image-mirror-from-run-toml-1", "some-other-run-image-mirror-from-run-toml-1"},
+						})
 					})
 				})
 			})
 
 			when("contains an image mirror matching run image ref", func() {
-				inputs.RunImageRef = "some-other-run-image-mirror-from-run-toml"
+				inputs.RunImageRef = "some-other-run-image-mirror-from-run-toml-1"
 
 				it("returns the image", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
 					h.AssertEq(t, result, files.RunImageForExport{
-						Image:   "some-run-image-from-run-toml",
-						Mirrors: []string{"some-run-image-mirror-from-run-toml", "some-other-run-image-mirror-from-run-toml"},
+						Image:   "some-run-image-from-run-toml-1",
+						Mirrors: []string{"some-run-image-mirror-from-run-toml-1", "some-other-run-image-mirror-from-run-toml-1"},
+					})
+				})
+
+				when("reference includes docker registry", func() {
+					inputs.RunImageRef = "index.docker.io/some-other-run-image-mirror-from-run-toml-1"
+
+					it("still matches", func() {
+						result, err := platform.GetRunImageForExport(inputs)
+						h.AssertNil(t, err)
+						h.AssertEq(t, result, files.RunImageForExport{
+							Image:   "some-run-image-from-run-toml-1",
+							Mirrors: []string{"some-run-image-mirror-from-run-toml-1", "some-other-run-image-mirror-from-run-toml-1"},
+						})
 					})
 				})
 			})

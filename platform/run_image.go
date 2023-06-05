@@ -32,14 +32,15 @@ func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, erro
 		return files.RunImageForExport{}, err
 	}
 	if len(runMD.Images) == 0 {
-		return files.RunImageForExport{}, err
+		return files.RunImageForExport{}, nil
 	}
+	inputRef := parseMaybe(inputs.RunImageRef)
 	for _, runImage := range runMD.Images {
-		if runImage.Image == inputs.RunImageRef {
+		if parseMaybe(runImage.Image) == inputRef {
 			return runImage, nil
 		}
 		for _, mirror := range runImage.Mirrors {
-			if mirror == inputs.RunImageRef {
+			if parseMaybe(mirror) == inputRef {
 				return runImage, nil
 			}
 		}
@@ -53,6 +54,13 @@ func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, erro
 		return files.RunImageForExport{Image: inputs.RunImageRef}, nil
 	}
 	return runMD.Images[0], nil
+}
+
+func parseMaybe(ref string) string {
+	if nameRef, err := name.ParseReference(ref); err == nil {
+		return nameRef.Context().Name()
+	}
+	return ref
 }
 
 func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForExport, checkReadAccess CheckReadAccess) (string, error) {
