@@ -302,7 +302,7 @@ func (a *Analyzer) retrieveAppMetadata() (files.LayersMetadata, string, error) {
 
 	var appMeta files.LayersMetadata
 	// continue even if the label cannot be decoded
-	if err = image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
+	if err = image.DecodeLabel(a.PreviousImage, platform.LifecycleMetadataLabel, &appMeta); err != nil {
 		return files.LayersMetadata{}, "", nil
 	}
 	return appMeta, previousImageRef, nil

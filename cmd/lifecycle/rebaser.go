@@ -158,7 +158,7 @@ func (r *rebaseCmd) setAppImage() error {
 	}
 
 	var md files.LayersMetadata
-	if err := image.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
+	if err := image.DecodeLabel(r.appImage, platform.LifecycleMetadataLabel, &md); err != nil {
 		return err
 	}
 
