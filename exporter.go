@@ -115,11 +115,6 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	meta.RunImage.Reference = opts.RunImageRef
 
 	if e.PlatformAPI.AtLeast("0.12") {
-		// if it's new API version but only using Stack still, then normalize the model by copying stack into the RunImage
-		if opts.RunImageForExport.Image == "" && len(opts.RunImageForExport.Mirrors) == 0 {
-			opts.RunImageForExport.Image = opts.Stack.RunImage.Image
-			opts.RunImageForExport.Mirrors = opts.Stack.RunImage.Mirrors
-		}
 		meta.RunImage.Image = opts.RunImageForExport.Image
 		meta.RunImage.Mirrors = opts.RunImageForExport.Mirrors
 		// ensure we always copy the new RunImage into the old stack to preserve old behavior
