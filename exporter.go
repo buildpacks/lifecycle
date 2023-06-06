@@ -80,8 +80,6 @@ type ExportOptions struct {
 	DefaultProcessType string
 	// RunImageRef is the run image reference for the layer metadata label.
 	RunImageRef string
-	// Stack is run image metadata for the layer metadata label for Platform API < 0.12.
-	Stack files.Stack
 	// RunImageForExport is run image metadata for the layer metadata label for Platform API >= 0.12.
 	RunImageForExport files.RunImageForExport
 	// Project is project metadata for the project metadata label.
@@ -117,11 +115,9 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	if e.PlatformAPI.AtLeast("0.12") {
 		meta.RunImage.Image = opts.RunImageForExport.Image
 		meta.RunImage.Mirrors = opts.RunImageForExport.Mirrors
-		// ensure we always copy the new RunImage into the old stack to preserve old behavior
-		meta.Stack = opts.Stack
-	} else { // the past was a simpler time, but in fairness the eventual stack-less future will also be simpler.
-		meta.Stack = &opts.Stack
 	}
+	// ensure we always copy the new RunImage into the old stack to preserve old behavior
+	meta.Stack = &files.Stack{RunImage: opts.RunImageForExport}
 
 	buildMD := &files.BuildMetadata{}
 	if err := files.DecodeBuildMetadata(launch.GetMetadataFilePath(opts.LayersDir), e.PlatformAPI, buildMD); err != nil {

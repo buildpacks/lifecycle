@@ -415,11 +415,9 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				when("platform api < 0.12", func() {
 					platformAPI = api.MustParse("0.11")
 					it("doesnt add new keys to the json", func() {
-						opts.Stack = files.Stack{
-							RunImage: files.RunImageForExport{
-								Image:   "some/run",
-								Mirrors: []string{"registry.example.com/some/run", "other.example.com/some/run"},
-							},
+						opts.RunImageForExport = files.RunImageForExport{
+							Image:   "some/run",
+							Mirrors: []string{"registry.example.com/some/run", "other.example.com/some/run"},
 						}
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)

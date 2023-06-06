@@ -216,7 +216,6 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		Project:            projectMD,
 		RunImageRef:        runImageID,
 		RunImageForExport:  runImageForExport,
-		Stack:              files.Stack{RunImage: runImageForExport}, // for backwards compat
 		WorkingImage:       appImage,
 	})
 	if err != nil {
