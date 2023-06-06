@@ -58,6 +58,10 @@ func (d *ExtDescriptor) inferTargets() error {
 			}
 		}
 	}
+	// fallback: if nothing worked just mark it */*
+	if len(d.Targets) == 0 {
+		d.Targets = append(d.Targets, TargetMetadata{OS: "*", Arch: "*"})
+	}
 	return nil
 }
 
