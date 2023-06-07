@@ -332,6 +332,7 @@ jobs:
           path: pack
       - name: Run pack acceptance
         run: |
+          docker pull buildpacksio/lifecycle:latest
           cd pack
           git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
           $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
