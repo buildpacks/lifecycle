@@ -4,7 +4,6 @@
 package acceptance
 
 import (
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,8 +32,6 @@ var (
 
 func TestCreator(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Creator acceptance tests are not yet supported on Windows")
-
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	testImageDockerContext := filepath.Join("testdata", "creator")
 	createTest = NewPhaseTest(t, "creator", testImageDockerContext)

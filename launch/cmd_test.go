@@ -2,12 +2,10 @@ package launch_test
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -18,7 +16,6 @@ import (
 )
 
 func TestCmd(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "Cmd", testCmd, spec.Report(report.Terminal{}))
 }
 

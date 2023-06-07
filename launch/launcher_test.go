@@ -1,13 +1,11 @@
 package launch_test
 
 import (
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
@@ -24,7 +22,6 @@ import (
 //go:generate mockgen -package testmock -destination testmock/launch_execd.go github.com/buildpacks/lifecycle/launch ExecD
 
 func TestLauncher(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "Launcher", testLauncher, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 

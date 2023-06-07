@@ -1,11 +1,9 @@
 package launch_test
 
 import (
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
@@ -16,7 +14,6 @@ import (
 )
 
 func TestDecodeMetadataTOML(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "DecodeMetadataTOML", testDecodeMetataTOML, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 

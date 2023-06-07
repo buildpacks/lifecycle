@@ -3,13 +3,11 @@ package acceptance
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
@@ -30,8 +28,6 @@ var (
 func TestBuilder(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Builder acceptance tests are not yet supported on Windows")
 	h.SkipIf(t, runtime.GOARCH != "amd64", "Builder acceptance tests are not yet supported on non-amd64")
-
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	info, err := h.DockerCli(t).Info(context.TODO())
 	h.AssertNil(t, err)

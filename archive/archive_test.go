@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +17,6 @@ import (
 )
 
 func TestArchiveWrite(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "tar", testWrite, spec.Report(report.Terminal{}))
 }
 

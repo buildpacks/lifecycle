@@ -2,13 +2,11 @@ package cache_test
 
 import (
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
@@ -20,7 +18,6 @@ import (
 )
 
 func TestCachingImage(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "Exporter", testCachingImage, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

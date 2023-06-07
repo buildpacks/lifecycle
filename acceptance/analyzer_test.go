@@ -2,14 +2,12 @@ package acceptance
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -32,8 +30,6 @@ var (
 )
 
 func TestAnalyzer(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	testImageDockerContext := filepath.Join("testdata", "analyzer")
 	analyzeTest = NewPhaseTest(t, "analyzer", testImageDockerContext)
 	analyzeTest.Start(t)

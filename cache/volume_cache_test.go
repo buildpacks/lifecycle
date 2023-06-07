@@ -3,11 +3,9 @@ package cache_test
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -19,7 +17,6 @@ import (
 )
 
 func TestVolumeCache(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "VolumeCache", testVolumeCache, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

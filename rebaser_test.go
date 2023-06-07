@@ -2,9 +2,7 @@ package lifecycle_test
 
 import (
 	"encoding/json"
-	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
@@ -24,7 +22,6 @@ import (
 )
 
 func TestRebaser(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "Rebaser", testRebaser, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
