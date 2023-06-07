@@ -30,6 +30,11 @@ func (a *analyzeCmd) DefineFlags() {
 	if a.PlatformAPI.LessThan("0.12") && a.PlatformAPI.AtLeast("0.7") {
 		cli.FlagStackPath(&a.StackPath)
 	}
+	if a.PlatformAPI.LessThan("0.7") {
+		cli.FlagCacheDir(&a.CacheDir)
+		cli.FlagGroupPath(&a.GroupPath)
+		cli.FlagSkipLayers(&a.SkipLayers)
+	}
 	switch {
 	case a.PlatformAPI.AtLeast("0.12"):
 		cli.FlagLayoutDir(&a.LayoutDir)
@@ -44,11 +49,6 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagPreviousImage(&a.PreviousImageRef)
 		cli.FlagRunImage(&a.RunImageRef)
 		cli.FlagTags(&a.AdditionalTags)
-		fallthrough
-	case a.PlatformAPI.LessThan("0.7"):
-		cli.FlagCacheDir(&a.CacheDir)
-		cli.FlagGroupPath(&a.GroupPath)
-		cli.FlagSkipLayers(&a.SkipLayers)
 		fallthrough
 	default:
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
