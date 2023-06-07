@@ -16,7 +16,6 @@ import (
 )
 
 func TestTarWindows(t *testing.T) {
-
 	spec.Run(t, "tarWindows", testTarWindows, spec.Report(report.Terminal{}))
 }
 
