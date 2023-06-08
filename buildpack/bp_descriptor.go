@@ -27,8 +27,8 @@ type StackMetadata struct {
 type TargetMetadata struct {
 	OS            string           `json:"os" toml:"os"`
 	Arch          string           `json:"arch" toml:"arch"`
-	ArchVariant   string           `json:"arch-variant" toml:"arch-variant"`
-	Distributions []OSDistribution `json:"distributions" toml:"distributions"`
+	ArchVariant   string           `json:"arch-variant,omitempty" toml:"arch-variant"`
+	Distributions []OSDistribution `json:"distributions,omitempty" toml:"distributions"`
 }
 
 func (t *TargetMetadata) String() string {

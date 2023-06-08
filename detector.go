@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -262,7 +263,11 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 					keyFor(groupEl),
 					buildpack.DetectOutputs{
 						Code: -1,
-						Err:  fmt.Errorf("unable to satisfy Target OS/Arch constraints; run image: %v, buildpack: %v", d.AnalyzeMD.RunImage.TargetMetadata, descriptor.TargetsList()),
+						Err: fmt.Errorf(
+							"unable to satisfy target os/arch constraints; run image: %s, buildpack: %s",
+							toJSONMaybe(d.AnalyzeMD.RunImage.TargetMetadata),
+							toJSONMaybe(descriptor.TargetsList()),
+						),
 					})
 				continue
 			}
@@ -307,6 +312,14 @@ func hasIDForKind(els []buildpack.GroupElement, kind string, id string) bool {
 
 func keyFor(groupEl buildpack.GroupElement) string {
 	return fmt.Sprintf("%s %s", groupEl.Kind(), groupEl.String())
+}
+
+func toJSONMaybe(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprintf("%s", v) // hopefully v is a Stringer
+	}
+	return string(b)
 }
 
 type DefaultDetectResolver struct {
