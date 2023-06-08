@@ -13,7 +13,7 @@ import (
 // by returning an array of "VARIABLE=value" strings suitable for inclusion in your environment or complete breakfast.
 func EnvVarsFor(tm files.TargetMetadata) []string {
 	ret := []string{"CNB_TARGET_OS=" + tm.OS, "CNB_TARGET_ARCH=" + tm.Arch}
-	ret = append(ret, "CNB_TARGET_VARIANT="+tm.ArchVariant)
+	ret = append(ret, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
 	var distName, distVersion string
 	if tm.Distribution != nil {
 		distName = tm.Distribution.Name

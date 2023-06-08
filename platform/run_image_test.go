@@ -166,7 +166,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			tm := files.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distribution: &files.OSDistribution{Name: "nix", Version: "22.11"}}
 			observed := platform.EnvVarsFor(tm)
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
-			h.AssertContains(t, observed, "CNB_TARGET_VARIANT="+tm.ArchVariant)
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME="+tm.Distribution.Name)
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION="+tm.Distribution.Version)
 			h.AssertContains(t, observed, "CNB_TARGET_ID="+tm.ID)
@@ -181,7 +181,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
 			// note: per the spec only the ID field is optional, so I guess the others should always be set: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md#runtime-metadata
 			// the empty ones:
-			h.AssertContains(t, observed, "CNB_TARGET_VARIANT=")
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT=")
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME=")
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION=")
 			h.AssertEq(t, len(observed), 5)

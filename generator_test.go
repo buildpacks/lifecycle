@@ -271,20 +271,20 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			executor.EXPECT().Generate(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 				func(d buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ *log.Logger) (buildpack.GenerateOutputs, error) {
 					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_ARCH=amd64")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_ARCH_VARIANT=")
 					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_NAME=")
 					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_VERSION=")
 					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_OS=linux")
-					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_VARIANT=")
 					return buildpack.GenerateOutputs{Dockerfiles: []buildpack.DockerfileInfo{{ExtensionID: d.Extension.ID,
 						Kind: "build", Path: buildDockerfilePathA}}}, nil
 				})
 			executor.EXPECT().Generate(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 				func(d buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ *log.Logger) (buildpack.GenerateOutputs, error) {
 					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_ARCH=amd64")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_ARCH_VARIANT=")
 					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_NAME=")
 					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_VERSION=")
 					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_OS=linux")
-					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_VARIANT=")
 					return buildpack.GenerateOutputs{Dockerfiles: []buildpack.DockerfileInfo{{ExtensionID: d.Extension.ID,
 						Kind: "build", Path: buildDockerfilePathA}}}, nil
 				})
