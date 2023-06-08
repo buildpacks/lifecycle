@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,8 +43,6 @@ var (
 func TestExporter(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Exporter acceptance tests are not yet supported on Windows")
 
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	testImageDockerContext := filepath.Join("testdata", "exporter")
 	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
 
@@ -59,8 +56,6 @@ func TestExporter(t *testing.T) {
 	exportRegNetwork = exportTest.targetRegistry.network
 	exportDaemonFixtures = exportTest.targetDaemon.fixtures
 	exportRegFixtures = exportTest.targetRegistry.fixtures
-
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	for _, platformAPI := range api.Platform.Supported {
 		spec.Run(t, "acceptance-exporter/"+platformAPI.String(), testExporterFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))

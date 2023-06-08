@@ -972,7 +972,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, ok, true)
 						outs := val.(buildpack.DetectOutputs)
 						h.AssertEq(t, outs.Code, -1)
-						h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constraints")
+						h.AssertStringContains(t, outs.Err.Error(), `unable to satisfy target os/arch constraints; run image: {"os":"MacOS","arch":"ARM64","distribution":{"name":"MacOS","version":"some kind of big cat"}}, buildpack: [{"os":"Win95","arch":"P6","arch-variant":"Pentium Pro","distributions":[{"name":"Windows 95","version":"OSR1"},{"name":"Windows 95","version":"OSR2.5"}]},{"os":"Win98","arch":"Pentium M","distributions":[{"name":"Windows 2000","version":"Server"}]}]`)
 						return []buildpack.GroupElement{}, []files.BuildPlanEntry{}, nil
 					})
 

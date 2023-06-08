@@ -4,13 +4,11 @@
 package acceptance
 
 import (
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/sclevine/spec"
@@ -35,8 +33,6 @@ var (
 func TestRestorer(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Restorer acceptance tests are not yet supported on Windows")
 	h.SkipIf(t, runtime.GOARCH != "amd64", "Restorer acceptance tests are not yet supported on non-amd64")
-
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	testImageDockerContext := filepath.Join("testdata", "restorer")
 	restoreTest = NewPhaseTest(t, "restorer", testImageDockerContext)

@@ -2,13 +2,11 @@ package launch_test
 
 import (
 	"bytes"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
@@ -20,7 +18,6 @@ import (
 )
 
 func TestExecD(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "ExecD", testExecD, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 

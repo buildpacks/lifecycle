@@ -4,12 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
@@ -27,7 +25,6 @@ import (
 )
 
 func TestCache(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "Exporter", testCache, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

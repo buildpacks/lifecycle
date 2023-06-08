@@ -5,13 +5,11 @@ package acceptance
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
@@ -33,8 +31,6 @@ var (
 func TestDetector(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Detector acceptance tests are not yet supported on Windows")
 	h.SkipIf(t, runtime.GOARCH != "amd64", "Detector acceptance tests are not yet supported on non-amd64")
-
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	h.MakeAndCopyLifecycle(t, "linux", "amd64", detectorBinaryDir)
 	h.DockerBuild(t,

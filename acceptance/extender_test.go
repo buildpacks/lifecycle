@@ -5,13 +5,11 @@ package acceptance
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -50,8 +48,6 @@ const (
 
 func TestExtender(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Extender is not supported on Windows")
-
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	testImageDockerContext := filepath.Join("testdata", "extender")
 	extendTest = NewPhaseTest(t, "extender", testImageDockerContext)

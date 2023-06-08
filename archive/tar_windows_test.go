@@ -2,13 +2,11 @@ package archive_test
 
 import (
 	"archive/tar"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"syscall"
 	"testing"
-	"time"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -18,7 +16,6 @@ import (
 )
 
 func TestTarWindows(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "tarWindows", testTarWindows, spec.Report(report.Terminal{}))
 }
 

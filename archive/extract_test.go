@@ -2,12 +2,10 @@ package archive_test
 
 import (
 	"archive/tar"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -20,7 +18,6 @@ import (
 var originalUmask int
 
 func TestArchiveExtract(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	originalUmask = h.GetUmask(t)
 	spec.Run(t, "extract", testExtract, spec.Report(report.Terminal{}))
 }

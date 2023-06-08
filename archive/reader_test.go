@@ -3,10 +3,8 @@ package archive_test
 import (
 	"archive/tar"
 	"io"
-	"math/rand"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -16,7 +14,6 @@ import (
 )
 
 func TestReader(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "tar", testNormalizingTarReader, spec.Report(report.Terminal{}))
 }
 

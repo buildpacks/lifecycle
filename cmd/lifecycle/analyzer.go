@@ -27,35 +27,34 @@ type analyzeCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (a *analyzeCmd) DefineFlags() {
-	if a.PlatformAPI.AtLeast("0.12") {
-		cli.FlagLayoutDir(&a.LayoutDir)
-		cli.FlagUseLayout(&a.UseLayout)
-		cli.FlagRunPath(&a.RunPath)
+	if a.PlatformAPI.LessThan("0.12") && a.PlatformAPI.AtLeast("0.7") {
+		cli.FlagStackPath(&a.StackPath)
 	}
-	if a.PlatformAPI.AtLeast("0.9") {
-		cli.FlagLaunchCacheDir(&a.LaunchCacheDir)
+	if a.PlatformAPI.LessThan("0.7") {
+		cli.FlagCacheDir(&a.CacheDir)
+		cli.FlagGroupPath(&a.GroupPath)
 		cli.FlagSkipLayers(&a.SkipLayers)
 	}
 	switch {
+	case a.PlatformAPI.AtLeast("0.12"):
+		cli.FlagLayoutDir(&a.LayoutDir)
+		cli.FlagUseLayout(&a.UseLayout)
+		cli.FlagRunPath(&a.RunPath)
+		fallthrough
+	case a.PlatformAPI.AtLeast("0.9"):
+		cli.FlagLaunchCacheDir(&a.LaunchCacheDir)
+		cli.FlagSkipLayers(&a.SkipLayers)
+		fallthrough
 	case a.PlatformAPI.AtLeast("0.7"):
-		cli.FlagAnalyzedPath(&a.AnalyzedPath)
-		cli.FlagCacheImage(&a.CacheImageRef)
-		cli.FlagGID(&a.GID)
-		cli.FlagLayersDir(&a.LayersDir)
 		cli.FlagPreviousImage(&a.PreviousImageRef)
 		cli.FlagRunImage(&a.RunImageRef)
-		cli.FlagStackPath(&a.StackPath)
 		cli.FlagTags(&a.AdditionalTags)
-		cli.FlagUID(&a.UID)
-		cli.FlagUseDaemon(&a.UseDaemon)
+		fallthrough
 	default:
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
-		cli.FlagCacheDir(&a.CacheDir)
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
-		cli.FlagGroupPath(&a.GroupPath)
 		cli.FlagLayersDir(&a.LayersDir)
-		cli.FlagSkipLayers(&a.SkipLayers)
 		cli.FlagUID(&a.UID)
 		cli.FlagUseDaemon(&a.UseDaemon)
 	}
