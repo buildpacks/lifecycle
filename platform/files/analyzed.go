@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/internal/name"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -130,23 +130,16 @@ type RunImageForRebase struct {
 }
 
 func (r *RunImageForRebase) Contains(ref string) bool {
-	ref = parseMaybe(ref)
-	if parseMaybe(r.Image) == ref {
+	ref = name.ParseMaybe(ref)
+	if name.ParseMaybe(r.Image) == ref {
 		return true
 	}
 	for _, m := range r.Mirrors {
-		if parseMaybe(m) == ref {
+		if name.ParseMaybe(m) == ref {
 			return true
 		}
 	}
 	return false
-}
-
-func parseMaybe(ref string) string {
-	if nameRef, err := name.ParseReference(ref); err == nil {
-		return nameRef.Context().Name()
-	}
-	return ref
 }
 
 func (r *RunImageForRebase) ToStack() Stack {

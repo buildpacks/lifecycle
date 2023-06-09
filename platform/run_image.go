@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
+	iname "github.com/buildpacks/lifecycle/internal/name"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform/files"
 )
@@ -34,13 +35,13 @@ func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, erro
 	if len(runMD.Images) == 0 {
 		return files.RunImageForExport{}, nil
 	}
-	inputRef := parseMaybe(inputs.RunImageRef)
+	inputRef := iname.ParseMaybe(inputs.RunImageRef)
 	for _, runImage := range runMD.Images {
-		if parseMaybe(runImage.Image) == inputRef {
+		if iname.ParseMaybe(runImage.Image) == inputRef {
 			return runImage, nil
 		}
 		for _, mirror := range runImage.Mirrors {
-			if parseMaybe(mirror) == inputRef {
+			if iname.ParseMaybe(mirror) == inputRef {
 				return runImage, nil
 			}
 		}
@@ -54,13 +55,6 @@ func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, erro
 		return files.RunImageForExport{Image: inputs.RunImageRef}, nil
 	}
 	return runMD.Images[0], nil
-}
-
-func parseMaybe(ref string) string {
-	if nameRef, err := name.ParseReference(ref); err == nil {
-		return nameRef.Context().Name()
-	}
-	return ref
 }
 
 func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForExport, checkReadAccess CheckReadAccess) (string, error) {
