@@ -10,8 +10,8 @@ var BuildEnvIncludelist = []string{
 	"CNB_STACK_ID", // deprecated as of api 0.12.0
 	"CNB_TARGET_OS",
 	"CNB_TARGET_ARCH",
+	"CNB_TARGET_ARCH_VARIANT",
 	"CNB_TARGET_ID",
-	"CNB_TARGET_VARIANT",
 	"CNB_TARGET_DISTRO_NAME",
 	"CNB_TARGET_DISTRO_VERSION",
 	"HOSTNAME",
