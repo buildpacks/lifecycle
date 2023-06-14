@@ -354,7 +354,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 			logger.Warnf("Extension from %s changed the user ID from %s to %s; this must not be the final user ID (a following extension must reset the user).", dockerfile.Path, prevUserID, userID)
 		}
 	}
-	if isRoot(userID) {
+	if isRoot(userID) && kind == "run" {
 		return baseImage, fmt.Errorf("the final user ID is 0 (root); please add another extension that resets the user to non-root")
 	}
 	if userID != origUserID {

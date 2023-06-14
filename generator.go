@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/go-containerregistry/pkg/name"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform"
 
@@ -196,11 +198,18 @@ func satisfies(images []files.RunImageForExport, imageName string) bool {
 		return true
 	}
 	for _, image := range images {
-		if image.Image == imageName {
+		if parseMaybe(image.Image) == parseMaybe(imageName) {
 			return true
 		}
 	}
 	return false
+}
+
+func parseMaybe(ref string) string {
+	if nameRef, err := name.ParseReference(ref); err == nil {
+		return nameRef.Context().Name()
+	}
+	return ref
 }
 
 func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
