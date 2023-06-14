@@ -59,8 +59,17 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if err := platform.ResolveInputs(platform.Rebase, r.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
-	if err := r.setAppImage(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), r.CodeFor(platform.RebaseError), "set app image")
+	var err error
+	if !r.UseDaemon {
+		// We may need to read the application image in order to know the run image, so
+		// we read the application here so that the keychain will include the run image.
+		// We need to construct a keychain for the run image before we drop privileges,
+		// in case the credentials will become inaccessible to a non-root user.
+		// We cannot read the application image if we're working with a daemon,
+		// because the docker client hasn't been constructed yet.
+		if err = r.setAppImage(); err != nil {
+			return cmd.FailErrCode(errors.New(err.Error()), r.CodeFor(platform.RebaseError), "set app image")
+		}
 	}
 	return nil
 }
@@ -71,7 +80,6 @@ func (r *rebaseCmd) Privileges() error {
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
-
 	if r.UseDaemon {
 		var err error
 		r.docker, err = priv.DockerClient()
@@ -87,6 +95,14 @@ func (r *rebaseCmd) Privileges() error {
 
 func (r *rebaseCmd) Exec() error {
 	var err error
+	if r.UseDaemon {
+		// We may need to read the application image in order to know the run image,
+		// but the run image is in a daemon (not a registry), so it is okay
+		// to read the application here because the keychain doesn't need to include the run image.
+		if err = r.setAppImage(); err != nil {
+			return cmd.FailErrCode(errors.New(err.Error()), r.CodeFor(platform.RebaseError), "set app image")
+		}
+	}
 	var newBaseImage imgutil.Image
 	if r.UseDaemon {
 		newBaseImage, err = local.NewImage(
