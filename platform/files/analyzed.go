@@ -170,10 +170,10 @@ type RunImage struct {
 }
 
 type TargetMetadata struct {
-	ID          string `json:"id,omitempty" toml:"id"`
+	ID          string `json:"id,omitempty" toml:"id,omitempty"`
 	OS          string `json:"os" toml:"os"`
 	Arch        string `json:"arch" toml:"arch"`
-	ArchVariant string `json:"arch-variant,omitempty" toml:"arch-variant"`
+	ArchVariant string `json:"arch-variant,omitempty" toml:"arch-variant,omitempty"`
 
 	Distribution *OSDistribution `json:"distribution,omitempty" toml:"distribution,omitempty"`
 }
