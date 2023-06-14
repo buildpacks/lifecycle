@@ -350,11 +350,11 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		configFile.History = workingHistory
 		prevUserID := userID
 		userID, groupID = userFrom(*configFile)
-		if userID == "0" {
-			logger.Warnf("Extension from %s changed the user ID from %d to %d; this must not be the final user ID (a following extension must reset the user).", prevUserID, userID, dockerfile.Path)
+		if isRoot(userID) {
+			logger.Warnf("Extension from %s changed the user ID from %s to %s; this must not be the final user ID (a following extension must reset the user).", dockerfile.Path, prevUserID, userID)
 		}
 	}
-	if userID == "0" {
+	if isRoot(userID) && kind == "run" {
 		return baseImage, fmt.Errorf("the final user ID is 0 (root); please add another extension that resets the user to non-root")
 	}
 	if userID != origUserID {
@@ -369,9 +369,13 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 func userFrom(config v1.ConfigFile) (string, string) {
 	user := strings.Split(config.Config.User, ":")
 	if len(user) < 2 {
-		return "", ""
+		return config.Config.User, ""
 	}
 	return user[0], user[1]
+}
+
+func isRoot(userID string) bool {
+	return userID == "0" || userID == "root"
 }
 
 const RebasableLabel = "io.buildpacks.rebasable"

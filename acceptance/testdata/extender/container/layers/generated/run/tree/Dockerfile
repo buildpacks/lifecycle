@@ -11,3 +11,6 @@ RUN echo ${build_id}
 
 # tree is not really rebasable, but we set the label here to test that the label in the extended image is set correctly
 LABEL io.buildpacks.rebasable=true
+
+ARG user_id
+USER ${user_id}

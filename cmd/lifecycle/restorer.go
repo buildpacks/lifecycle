@@ -177,7 +177,7 @@ func needsUpdating(runImage *files.RunImage) bool {
 	if runImage == nil {
 		return false
 	}
-	if runImage.TargetMetadata != nil {
+	if runImage.TargetMetadata != nil && runImage.TargetMetadata.OS != "" {
 		return false
 	}
 	return true

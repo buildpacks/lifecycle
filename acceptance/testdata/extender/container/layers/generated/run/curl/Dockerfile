@@ -9,3 +9,6 @@ RUN echo ${build_id}
 
 # This should not create a layer as the path should be ignored by kaniko
 RUN echo "some-content" > /workspace/some-file
+
+ARG user_id
+USER ${user_id}
