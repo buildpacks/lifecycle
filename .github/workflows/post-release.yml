@@ -13,6 +13,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
+          check-latest: true
           go-version-file: 'go.mod'
       - name: Install crane
         run: |
