@@ -35,7 +35,7 @@ linters-settings:
 
 issues:
   exclude-use-default: false
-  new-from-rev: 28084b74124ad4484bd9e67ea4c469b05b5f38fa
+  new-from-rev: 91593cf91797ca0a98ffa31842107a9d916da37b
   exclude-rules:
     # Ignore this minor optimization.
     # See https://github.com/golang/go/issues/44877#issuecomment-794565908
