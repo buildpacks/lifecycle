@@ -92,7 +92,7 @@ jobs:
             search_output=$(gh issue list --search "$title" --label "$label")
 
             GITHUB_WORKFLOW_URL=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-            body="Latest lifecycle release v${{ steps.read-go.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL"
+        body="Latest lifecycle release v${{ steps.read-go.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL    json: ${{ steps.scan-image.outputs.json }}"
 
             if [ -z "${search_output// }" ]
             then
