@@ -148,7 +148,7 @@ func containsName(origMetadata files.LayersMetadataCompat, newBaseName string) b
 	if origMetadata.Stack == nil {
 		return false
 	}
-	return origMetadata.Stack.ToRunImageForRebase().Contains(newBaseName)
+	return origMetadata.Stack.RunImage.Contains(newBaseName)
 }
 
 func validateStackID(appImg, newBaseImage imgutil.Image) error {

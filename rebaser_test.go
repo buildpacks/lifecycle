@@ -146,8 +146,10 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 						RunImage: files.RunImageForRebase{
 							TopLayer:  "some-top-layer",
 							Reference: "some-run-image-digest-reference",
-							Image:     "some-run-image-tag-reference",
-							Mirrors:   []string{"some-run-image-mirror"},
+							RunImageForExport: files.RunImageForExport{
+								Image:   "some-run-image-tag-reference",
+								Mirrors: []string{"some-run-image-mirror"},
+							},
 						},
 						Stack: &files.Stack{RunImage: files.RunImageForExport{
 							Image:   "some-run-image-tag-reference",

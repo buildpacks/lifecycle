@@ -5,6 +5,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/buildpacks/lifecycle/internal/name"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -17,16 +18,22 @@ type Stack struct {
 	RunImage RunImageForExport `json:"runImage" toml:"run-image"`
 }
 
-func (s *Stack) ToRunImageForRebase() *RunImageForRebase {
-	return &RunImageForRebase{
-		Image:   s.RunImage.Image,
-		Mirrors: s.RunImage.Mirrors,
-	}
+type RunImageForExport struct {
+	Image   string   `toml:"image,omitempty" json:"image,omitempty"`
+	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
 }
 
-type RunImageForExport struct {
-	Image   string   `toml:"image" json:"image"`
-	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
+func (r *RunImageForExport) Contains(ref string) bool {
+	ref = name.ParseMaybe(ref)
+	if name.ParseMaybe(r.Image) == ref {
+		return true
+	}
+	for _, m := range r.Mirrors {
+		if name.ParseMaybe(m) == ref {
+			return true
+		}
+	}
+	return false
 }
 
 func ReadStack(stackPath string, logger log.Logger) (Stack, error) {
