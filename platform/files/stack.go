@@ -23,6 +23,8 @@ type RunImageForExport struct {
 	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
 }
 
+// Contains returns true if the provided reference matches either the primary image,
+// or the image mirrors.
 func (r *RunImageForExport) Contains(ref string) bool {
 	ref = name.ParseMaybe(ref)
 	if name.ParseMaybe(r.Image) == ref {
