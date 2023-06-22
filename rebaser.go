@@ -92,6 +92,7 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 					newBaseImage.Name(),
 					existingRunImageMD,
 				)
+				// update original metadata
 				origMetadata.RunImage.Image = newBaseImage.Name()
 				origMetadata.RunImage.Mirrors = []string{}
 				newStackMD := origMetadata.RunImage.ToStack()

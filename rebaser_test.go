@@ -194,6 +194,24 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 									h.AssertError(t, err, `rebase app image: new base image 'some-repo/new-base-image' not found in existing run image metadata: {"topLayer":"new-top-layer-sha","reference":"new-run-id","image":"some-run-image-tag-reference","mirrors":["some-run-image-mirror"]}`)
 								})
 
+								when("tag is different", func() {
+									it.Before(func() {
+										fakeNewBaseImage = fakes.NewImage(
+											"some-run-image-mirror:new-tag",
+											"new-top-layer-sha",
+											local.IDIdentifier{
+												ImageID: "new-run-id",
+											},
+										)
+										h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
+									})
+
+									it("doesn't match", func() {
+										_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+										h.AssertError(t, err, `rebase app image: new base image 'some-run-image-mirror:new-tag' not found in existing run image metadata: {"topLayer":"new-top-layer-sha","reference":"new-run-id","image":"some-run-image-tag-reference","mirrors":["some-run-image-mirror"]}`)
+									})
+								})
+
 								when("platform API < 0.12", func() {
 									it.Before(func() {
 										rebaser.PlatformAPI = api.MustParse("0.11")
