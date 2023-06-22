@@ -19,6 +19,7 @@ import (
 )
 
 var (
+	msgProvideForceToOverride           = "please provide -force to override"
 	msgAppImageNotMarkedRebasable       = "app image is not marked as rebasable"
 	msgRunImageMDNotContainsName        = "rebase app image: new base image '%s' not found in existing run image metadata: %s"
 	msgUnableToSatisfyTargetConstraints = "unable to satisfy target os/arch constraints; new run image: %s, old run image: %s"
@@ -99,7 +100,7 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 				origMetadata.Stack = &newStackMD
 			} else {
 				return RebaseReport{}, fmt.Errorf(
-					msgRunImageMDNotContainsName,
+					msgRunImageMDNotContainsName+"; "+msgProvideForceToOverride,
 					newBaseImage.Name(),
 					existingRunImageMD,
 				)
@@ -208,7 +209,7 @@ func (r *Rebaser) validateTarget(appImg imgutil.Image, newBaseImg imgutil.Image)
 	}
 	if rebasable == "false" {
 		if !r.Force {
-			return fmt.Errorf(msgAppImageNotMarkedRebasable)
+			return fmt.Errorf(msgAppImageNotMarkedRebasable + "; " + msgProvideForceToOverride)
 		}
 		r.Logger.Warn(msgAppImageNotMarkedRebasable)
 	}
@@ -228,7 +229,7 @@ func (r *Rebaser) validateTarget(appImg imgutil.Image, newBaseImg imgutil.Image)
 	if !platform.TargetSatisfiedForRebase(*newBaseTarget, *appTarget) {
 		if !r.Force {
 			return fmt.Errorf(
-				msgUnableToSatisfyTargetConstraints,
+				msgUnableToSatisfyTargetConstraints+"; "+msgProvideForceToOverride,
 				encoding.ToJSONMaybe(newBaseTarget),
 				encoding.ToJSONMaybe(appTarget),
 			)
