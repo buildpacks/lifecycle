@@ -160,6 +160,62 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("existing run image metadata", func() {
+					when("does not include new run image", func() {
+						when("force", func() {
+							when("true", func() {
+								it.Before(func() {
+									rebaser.Force = true
+								})
+
+								it("warns and overrides the existing metadata", func() {
+									_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+									h.AssertNil(t, err)
+
+									assertLogEntry(t, logHandler, `new base image 'some-repo/new-base-image' not found in existing run image metadata: {"topLayer":"new-top-layer-sha","reference":"new-run-id","image":"some-run-image-tag-reference","mirrors":["some-run-image-mirror"]}`)
+
+									h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LifecycleMetadataLabel, &md))
+									var empty []string
+									h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
+									h.AssertEq(t, md.RunImage.Reference, "new-run-id")
+									h.AssertEq(t, md.RunImage.Image, "some-repo/new-base-image")
+									h.AssertEq(t, md.RunImage.Mirrors, empty)
+									h.AssertEq(t, md.Stack.RunImage.Image, "some-repo/new-base-image")
+									h.AssertEq(t, md.Stack.RunImage.Mirrors, empty)
+								})
+							})
+
+							when("false", func() {
+								it.Before(func() {
+									rebaser.Force = false
+								})
+
+								it("errors", func() {
+									_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+									h.AssertError(t, err, `rebase app image: new base image 'some-repo/new-base-image' not found in existing run image metadata: {"topLayer":"new-top-layer-sha","reference":"new-run-id","image":"some-run-image-tag-reference","mirrors":["some-run-image-mirror"]}`)
+								})
+
+								when("platform API < 0.12", func() {
+									it.Before(func() {
+										rebaser.PlatformAPI = api.MustParse("0.11")
+									})
+
+									it("preserves the existing metadata", func() {
+										_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+										h.AssertNil(t, err)
+
+										h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LifecycleMetadataLabel, &md))
+										h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
+										h.AssertEq(t, md.RunImage.Reference, "new-run-id")
+										h.AssertEq(t, md.RunImage.Image, "some-run-image-tag-reference")
+										h.AssertEq(t, md.RunImage.Mirrors, []string{"some-run-image-mirror"})
+										h.AssertEq(t, md.Stack.RunImage.Image, "some-run-image-tag-reference")
+										h.AssertEq(t, md.Stack.RunImage.Mirrors, []string{"some-run-image-mirror"})
+									})
+								})
+							})
+						})
+					})
+
 					when("includes new run image", func() {
 						it.Before(func() {
 							fakeNewBaseImage = fakes.NewImage(
@@ -235,62 +291,6 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, md.RunImage.Mirrors, []string{"some-run-image-mirror"})
 							h.AssertEq(t, md.Stack.RunImage.Image, "some-run-image-tag-reference")
 							h.AssertEq(t, md.Stack.RunImage.Mirrors, []string{"some-run-image-mirror"})
-						})
-					})
-
-					when("does not include new run image", func() {
-						when("force", func() {
-							when("true", func() {
-								it.Before(func() {
-									rebaser.Force = true
-								})
-
-								it("warns and overrides the existing metadata", func() {
-									_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-									h.AssertNil(t, err)
-
-									assertLogEntry(t, logHandler, `new base image 'some-repo/new-base-image' not found in existing run image metadata: {"topLayer":"new-top-layer-sha","reference":"new-run-id","image":"some-run-image-tag-reference","mirrors":["some-run-image-mirror"]}`)
-
-									h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LifecycleMetadataLabel, &md))
-									var empty []string
-									h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
-									h.AssertEq(t, md.RunImage.Reference, "new-run-id")
-									h.AssertEq(t, md.RunImage.Image, "some-repo/new-base-image")
-									h.AssertEq(t, md.RunImage.Mirrors, empty)
-									h.AssertEq(t, md.Stack.RunImage.Image, "some-repo/new-base-image")
-									h.AssertEq(t, md.Stack.RunImage.Mirrors, empty)
-								})
-							})
-
-							when("false", func() {
-								it.Before(func() {
-									rebaser.Force = false
-								})
-
-								it("errors", func() {
-									_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-									h.AssertError(t, err, `rebase app image: new base image 'some-repo/new-base-image' not found in existing run image metadata: {"topLayer":"new-top-layer-sha","reference":"new-run-id","image":"some-run-image-tag-reference","mirrors":["some-run-image-mirror"]}`)
-								})
-
-								when("platform API < 0.12", func() {
-									it.Before(func() {
-										rebaser.PlatformAPI = api.MustParse("0.11")
-									})
-
-									it("preserves the existing metadata", func() {
-										_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-										h.AssertNil(t, err)
-
-										h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LifecycleMetadataLabel, &md))
-										h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
-										h.AssertEq(t, md.RunImage.Reference, "new-run-id")
-										h.AssertEq(t, md.RunImage.Image, "some-run-image-tag-reference")
-										h.AssertEq(t, md.RunImage.Mirrors, []string{"some-run-image-mirror"})
-										h.AssertEq(t, md.Stack.RunImage.Image, "some-run-image-tag-reference")
-										h.AssertEq(t, md.Stack.RunImage.Mirrors, []string{"some-run-image-mirror"})
-									})
-								})
-							})
 						})
 					})
 				})
