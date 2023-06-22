@@ -17,6 +17,13 @@ type Stack struct {
 	RunImage RunImageForExport `json:"runImage" toml:"run-image"`
 }
 
+func (s *Stack) ToRunImageForRebase() *RunImageForRebase {
+	return &RunImageForRebase{
+		Image:   s.RunImage.Image,
+		Mirrors: s.RunImage.Mirrors,
+	}
+}
+
 type RunImageForExport struct {
 	Image   string   `toml:"image" json:"image"`
 	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
