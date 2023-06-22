@@ -74,7 +74,7 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return RebaseReport{}, fmt.Errorf("get run image id or digest: %w", err)
 	}
 	origMetadata.RunImage.Reference = identifier.String()
-	if appPlatformAPI != "" && r.PlatformAPI.AtLeast("0.12") {
+	if r.PlatformAPI.AtLeast("0.12") {
 		// update stack and runImage if needed
 		if !containsName(origMetadata, newBaseImage.Name()) {
 			var existingRunImageMD string
