@@ -5,6 +5,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/buildpacks/lifecycle/internal/name"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -18,8 +19,23 @@ type Stack struct {
 }
 
 type RunImageForExport struct {
-	Image   string   `toml:"image" json:"image"`
-	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
+	Image   string   `toml:"image,omitempty" json:"image,omitempty"`
+	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
+}
+
+// Contains returns true if the provided reference matches either the primary image,
+// or the image mirrors.
+func (r *RunImageForExport) Contains(ref string) bool {
+	ref = name.ParseMaybe(ref)
+	if name.ParseMaybe(r.Image) == ref {
+		return true
+	}
+	for _, m := range r.Mirrors {
+		if name.ParseMaybe(m) == ref {
+			return true
+		}
+	}
+	return false
 }
 
 func ReadStack(stackPath string, logger log.Logger) (Stack, error) {

@@ -7,7 +7,6 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/internal/name"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -123,23 +122,11 @@ type LayerMetadata struct {
 type RunImageForRebase struct {
 	TopLayer  string `json:"topLayer" toml:"top-layer"`
 	Reference string `json:"reference" toml:"reference"`
-
-	// added in Platform 0.12
-	Image   string   `toml:"image,omitempty" json:"image,omitempty"`
-	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
+	RunImageForExport
 }
 
 func (r *RunImageForRebase) Contains(ref string) bool {
-	ref = name.ParseMaybe(ref)
-	if name.ParseMaybe(r.Image) == ref {
-		return true
-	}
-	for _, m := range r.Mirrors {
-		if name.ParseMaybe(m) == ref {
-			return true
-		}
-	}
-	return false
+	return r.RunImageForExport.Contains(ref)
 }
 
 func (r *RunImageForRebase) ToStack() Stack {
