@@ -78,11 +78,7 @@ func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForEx
 
 	// Select the first run image we have access to
 	for _, image := range runImageMirrors {
-		ok, err := checkReadAccess(image, keychain)
-		if err != nil {
-			return "", err
-		}
-		if ok {
+		if ok, _ := checkReadAccess(image, keychain); ok {
 			return image, nil
 		}
 	}
@@ -90,19 +86,15 @@ func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForEx
 	return "", errors.New("failed to find accessible run image")
 }
 
-func byRegistry(reg string, repos []string, checkReadAccess CheckReadAccess, keychain authn.Keychain) string {
-	for _, repo := range repos {
-		ref, err := name.ParseReference(repo, name.WeakValidation)
+func byRegistry(reg string, images []string, checkReadAccess CheckReadAccess, keychain authn.Keychain) string {
+	for _, image := range images {
+		ref, err := name.ParseReference(image, name.WeakValidation)
 		if err != nil {
 			continue
 		}
 		if reg == ref.Context().RegistryStr() {
-			ok, err := checkReadAccess(repo, keychain)
-			if err != nil {
-				return ""
-			}
-			if ok {
-				return repo
+			if ok, _ := checkReadAccess(image, keychain); ok {
+				return image
 			}
 		}
 	}

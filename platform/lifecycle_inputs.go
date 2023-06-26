@@ -180,7 +180,7 @@ func (i *LifecycleInputs) AccessChecker() CheckReadAccess {
 		if err != nil {
 			return false, fmt.Errorf("failed to get remote image: %w", err)
 		}
-		return img.CheckReadAccess(), nil
+		return img.CheckReadAccess()
 	}
 }
 
