@@ -143,7 +143,9 @@ func verifyReadAccess(imageRef string, keychain authn.Keychain) error {
 		return nil
 	}
 	img, _ := remote.NewImage(imageRef, keychain)
-	if !img.CheckReadAccess() {
+	canRead, err := img.CheckReadAccess()
+	if !canRead {
+		cmd.DefaultLogger.Debugf("Error checking read access: %s", err)
 		return errors.Errorf("ensure registry read access to %s", imageRef)
 	}
 	return nil
@@ -154,7 +156,9 @@ func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
 		return nil
 	}
 	img, _ := remote.NewImage(imageRef, keychain)
-	if !img.CheckReadWriteAccess() {
+	canReadWrite, err := img.CheckReadWriteAccess()
+	if !canReadWrite {
+		cmd.DefaultLogger.Debugf("Error checking read/write access: %s", err)
 		return errors.Errorf("ensure registry read/write access to %s", imageRef)
 	}
 	return nil
