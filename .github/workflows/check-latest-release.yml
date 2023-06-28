@@ -75,7 +75,7 @@ jobs:
         with:
           image: buildpacksio/lifecycle:${{ steps.read-versions.outputs.latest-release-version }}
           fail-build: true
-          severity-cutoff: high
+          severity-cutoff: medium
           output-format: json
       - name: Create issue if needed
         if: failure() && steps.scan-image.outcome == 'failure'
