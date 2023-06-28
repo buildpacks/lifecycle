@@ -2,9 +2,9 @@ module github.com/buildpacks/lifecycle
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/GoogleContainerTools/kaniko v1.11.0
+	github.com/GoogleContainerTools/kaniko v1.12.0
 	github.com/apex/log v1.9.0
-	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230519004202-7f2db5bd753e
+	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230522190001-adf1bafd791a
 	github.com/buildpacks/imgutil v0.0.0-20230626185301-726f02e4225c
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.2
@@ -37,19 +37,19 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.18.0 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.18.25 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.24 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.3 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.33 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.27 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.34 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.18.1 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.18.27 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.26 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.4 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.34 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.28 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.35 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.18.11 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.16.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.27 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.12.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.19.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.28 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.12.12 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.12 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.19.2 // indirect
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -98,7 +98,7 @@ require (
 	github.com/opencontainers/runc v1.1.7 // indirect
 	github.com/opencontainers/runtime-spec v1.1.0-rc.2 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
-	github.com/otiai10/copy v1.11.0 // indirect
+	github.com/otiai10/copy v1.12.0 // indirect
 	github.com/prometheus/client_golang v1.15.1 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
@@ -110,11 +110,11 @@ require (
 	github.com/tonistiigi/fsutil v0.0.0-20230407161946-9e7a6df48576 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	go.etcd.io/etcd/raft/v3 v3.5.9 // indirect
-	golang.org/x/crypto v0.9.0 // indirect
+	golang.org/x/crypto v0.10.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/oauth2 v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/net v0.11.0 // indirect
+	golang.org/x/oauth2 v0.9.0 // indirect
+	golang.org/x/text v0.10.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.9.1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
