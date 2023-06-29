@@ -111,36 +111,20 @@ func (c *ImageCache) Commit() error {
 		return errCacheCommitted
 	}
 
-	// Check if the cache image exists prior to saving the new cache at that same location
-	origImgExists := c.origImage.Found()
-
-	if err := c.newImage.Save(); err != nil {
-		return errors.Wrapf(err, "saving image '%s'", c.newImage.Name())
+	if err := saveImage(c); err != nil {
+		return err
 	}
-	c.committed = true
-
-	if origImgExists {
-		// Deleting the original image is for cleanup only and should not fail the commit.
-		if err := c.DeleteOrigImage(); err != nil {
-			c.logger.Warnf("Unable to delete previous cache image: %v", err.Error())
-		}
-	}
-	c.origImage = c.newImage
 
 	return nil
 }
 
-func (c *ImageCache) DeleteOrigImage() error {
-	origIdentifier, err := c.origImage.Identifier()
-	if err != nil {
-		return errors.Wrap(err, "getting identifier for original image")
+func saveImage(c *ImageCache) error {
+	if err := c.newImage.Save(); err != nil {
+		return errors.Wrapf(err, "saving image '%s'", c.newImage.Name())
 	}
-	newIdentifier, err := c.newImage.Identifier()
-	if err != nil {
-		return errors.Wrap(err, "getting identifier for new image")
-	}
-	if origIdentifier.String() == newIdentifier.String() {
-		return nil
-	}
-	return c.origImage.Delete()
+
+	c.committed = true
+	c.origImage = c.newImage
+
+	return nil
 }
