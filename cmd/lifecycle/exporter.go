@@ -234,16 +234,6 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 }
 
 func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
-	if isDigestRef(e.RunImageRef) {
-		// If extensions were used to extend the runtime base image, the run image reference will contain a digest.
-		// The restorer uses a name reference to pull the image from the registry (because the extender needs a manifest),
-		// and writes a digest reference to analyzed.toml.
-		// For remote images, this works perfectly well.
-		// However for local images, the daemon can't find the image when the reference contains a digest,
-		// so we use image name from analyzed.toml which is the reference written by the extension.
-		e.RunImageRef = analyzedMD.RunImageImage()
-	}
-
 	var opts = []local.ImageOption{
 		local.FromBaseImage(e.RunImageRef),
 	}
