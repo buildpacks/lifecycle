@@ -242,8 +242,14 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 	}
 
 	return files.Analyzed{
-		PreviousImage:  &files.ImageIdentifier{Reference: previousImageRef},
-		RunImage:       &files.RunImage{Reference: runImageRef, TargetMetadata: atm, Image: runImageName},
+		PreviousImage: &files.ImageIdentifier{
+			Reference: previousImageRef,
+		},
+		RunImage: &files.RunImage{
+			Reference:      runImageRef, // the image identifier, e.g. "s0m3d1g3st" (the image identifier) when exporting to a daemon, or "some.registry/some-repo@sha256:s0m3d1g3st" when exporting to a registry
+			TargetMetadata: atm,
+			Image:          runImageName, // the provided tag, e.g., "some.registry/some-repo:some-tag" if supported by the platform
+		},
 		LayersMetadata: appMeta,
 	}, nil
 }

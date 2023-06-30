@@ -12,7 +12,13 @@ import (
 
 // json
 
+// ToJSONMaybe returns the provided interface as JSON if marshaling is successful,
+// or as a string if an error is encountered.
+// It is only intended to be used for logging.
 func ToJSONMaybe(v interface{}) string {
+	if v == nil {
+		return ""
+	}
 	b, err := json.Marshal(v)
 	if err != nil {
 		return fmt.Sprintf("%s", v) // hopefully v is a Stringer

@@ -356,6 +356,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 			return nil, "", cmd.FailErr(err, "get extended image config")
 		}
 		if extendedConfig != nil {
+			cmd.DefaultLogger.Debugf("Using config from extensions...")
 			opts = append(opts, remote.WithConfig(extendedConfig))
 		}
 	}
