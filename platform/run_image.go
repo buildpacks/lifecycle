@@ -63,7 +63,18 @@ func byRegistry(reg string, images []string, checkReadAccess CheckReadAccess, ke
 	return ""
 }
 
-// GetRunImageForExport TODO
+// GetRunImageForExport takes platform inputs and returns run image information
+// for populating the io.buildpacks.lifecycle.metadata on the exported app image.
+// The run image information is read from:
+// - stack.toml for older platforms
+// - run.toml for newer platforms, where the run image information returned is
+//   - the first set of image & mirrors that contains the platform-provided run image, or
+//   - the platform-provided run image if extensions were used and the image was not found, or
+//   - the first set of image & mirrors in run.toml
+//
+// The "platform-provided run image" is the run image "image" in analyzed.toml,
+// NOT the run image "reference",
+// as the run image "reference" could be a daemon image ID (which we'd not expect to find in run.toml).
 func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, error) {
 	if inputs.PlatformAPI.LessThan("0.12") {
 		stackMD, err := files.ReadStack(inputs.StackPath, cmd.DefaultLogger)
