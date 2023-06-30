@@ -295,14 +295,6 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	return appImage, runImageID.String(), nil
 }
 
-func isDigestRef(ref string) bool {
-	digest, err := name.NewDigest(ref)
-	if err != nil {
-		return false
-	}
-	return digest.DigestStr() != ""
-}
-
 func toContainerConfig(v1C *v1.Config) *container.Config {
 	return &container.Config{
 		ArgsEscaped:     v1C.ArgsEscaped,
