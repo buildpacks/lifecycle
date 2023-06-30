@@ -150,10 +150,8 @@ func ValidateRunDockerfile(dInfo *DockerfileInfo, logger log.Logger) error {
 		if stage.BaseName != baseImageArgRef {
 			newBase = stage.BaseName
 		}
-		for idx, command := range stage.Commands {
-			if idx > 0 {
-				extend = true
-			}
+		for _, command := range stage.Commands {
+			extend = true
 			found := false
 			for _, rc := range recommendedCommands {
 				if rc == strings.ToUpper(command.Name()) {
