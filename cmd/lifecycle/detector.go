@@ -182,6 +182,8 @@ func (d *detectCmd) writeDetectData(group buildpack.Group, plan files.Plan) erro
 
 // writeGenerateData re-outputs the analyzedMD that we read previously, but now we've added the RunImage, if a custom runImage was configured
 func (d *detectCmd) writeGenerateData(analyzedMD files.Analyzed) error {
+	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata is: ")
+	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
 	if err := encoding.WriteTOML(d.AnalyzedPath, analyzedMD); err != nil {
 		return cmd.FailErr(err, "write analyzed metadata")
 	}

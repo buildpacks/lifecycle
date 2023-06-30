@@ -396,7 +396,7 @@ fail: fail_detect_buildpack@some_version
 			var analyzed files.Analyzed
 			_, err = toml.DecodeFile(foundAnalyzedTOML, &analyzed)
 			h.AssertNil(t, err)
-			h.AssertEq(t, analyzed.RunImage.Reference, "some-run-image-from-extension")
+			h.AssertEq(t, analyzed.RunImage.Image, "some-run-image-from-extension")
 		})
 	})
 

@@ -131,6 +131,8 @@ func (a *analyzeCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErrCode(err, a.CodeFor(platform.AnalyzeError), "analyze")
 	}
+	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata is: ")
+	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
 	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
 		return cmd.FailErr(err, "write analyzed")
 	}
