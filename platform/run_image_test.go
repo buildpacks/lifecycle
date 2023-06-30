@@ -23,11 +23,11 @@ func TestRunImage(t *testing.T) {
 func testRunImage(t *testing.T, when spec.G, it spec.S) {
 	when(".GetRunImageForExport", func() {
 		var inputs = platform.LifecycleInputs{
-			LayersDir:   filepath.Join("testdata", "layers"),
-			PlatformAPI: api.Platform.Latest(),
-			RunImageRef: "some-run-image-ref",
-			RunPath:     filepath.Join("testdata", "layers", "run.toml"),
-			StackPath:   filepath.Join("testdata", "layers", "stack.toml"),
+			AnalyzedPath: filepath.Join("testdata", "layers", "analyzed.toml"),
+			LayersDir:    filepath.Join("testdata", "layers"),
+			PlatformAPI:  api.Platform.Latest(),
+			RunPath:      filepath.Join("testdata", "layers", "run.toml"),
+			StackPath:    filepath.Join("testdata", "layers", "stack.toml"),
 		}
 
 		when("run.toml", func() {
@@ -52,74 +52,60 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("contains an image matching run image ref", func() {
-				inputs.RunImageRef = "some-run-image-from-run-toml-1"
-
 				it("returns the image", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
 					h.AssertEq(t, result, files.RunImageForExport{
-						Image:   "some-run-image-from-run-toml-1",
-						Mirrors: []string{"some-run-image-mirror-from-run-toml-1", "some-other-run-image-mirror-from-run-toml-1"},
+						Image:   "some-user-provided-run-image",
+						Mirrors: []string{"some-user-provided-run-image-mirror-1", "some-user-provided-run-image-mirror-2"},
 					})
 				})
 
 				when("reference includes docker registry", func() {
-					inputs.RunImageRef = "index.docker.io/some-run-image-from-run-toml-1"
+					inputs.AnalyzedPath = filepath.Join("testdata", "layers", "analyzed-docker.toml")
 
 					it("still matches", func() {
 						result, err := platform.GetRunImageForExport(inputs)
 						h.AssertNil(t, err)
 						h.AssertEq(t, result, files.RunImageForExport{
-							Image:   "some-run-image-from-run-toml-1",
-							Mirrors: []string{"some-run-image-mirror-from-run-toml-1", "some-other-run-image-mirror-from-run-toml-1"},
+							Image:   "some-user-provided-run-image",
+							Mirrors: []string{"some-user-provided-run-image-mirror-1", "some-user-provided-run-image-mirror-2"},
 						})
 					})
 				})
 			})
 
 			when("contains an image mirror matching run image ref", func() {
-				inputs.RunImageRef = "some-other-run-image-mirror-from-run-toml-1"
-
 				it("returns the image", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
 					h.AssertEq(t, result, files.RunImageForExport{
-						Image:   "some-run-image-from-run-toml-1",
-						Mirrors: []string{"some-run-image-mirror-from-run-toml-1", "some-other-run-image-mirror-from-run-toml-1"},
-					})
-				})
-
-				when("reference includes docker registry", func() {
-					inputs.RunImageRef = "index.docker.io/some-other-run-image-mirror-from-run-toml-1"
-
-					it("still matches", func() {
-						result, err := platform.GetRunImageForExport(inputs)
-						h.AssertNil(t, err)
-						h.AssertEq(t, result, files.RunImageForExport{
-							Image:   "some-run-image-from-run-toml-1",
-							Mirrors: []string{"some-run-image-mirror-from-run-toml-1", "some-other-run-image-mirror-from-run-toml-1"},
-						})
+						Image:   "some-user-provided-run-image",
+						Mirrors: []string{"some-user-provided-run-image-mirror-1", "some-user-provided-run-image-mirror-2"},
 					})
 				})
 			})
 
 			when("contains no image or image mirror matching run image ref", func() {
+				inputs.AnalyzedPath = filepath.Join("testdata", "layers", "analyzed-other.toml")
+
 				it("returns the first image in run.toml", func() {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
 					h.AssertEq(t, result, files.RunImageForExport{
-						Image:   "some-run-image-from-run-toml",
-						Mirrors: []string{"some-run-image-mirror-from-run-toml", "some-other-run-image-mirror-from-run-toml"},
+						Image:   "some-other-user-provided-run-image",
+						Mirrors: []string{"some-other-user-provided-run-image-mirror-1", "some-other-user-provided-run-image-mirror-2"},
 					})
 				})
 
 				when("there are extensions", func() {
-					inputs.LayersDir = filepath.Join("testdata", "other-layers")
+					inputs.AnalyzedPath = filepath.Join("testdata", "layers", "analyzed-other.toml")
+					inputs.LayersDir = filepath.Join("testdata", "other-layers") // force <layers>/config/metadata.toml
 
-					it("returns the run image ref", func() {
+					it("returns the run image ref from analyzed.toml", func() {
 						result, err := platform.GetRunImageForExport(inputs)
 						h.AssertNil(t, err)
-						h.AssertEq(t, result, files.RunImageForExport{Image: "some-run-image-ref"})
+						h.AssertEq(t, result, files.RunImageForExport{Image: "some-new-user-provided-run-image"})
 					})
 				})
 			})
@@ -133,8 +119,8 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 					result, err := platform.GetRunImageForExport(inputs)
 					h.AssertNil(t, err)
 					h.AssertEq(t, result, files.RunImageForExport{
-						Image:   "some-run-image-from-stack-toml",
-						Mirrors: []string{"some-run-image-mirror-from-stack-toml", "some-other-run-image-mirror-from-stack-toml"},
+						Image:   "some-other-user-provided-run-image",
+						Mirrors: []string{"some-other-user-provided-run-image-mirror-1", "some-other-user-provided-run-image-mirror-2"},
 					})
 				})
 
