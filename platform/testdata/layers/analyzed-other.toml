@@ -1,0 +1,2 @@
+[run-image]
+  image = "some-new-user-provided-run-image"

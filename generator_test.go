@@ -394,21 +394,22 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 
 				generator.AnalyzedMD = files.Analyzed{
 					RunImage: &files.RunImage{
-						Reference: "some-existing-run-image",
+						Reference: "some-existing-run-image@sha256:s0m3d1g3st",
+						Image:     "some-existing-run-image",
 					},
 				}
 			})
 
 			type testCase struct {
-				before                    func()
-				descCondition             string
-				descResult                string
-				aDockerfiles              []buildpack.DockerfileInfo
-				bDockerfiles              []buildpack.DockerfileInfo
-				expectedRunImageReference string
-				expectedRunImageExtend    bool
-				expectedErr               string
-				assertAfter               func()
+				before                 func()
+				descCondition          string
+				descResult             string
+				aDockerfiles           []buildpack.DockerfileInfo
+				bDockerfiles           []buildpack.DockerfileInfo
+				expectedRunImageImage  string
+				expectedRunImageExtend bool
+				expectedErr            string
+				assertAfter            func()
 			}
 			for _, tc := range []testCase{
 				{
@@ -428,8 +429,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						WithBase:    "",
 						Extend:      true,
 					}},
-					expectedRunImageReference: "some-existing-run-image",
-					expectedRunImageExtend:    true,
+					expectedRunImageImage:  "some-existing-run-image",
+					expectedRunImageExtend: true,
 				},
 				{
 					descCondition: "a run.Dockerfile declares a new base image and run.Dockerfiles follow",
@@ -452,8 +453,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							Extend:      true,
 						},
 					},
-					expectedRunImageReference: "some-new-run-image",
-					expectedRunImageExtend:    true,
+					expectedRunImageImage:  "some-new-run-image",
+					expectedRunImageExtend: true,
 				},
 				{
 					descCondition: "a run.Dockerfile declares a new base image (only) and no run.Dockerfiles follow",
@@ -476,8 +477,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							Extend:      false,
 						},
 					},
-					expectedRunImageReference: "some-other-base-image",
-					expectedRunImageExtend:    false,
+					expectedRunImageImage:  "some-other-base-image",
+					expectedRunImageExtend: false,
 					assertAfter: func() {
 						t.Log("copies Dockerfiles to the correct locations")
 						t.Log("renames earlier run.Dockerfiles to Dockerfile.ignore in the output directory")
@@ -499,9 +500,9 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							Extend:      true,
 						},
 					},
-					bDockerfiles:              []buildpack.DockerfileInfo{},
-					expectedRunImageReference: "some-new-run-image",
-					expectedRunImageExtend:    true,
+					bDockerfiles:           []buildpack.DockerfileInfo{},
+					expectedRunImageImage:  "some-new-run-image",
+					expectedRunImageExtend: true,
 				},
 				{
 					before: func() {
@@ -522,9 +523,9 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							Extend:      false,
 						},
 					},
-					bDockerfiles:              []buildpack.DockerfileInfo{},
-					expectedRunImageReference: "some-new-run-image",
-					expectedRunImageExtend:    false,
+					bDockerfiles:           []buildpack.DockerfileInfo{},
+					expectedRunImageImage:  "some-new-run-image",
+					expectedRunImageExtend: false,
 				},
 				{
 					before: func() {
@@ -545,8 +546,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							Extend:      false,
 						},
 					},
-					bDockerfiles:              []buildpack.DockerfileInfo{},
-					expectedRunImageReference: "some-other-run-image",
+					bDockerfiles:          []buildpack.DockerfileInfo{},
+					expectedRunImageImage: "some-other-run-image",
 					assertAfter: func() {
 						h.AssertLogEntry(t, logHandler, "new runtime base image 'some-other-run-image' not found in run metadata")
 					},
@@ -575,7 +576,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						// do generate
 						result, err := generator.Generate()
 						if err == nil {
-							h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, tc.expectedRunImageReference)
+							h.AssertEq(t, result.AnalyzedMD.RunImage.Image, tc.expectedRunImageImage)
 							h.AssertEq(t, result.AnalyzedMD.RunImage.Extend, tc.expectedRunImageExtend)
 						} else {
 							t.Log(err)

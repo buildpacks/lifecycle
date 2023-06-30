@@ -125,8 +125,10 @@ type RunImageForRebase struct {
 	RunImageForExport
 }
 
-func (r *RunImageForRebase) Contains(ref string) bool {
-	return r.RunImageForExport.Contains(ref)
+// Contains returns true if the provided image reference is found in the existing metadata,
+// removing the digest portion of the reference when determining if two image names are equivalent.
+func (r *RunImageForRebase) Contains(providedImage string) bool {
+	return r.RunImageForExport.Contains(providedImage)
 }
 
 func (r *RunImageForRebase) ToStack() Stack {

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/internal/name"
 	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -157,13 +156,24 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		g.Logger.Debugf("Finished running generate for extension %s", ext)
 	}
 
-	g.Logger.Debug("Checking for new run image")
-	runRef, extend := g.runImageFrom(dockerfiles)
-	if err != nil {
-		return GenerateResult{}, err
+	g.Logger.Debug("Checking run image")
+	finalAnalyzedMD := g.AnalyzedMD
+	generatedRunImageRef, extend := g.runImageFrom(dockerfiles)
+	if generatedRunImageRef != "" && g.isNew(generatedRunImageRef) {
+		if !g.RunMetadata.Contains(generatedRunImageRef) {
+			g.Logger.Warnf("new runtime base image '%s' not found in run metadata", generatedRunImageRef)
+		}
+		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", generatedRunImageRef)
+		finalAnalyzedMD.RunImage = &files.RunImage{ // reference and target data are cleared
+			Extend: extend,
+			Image:  generatedRunImageRef,
+		}
 	}
-	if runRef != "" && !satisfies(g.RunMetadata.Images, runRef) {
-		g.Logger.Warnf("new runtime base image '%s' not found in run metadata", runRef)
+	if extend {
+		if finalAnalyzedMD.RunImage != nil { // sanity check to prevent panic
+			g.Logger.Debug("Updating analyzed metadata to indicate run image extension")
+			finalAnalyzedMD.RunImage.Extend = true
+		}
 	}
 
 	g.Logger.Debug("Copying Dockerfiles")
@@ -171,37 +181,11 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		return GenerateResult{}, err
 	}
 
-	newAnalyzedMD := g.AnalyzedMD
-	if shouldReplacePrevious(runRef, g.AnalyzedMD) {
-		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", runRef)
-		newAnalyzedMD.RunImage = &files.RunImage{ // target data is cleared
-			Reference: runRef,
-			Extend:    extend,
-			Image:     runRef,
-		}
-	} else if extend && g.AnalyzedMD.RunImage != nil {
-		g.Logger.Debug("Updating analyzed metadata with run image extend")
-		newAnalyzedMD.RunImage.Extend = true
-	}
-
 	return GenerateResult{
-		AnalyzedMD: newAnalyzedMD,
+		AnalyzedMD: finalAnalyzedMD,
 		Plan:       filteredPlan,
 		UsePlan:    true,
 	}, nil
-}
-
-func satisfies(images []files.RunImageForExport, imageName string) bool {
-	if len(images) == 0 {
-		// if no run image metadata was provided, consider it a match
-		return true
-	}
-	for _, image := range images {
-		if name.ParseMaybe(image.Image) == name.ParseMaybe(imageName) {
-			return true
-		}
-	}
-	return false
 }
 
 func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
@@ -268,12 +252,9 @@ func (g *Generator) runImageFrom(dockerfiles []buildpack.DockerfileInfo) (newBas
 	return newBase, extend
 }
 
-func shouldReplacePrevious(base string, analyzedMD files.Analyzed) bool {
-	if base == "" {
-		return false
+func (g *Generator) isNew(ref string) bool {
+	if g.PlatformAPI.AtLeast("0.12") {
+		return ref != g.AnalyzedMD.RunImageImage() // don't use `name.ParseMaybe` as this will strip the digest, and we want to use exactly what the extension author wrote
 	}
-	if analyzedMD.RunImage == nil {
-		return true
-	}
-	return base != analyzedMD.RunImage.Reference
+	return ref != ""
 }
