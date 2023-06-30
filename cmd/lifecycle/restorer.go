@@ -11,7 +11,6 @@ import (
 	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
@@ -101,40 +100,28 @@ func (r *restoreCmd) Exec() error {
 		var (
 			remoteRunImage imgutil.Image
 		)
+		runImageName := analyzedMD.RunImageImage() // FIXME: if we have a digest reference available in `Reference` (e.g., in the non-daemon case) we should use it
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
-			runImageRef := analyzedMD.RunImageImage() // FIXME: if we have a digest reference available in `Reference` (e.g., in the non-daemon case) we should use it
-			if runImageRef == "" {
-				// Platform API 0.12 and above always populates this field
-				return cmd.FailErr(err, "get run image reference from analyzed.toml")
-			}
-			cmd.DefaultLogger.Debugf("Pulling run image metadata for %s...", runImageRef)
-			remoteRunImage, err = r.pullSparse(runImageRef)
+			cmd.DefaultLogger.Debugf("Pulling run image metadata for %s...", runImageName)
+			remoteRunImage, err = r.pullSparse(runImageName)
 			if err != nil {
 				return cmd.FailErr(err, "pull run image")
 			}
-		}
-		if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
+			// update analyzed metadata, even if we only needed to pull the image metadata, because
+			// the extender needs a digest reference in analyzed.toml,
+			// and daemon images will only have a daemon image ID
+			if err = updateAnalyzedMD(&analyzedMD, remoteRunImage); err != nil {
+				return cmd.FailErr(err, "update analyzed metadata")
+			}
+		} else if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
-			if remoteRunImage == nil { // we didn't pull the run image in the previous step
-				remoteRunImage, err = remote.NewImage(analyzedMD.RunImage.Reference, r.keychain)
-				if err != nil {
-					return cmd.FailErr(err, "read run image")
-				}
+			remoteRunImage, err = remote.NewImage(runImageName, r.keychain)
+			if err != nil || !remoteRunImage.Found() {
+				return cmd.FailErr(err, "pull run image")
 			}
-			digestRef, err := remoteRunImage.Identifier()
-			if err != nil {
-				return cmd.FailErr(err, "get digest reference for run image")
+			if err = updateAnalyzedMD(&analyzedMD, remoteRunImage); err != nil {
+				return cmd.FailErr(err, "update analyzed metadata")
 			}
-			targetData, err := platform.GetTargetMetadata(remoteRunImage)
-			if err != nil {
-				return cmd.FailErr(err, "read target data from run image")
-			}
-			cmd.DefaultLogger.Debugf("Run image info in analyzed metadata was: ")
-			cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
-			analyzedMD.RunImage.Reference = digestRef.String()
-			analyzedMD.RunImage.TargetMetadata = targetData
-			cmd.DefaultLogger.Debugf("Run image info in analyzed metadata is: ")
-			cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
 		}
 		if err = encoding.WriteTOML(r.AnalyzedPath, analyzedMD); err != nil {
 			return cmd.FailErr(err, "write analyzed metadata")
@@ -164,6 +151,24 @@ func (r *restoreCmd) Exec() error {
 	return r.restore(appMeta, group, cacheStore)
 }
 
+func updateAnalyzedMD(analyzedMD *files.Analyzed, remoteRunImage imgutil.Image) error {
+	digestRef, err := remoteRunImage.Identifier()
+	if err != nil {
+		return cmd.FailErr(err, "get digest reference for run image")
+	}
+	targetData, err := platform.GetTargetMetadata(remoteRunImage)
+	if err != nil {
+		return cmd.FailErr(err, "read target data from run image")
+	}
+	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata was: ")
+	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
+	analyzedMD.RunImage.Reference = digestRef.String()
+	analyzedMD.RunImage.TargetMetadata = targetData
+	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata is: ")
+	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
+	return nil
+}
+
 func needsPulling(runImage *files.RunImage) bool {
 	if runImage == nil {
 		// sanity check to prevent panic, should be unreachable
@@ -177,18 +182,10 @@ func needsUpdating(runImage *files.RunImage) bool {
 		// sanity check to prevent panic, should be unreachable
 		return false
 	}
-	if isDigestRef(runImage.Reference) && isPopulated(runImage.TargetMetadata) {
+	if runImage.Reference != "" && isPopulated(runImage.TargetMetadata) {
 		return false
 	}
 	return true
-}
-
-func isDigestRef(ref string) bool {
-	digest, err := name.NewDigest(ref)
-	if err != nil {
-		return false
-	}
-	return digest.DigestStr() != ""
 }
 
 func isPopulated(metadata *files.TargetMetadata) bool {
