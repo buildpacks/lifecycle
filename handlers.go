@@ -1,7 +1,9 @@
 package lifecycle
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 
 	"github.com/BurntSushi/toml"
 
@@ -89,6 +91,9 @@ func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	}
 	_, err := toml.DecodeFile(path, &order)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil, fmt.Errorf("failed to read order file: %w, Hint: Try setting env var CNB_ORDER_PATH to the path of a valid order.toml file", err)
+		}
 		return nil, nil, fmt.Errorf("failed to read order file: %w", err)
 	}
 	for g, group := range order.OrderExtensions {
