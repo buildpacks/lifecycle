@@ -61,6 +61,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, inputs.UID, 0)
 			h.AssertEq(t, inputs.UseDaemon, false)
 			h.AssertEq(t, inputs.UseLayout, false)
+			h.AssertEq(t, inputs.InsecureRegistry, "")
 		})
 
 		when("env vars are set", func() {
@@ -96,6 +97,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.Setenv(platform.EnvUID, "1234"))
 				h.AssertNil(t, os.Setenv(platform.EnvUseDaemon, "true"))
 				h.AssertNil(t, os.Setenv(platform.EnvUseLayout, "true"))
+				h.AssertNil(t, os.Setenv(platform.EnvInsecureRegistry, "some-insecure-registry"))
 			})
 
 			it.After(func() {
@@ -130,6 +132,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.Unsetenv(platform.EnvUID))
 				h.AssertNil(t, os.Unsetenv(platform.EnvUseDaemon))
 				h.AssertNil(t, os.Unsetenv(platform.EnvUseLayout))
+				h.AssertNil(t, os.Unsetenv(platform.EnvInsecureRegistry))
 			})
 
 			it("returns lifecycle inputs with env values fill in", func() {
@@ -172,6 +175,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, inputs.UID, 1234)
 				h.AssertEq(t, inputs.UseDaemon, true)
 				h.AssertEq(t, inputs.UseLayout, true)
+				h.AssertEq(t, inputs.InsecureRegistry, "some-insecure-registry")
 			})
 		})
 
