@@ -168,6 +168,11 @@ func FlagForceRebase(force *bool) {
 	flagSet.BoolVar(force, "force", *force, "execute rebase even if operation is unsafe")
 }
 
+// FlagInsecureRegistry sets insecure-registry parameter as available
+func FlagInsecureRegistry(insecureRegistry *string) {
+	flagSet.StringVar(insecureRegistry, "insecure-registry", *insecureRegistry, "to use an 'insecure' registry")
+}
+
 // deprecated
 
 func DeprecatedFlagRunImage(deprecatedRunImage *string) {

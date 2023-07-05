@@ -59,6 +59,7 @@ func (c *createCmd) DefineFlags() {
 	cli.FlagTags(&c.AdditionalTags)
 	cli.FlagUID(&c.UID)
 	cli.FlagUseDaemon(&c.UseDaemon)
+	cli.FlagInsecureRegistry(&c.InsecureRegistry)
 }
 
 // Args validates arguments and flags, and fills in default values.
