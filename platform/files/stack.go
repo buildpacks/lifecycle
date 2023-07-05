@@ -5,7 +5,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpacks/lifecycle/internal/name"
+	iname "github.com/buildpacks/lifecycle/internal/name"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -23,15 +23,15 @@ type RunImageForExport struct {
 	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
 }
 
-// Contains returns true if the provided reference matches either the primary image,
-// or the image mirrors.
-func (r *RunImageForExport) Contains(ref string) bool {
-	ref = name.ParseMaybe(ref)
-	if name.ParseMaybe(r.Image) == ref {
+// Contains returns true if the provided image reference is found in the existing metadata,
+// removing the digest portion of the reference when determining if two image names are equivalent.
+func (r *RunImageForExport) Contains(providedImage string) bool {
+	providedImage = iname.ParseMaybe(providedImage)
+	if iname.ParseMaybe(r.Image) == providedImage {
 		return true
 	}
 	for _, m := range r.Mirrors {
-		if name.ParseMaybe(m) == ref {
+		if iname.ParseMaybe(m) == providedImage {
 			return true
 		}
 	}

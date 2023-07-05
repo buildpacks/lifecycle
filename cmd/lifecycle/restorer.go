@@ -11,7 +11,6 @@ import (
 	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
@@ -85,60 +84,43 @@ func (r *restoreCmd) Exec() error {
 	)
 	if analyzedMD, err = files.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
 		if r.supportsBuildImageExtension() && r.BuildImageRef != "" {
-			cmd.DefaultLogger.Debugf("Pulling builder image metadata...")
-			buildImage, err := r.pullSparse(r.BuildImageRef)
+			cmd.DefaultLogger.Debugf("Pulling builder image metadata for %s...", r.BuildImageRef)
+			remoteBuildImage, err := r.pullSparse(r.BuildImageRef)
 			if err != nil {
-				return cmd.FailErr(err, "read builder image")
+				return cmd.FailErr(err, "pull builder image")
 			}
-			digestRef, err := digestReference(r.BuildImageRef, buildImage)
+			digestRef, err := remoteBuildImage.Identifier()
 			if err != nil {
 				return cmd.FailErr(err, "get digest reference for builder image")
 			}
-			analyzedMD.BuildImage = &files.ImageIdentifier{Reference: digestRef}
+			analyzedMD.BuildImage = &files.ImageIdentifier{Reference: digestRef.String()}
+			cmd.DefaultLogger.Debugf("Adding build image info to analyzed metadata: ")
+			cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.BuildImage))
 		}
+		var (
+			remoteRunImage imgutil.Image
+		)
+		runImageName := analyzedMD.RunImageImage() // FIXME: if we have a digest reference available in `Reference` (e.g., in the non-daemon case) we should use it
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
-			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
-			runImageRef := analyzedMD.RunImageImage()
-			if runImageRef == "" {
-				runImageRef = analyzedMD.RunImage.Reference // older platforms don't populate Image
-			}
-			runImage, err := r.pullSparse(runImageRef)
+			cmd.DefaultLogger.Debugf("Pulling run image metadata for %s...", runImageName)
+			remoteRunImage, err = r.pullSparse(runImageName)
 			if err != nil {
-				return cmd.FailErr(err, "read run image")
+				return cmd.FailErr(err, "pull run image")
 			}
-			targetData, err := platform.GetTargetMetadata(runImage)
-			if err != nil {
-				return cmd.FailErr(err, "read target data from run image")
-			}
-			digestRef, err := digestReference(runImageRef, runImage)
-			if err != nil {
-				return cmd.FailErr(err, "get digest reference for builder image")
-			}
-			analyzedMD.RunImage = &files.RunImage{
-				Reference:      digestRef,
-				Image:          analyzedMD.RunImageImage(),
-				Extend:         true,
-				TargetMetadata: targetData,
+			// update analyzed metadata, even if we only needed to pull the image metadata, because
+			// the extender needs a digest reference in analyzed.toml,
+			// and daemon images will only have a daemon image ID
+			if err = updateAnalyzedMD(&analyzedMD, remoteRunImage); err != nil {
+				return cmd.FailErr(err, "update analyzed metadata")
 			}
 		} else if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
-			cmd.DefaultLogger.Debugf("Updating analyzed metadata...")
-			runImage, err := remote.NewImage(analyzedMD.RunImage.Reference, r.keychain)
-			if err != nil {
-				return cmd.FailErr(err, "read run image")
+			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
+			remoteRunImage, err = remote.NewImage(runImageName, r.keychain)
+			if err != nil || !remoteRunImage.Found() {
+				return cmd.FailErr(err, "pull run image")
 			}
-			targetData, err := platform.GetTargetMetadata(runImage)
-			if err != nil {
-				return cmd.FailErr(err, "read target data from run image")
-			}
-			digestRef, err := digestReference(analyzedMD.RunImage.Reference, runImage)
-			if err != nil {
-				return cmd.FailErr(err, "get digest reference for builder image")
-			}
-			analyzedMD.RunImage = &files.RunImage{
-				Reference:      digestRef,
-				Image:          analyzedMD.RunImageImage(),
-				Extend:         analyzedMD.RunImage.Extend,
-				TargetMetadata: targetData,
+			if err = updateAnalyzedMD(&analyzedMD, remoteRunImage); err != nil {
+				return cmd.FailErr(err, "update analyzed metadata")
 			}
 		}
 		if err = encoding.WriteTOML(r.AnalyzedPath, analyzedMD); err != nil {
@@ -169,18 +151,45 @@ func (r *restoreCmd) Exec() error {
 	return r.restore(appMeta, group, cacheStore)
 }
 
+func updateAnalyzedMD(analyzedMD *files.Analyzed, remoteRunImage imgutil.Image) error {
+	digestRef, err := remoteRunImage.Identifier()
+	if err != nil {
+		return cmd.FailErr(err, "get digest reference for run image")
+	}
+	targetData, err := platform.GetTargetMetadata(remoteRunImage)
+	if err != nil {
+		return cmd.FailErr(err, "read target data from run image")
+	}
+	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata was: ")
+	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
+	analyzedMD.RunImage.Reference = digestRef.String()
+	analyzedMD.RunImage.TargetMetadata = targetData
+	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata is: ")
+	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
+	return nil
+}
+
 func needsPulling(runImage *files.RunImage) bool {
-	return runImage != nil && runImage.Extend
+	if runImage == nil {
+		// sanity check to prevent panic, should be unreachable
+		return false
+	}
+	return runImage.Extend
 }
 
 func needsUpdating(runImage *files.RunImage) bool {
 	if runImage == nil {
+		// sanity check to prevent panic, should be unreachable
 		return false
 	}
-	if runImage.TargetMetadata != nil && runImage.TargetMetadata.OS != "" {
+	if runImage.Reference != "" && isPopulated(runImage.TargetMetadata) {
 		return false
 	}
 	return true
+}
+
+func isPopulated(metadata *files.TargetMetadata) bool {
+	return metadata != nil && metadata.OS != ""
 }
 
 func (r *restoreCmd) supportsBuildImageExtension() bool {
@@ -201,9 +210,12 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 		return nil, fmt.Errorf("failed to create cache directory: %w", err)
 	}
 	// get remote image
-	remoteImage, err := remote.NewV1Image(imageRef, r.keychain)
+	remoteImage, err := remote.NewImage(imageRef, r.keychain, remote.FromBaseImage(imageRef))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get remote image: %w", err)
+		return nil, fmt.Errorf("failed to initialize remote image: %w", err)
+	}
+	if !remoteImage.Found() {
+		return nil, fmt.Errorf("failed to get remote image")
 	}
 	// check for usable kaniko dir
 	if _, err := os.Stat(kanikoDir); err != nil {
@@ -213,13 +225,15 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 		return nil, nil
 	}
 	// save to disk
-	h, err := remoteImage.Digest()
+	h, err := remoteImage.UnderlyingImage().Digest()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get remote image digest: %w", err)
 	}
+	path := filepath.Join(baseCacheDir, h.String())
+	cmd.DefaultLogger.Debugf("Saving image metadata to %s...", path)
 	sparseImage, err := sparse.NewImage(
-		filepath.Join(baseCacheDir, h.String()),
-		remoteImage,
+		path,
+		remoteImage.UnderlyingImage(),
 		layout.WithMediaTypes(imgutil.DefaultTypes),
 	)
 	if err != nil {
@@ -228,32 +242,7 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 	if err = sparseImage.Save(); err != nil {
 		return nil, fmt.Errorf("failed to save sparse image: %w", err)
 	}
-	return sparseImage, nil
-}
-
-func digestReference(imageRef string, image imgutil.Image) (string, error) {
-	ir, err := name.ParseReference(imageRef)
-	if err != nil {
-		return "", err
-	}
-	_, err = name.NewDigest(ir.String())
-	if err == nil {
-		// if we already have a digest reference, return it
-		return imageRef, nil
-	}
-	id, err := image.Identifier()
-	if err != nil {
-		return "", err
-	}
-	digest, err := name.NewDigest(id.String())
-	if err != nil {
-		return "", err
-	}
-	digestRef, err := name.NewDigest(fmt.Sprintf("%s@%s", ir.Context().Name(), digest.DigestStr()), name.WeakValidation)
-	if err != nil {
-		return "", err
-	}
-	return digestRef.String(), nil
+	return remoteImage, nil
 }
 
 func (r *restoreCmd) restoresLayerMetadata() bool {

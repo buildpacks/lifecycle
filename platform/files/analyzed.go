@@ -125,8 +125,10 @@ type RunImageForRebase struct {
 	RunImageForExport
 }
 
-func (r *RunImageForRebase) Contains(ref string) bool {
-	return r.RunImageForExport.Contains(ref)
+// Contains returns true if the provided image reference is found in the existing metadata,
+// removing the digest portion of the reference when determining if two image names are equivalent.
+func (r *RunImageForRebase) Contains(providedImage string) bool {
+	return r.RunImageForExport.Contains(providedImage)
 }
 
 func (r *RunImageForRebase) ToStack() Stack {
@@ -140,9 +142,9 @@ func (r *RunImageForRebase) ToStack() Stack {
 
 type RunImage struct {
 	Reference string `toml:"reference"`
-	// Image specifies the repository name for the image.
+	// Image specifies the repository name for the image that was provided - either by the platform, or by extensions.
 	// When exporting to a daemon, the restorer uses this field to pull the run image if needed for the extender;
-	// it can't use reference because this may be a daemon image ID if analyzed.toml was last written by the analyzer.
+	// it can't use `Reference` because this may be a daemon image ID if analyzed.toml was last written by the analyzer.
 	Image string `toml:"image,omitempty"`
 	// Extend if true indicates that the run image should be extended by the extender.
 	Extend         bool            `toml:"extend,omitempty"`

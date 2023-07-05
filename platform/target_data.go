@@ -29,9 +29,6 @@ func EnvVarsFor(tm files.TargetMetadata) []string {
 
 func GetTargetMetadata(fromImage imgutil.Image) (*files.TargetMetadata, error) {
 	tm := files.TargetMetadata{}
-	if !fromImage.Found() {
-		return &tm, nil
-	}
 	var err error
 	tm.OS, err = fromImage.OS()
 	if err != nil {

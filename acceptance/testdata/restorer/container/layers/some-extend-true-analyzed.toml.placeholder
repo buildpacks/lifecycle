@@ -1,4 +1,4 @@
 [run-image]
-  reference = "REPLACE"
+  reference = ""
   extend = true
   image = "REPLACE"

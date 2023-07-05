@@ -194,16 +194,19 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 
 		when("run", func() {
 			when("valid", func() {
-				it("succeeds", func() {
+				it("succeeds and sets extend to true in the result", func() {
 					for i, content := range validCases {
 						dockerfileName := fmt.Sprintf("Dockerfile%d", i)
 						dockerfilePath := filepath.Join(tmpDir, dockerfileName)
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(content), 0600))
-						err := buildpack.ValidateRunDockerfile(&buildpack.DockerfileInfo{Path: dockerfilePath}, logger)
+						dInfo := &buildpack.DockerfileInfo{Path: dockerfilePath}
+						err := buildpack.ValidateRunDockerfile(dInfo, logger)
 						if err != nil {
 							t.Fatalf("Error validating Dockerfile %d: %s", i, err)
 						}
 						h.AssertEq(t, len(logHandler.Entries), 0)
+						h.AssertEq(t, dInfo.Extend, true)
+						h.AssertEq(t, dInfo.WithBase, "")
 					}
 				})
 
@@ -218,22 +221,25 @@ FROM ${base_image}
 							h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
 							logHandler = memory.New()
 							logger = &log.Logger{Handler: logHandler}
-							err := buildpack.ValidateRunDockerfile(&buildpack.DockerfileInfo{Path: dockerfilePath}, logger)
+							dInfo := &buildpack.DockerfileInfo{Path: dockerfilePath}
+							err := buildpack.ValidateRunDockerfile(dInfo, logger)
 							h.AssertNil(t, err)
 							assertLogEntry(t, logHandler, "run.Dockerfile "+tc.expectedWarning)
+							h.AssertEq(t, dInfo.Extend, true)
+							h.AssertEq(t, dInfo.WithBase, "")
 						}
 					})
 				})
 
 				when("switching the runtime base image", func() {
-					it("returns the new base image", func() {
+					it("sets the new base image in the result", func() {
 						dockerfilePath := filepath.Join(tmpDir, "run.Dockerfile")
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(`FROM some-base-image`), 0600))
 						dInfo := &buildpack.DockerfileInfo{Path: dockerfilePath}
 						err := buildpack.ValidateRunDockerfile(dInfo, logger)
 						h.AssertNil(t, err)
-						h.AssertEq(t, dInfo.WithBase, "some-base-image")
 						h.AssertEq(t, dInfo.Extend, false)
+						h.AssertEq(t, dInfo.WithBase, "some-base-image")
 					})
 				})
 			})

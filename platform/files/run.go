@@ -17,6 +17,17 @@ type Run struct {
 	Images []RunImageForExport `json:"-" toml:"images"`
 }
 
+// Contains returns true if the provided image reference is found in the existing metadata,
+// removing the digest portion of the reference when determining if two image names are equivalent.
+func (r *Run) Contains(providedImage string) bool {
+	for _, i := range r.Images {
+		if i.Contains(providedImage) {
+			return true
+		}
+	}
+	return false
+}
+
 func ReadRun(runPath string, logger log.Logger) (Run, error) {
 	var runMD Run
 	if _, err := toml.DecodeFile(runPath, &runMD); err != nil {

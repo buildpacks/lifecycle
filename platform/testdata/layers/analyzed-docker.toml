@@ -1,0 +1,2 @@
+[run-image]
+  image = "index.docker.io/some-user-provided-run-image"

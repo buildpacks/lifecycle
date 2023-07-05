@@ -39,7 +39,7 @@ type BuildpackAPIVerifier interface {
 
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
-	ReadAnalyzed(path string, logr log.Logger) (files.Analyzed, error)
+	ReadAnalyzed(path string, logger log.Logger) (files.Analyzed, error)
 	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
 	ReadRun(runPath string, logger log.Logger) (files.Run, error)

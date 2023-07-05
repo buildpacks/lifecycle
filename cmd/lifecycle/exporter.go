@@ -234,16 +234,6 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 }
 
 func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
-	if isDigestRef(e.RunImageRef) {
-		// If extensions were used to extend the runtime base image, the run image reference will contain a digest.
-		// The restorer uses a name reference to pull the image from the registry (because the extender needs a manifest),
-		// and writes a digest reference to analyzed.toml.
-		// For remote images, this works perfectly well.
-		// However for local images, the daemon can't find the image when the reference contains a digest,
-		// so we use image name from analyzed.toml which is the reference written by the extension.
-		e.RunImageRef = analyzedMD.RunImageImage()
-	}
-
 	var opts = []local.ImageOption{
 		local.FromBaseImage(e.RunImageRef),
 	}
@@ -293,14 +283,6 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		appImage = cache.NewCachingImage(appImage, volumeCache)
 	}
 	return appImage, runImageID.String(), nil
-}
-
-func isDigestRef(ref string) bool {
-	digest, err := name.NewDigest(ref)
-	if err != nil {
-		return false
-	}
-	return digest.DigestStr() != ""
 }
 
 func toContainerConfig(v1C *v1.Config) *container.Config {
@@ -364,6 +346,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 			return nil, "", cmd.FailErr(err, "get extended image config")
 		}
 		if extendedConfig != nil {
+			cmd.DefaultLogger.Debugf("Using config from extensions...")
 			opts = append(opts, remote.WithConfig(extendedConfig))
 		}
 	}
