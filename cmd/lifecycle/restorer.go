@@ -46,9 +46,10 @@ func (r *restoreCmd) DefineFlags() {
 	}
 	cli.FlagCacheDir(&r.CacheDir)
 	cli.FlagCacheImage(&r.CacheImageRef)
-	cli.FlagGroupPath(&r.GroupPath)
-	cli.FlagUID(&r.UID)
 	cli.FlagGID(&r.GID)
+	cli.FlagGroupPath(&r.GroupPath)
+	cli.FlagLayersDir(&r.LayersDir)
+	cli.FlagUID(&r.UID)
 }
 
 // Args validates arguments and flags, and fills in default values.
