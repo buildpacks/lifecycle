@@ -36,6 +36,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	useShaFiles := !r.restoresLayerMetadata()
 	layerSHAStore := layer.NewSHAStore(useShaFiles)
 	if r.restoresLayerMetadata() {
+		r.Logger.Debug("Restoring Layer Metadata")
 		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
 			return err
 		}
@@ -61,6 +62,7 @@ func (r *Restorer) Restore(cache Cache) error {
 			cachedFn = buildpack.MadeCached
 		}
 
+		r.Logger.Debugf("Reading Buildpack Layers directory %s", r.LayersDir)
 		buildpackDir, err := buildpack.ReadLayersDir(r.LayersDir, bp, r.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading buildpack layer directory")
