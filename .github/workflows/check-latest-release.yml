@@ -15,8 +15,8 @@ jobs:
         with:
           check-latest: true
           go-version-file: 'go.mod'
-      - name: Read go versions
-        id: read-go
+      - name: Read go and release versions
+        id: read-versions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -38,7 +38,7 @@ jobs:
           LATEST_RELEASE_VERSION=$(echo $LATEST_RELEASE_VERSION | cut -d \v -f 2)
           echo "latest-release-version=${LATEST_RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
       - name: Create issue if needed
-        if: ${{ steps.read-go.outputs.latest-go-version != steps.read-go.outputs.latest-release-go-version }}
+        if: ${{ steps.read-versions.outputs.latest-go-version != steps.read-versions.outputs.latest-release-go-version }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -46,15 +46,15 @@ jobs:
           
           set -euo pipefail
           
-          title="Upgrade lifecycle to ${{ steps.read-go.outputs.latest-go-version }}"
-          label=${{ steps.read-go.outputs.latest-go-version }}
+          title="Upgrade lifecycle to ${{ steps.read-versions.outputs.latest-go-version }}"
+          label=${{ steps.read-versions.outputs.latest-go-version }}
           
           # Create label to use for exact search
           gh label create "$label" || true
           
           search_output=$(gh issue list --search "$title" --label "$label")
           
-          body="Latest lifecycle release v${{ steps.read-go.outputs.latest-release-version }} is built with Go version ${{ steps.read-go.outputs.latest-release-go-version }}; newer version ${{ steps.read-go.outputs.latest-go-version }} is available."
+          body="Latest lifecycle release v${{ steps.read-versions.outputs.latest-release-version }} is built with Go version ${{ steps.read-versions.outputs.latest-release-go-version }}; newer version ${{ steps.read-versions.outputs.latest-go-version }} is available."
           
           if [ -z "${search_output// }" ]
           then
@@ -73,7 +73,10 @@ jobs:
         id: scan-image
         uses: anchore/scan-action@v3
         with:
-          image: buildpacksio/lifecycle:${{ steps.read-go.outputs.latest-release-version }}
+          image: buildpacksio/lifecycle:${{ steps.read-versions.outputs.latest-release-version }}
+          fail-build: true
+          severity-cutoff: medium
+          output-format: json
       - name: Create issue if needed
         if: failure() && steps.scan-image.outcome == 'failure'
         env:
@@ -83,7 +86,7 @@ jobs:
 
             set -euo pipefail
 
-            title="CVE(s) found"
+            title="CVE(s) found in v${{ steps.read-versions.outputs.latest-release-version }}"
             label=cve
 
             # Create label to use for exact search
@@ -92,7 +95,7 @@ jobs:
             search_output=$(gh issue list --search "$title" --label "$label")
 
             GITHUB_WORKFLOW_URL=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-            body="Latest lifecycle release v${{ steps.read-go.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL"
+            body="Latest lifecycle release v${{ steps.read-versions.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL json: $(cat ${{ steps.scan-image.outputs.json }} | jq '.matches[] | .vulnerability | {id, severity, description}' )"
 
             if [ -z "${search_output// }" ]
             then
