@@ -8,10 +8,12 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 )
 
+//go:generate mockgen -package testmock -destination ../testmock/image_deleter.go github.com/buildpacks/lifecycle/cache ImageDeleter
+
 // ImageDeleter defines the methods available to delete and compare cached images
 type ImageDeleter interface {
 	DeleteImage(image imgutil.Image)
-	OldImageIsTheSameAsTheNewImage(oldImage imgutil.Image, newImage imgutil.Image) bool
+	ImagesEq(oldImage imgutil.Image, newImage imgutil.Image) (bool, error)
 }
 
 // ImageDeleterImpl is a component to manage cache image deletion
@@ -20,8 +22,8 @@ type ImageDeleterImpl struct {
 }
 
 // NewImageDeleter creates a new ImageDeleter implementation
-func NewImageDeleter(logger log.Logger) ImageDeleterImpl {
-	return ImageDeleterImpl{logger: logger}
+func NewImageDeleter(logger log.Logger) *ImageDeleterImpl {
+	return &ImageDeleterImpl{logger: logger}
 }
 
 // DeleteImage deletes an image
@@ -31,8 +33,8 @@ func (c *ImageDeleterImpl) DeleteImage(image imgutil.Image) {
 	}
 }
 
-// OriginAndNewImagesAreTheSame checks if the origin and the new images are the same
-func (c *ImageDeleterImpl) OriginAndNewImagesAreTheSame(oldImage imgutil.Image, newImage imgutil.Image) (bool, error) {
+// ImagesEq checks if the origin and the new images are the same
+func (c *ImageDeleterImpl) ImagesEq(oldImage imgutil.Image, newImage imgutil.Image) (bool, error) {
 	origIdentifier, err := oldImage.Identifier()
 	if err != nil {
 		return false, errors.Wrap(err, "getting identifier for original image")

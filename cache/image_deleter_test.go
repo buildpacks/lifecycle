@@ -22,7 +22,7 @@ func TestCacheDeleter(t *testing.T) {
 func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		testLogger   log.Logger
-		cacheDeleter ImageDeleterImpl
+		cacheDeleter ImageDeleter
 	)
 
 	it.Before(func() {
@@ -55,7 +55,7 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
 			cacheDeleter := NewImageDeleter(testLogger)
 
-			result, _ := cacheDeleter.OriginAndNewImagesAreTheSame(fakeOldImage, fakeNewImage)
+			result, _ := cacheDeleter.ImagesEq(fakeOldImage, fakeNewImage)
 
 			h.AssertEq(t, result, false)
 		})
@@ -66,7 +66,7 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 			fakeErrorImage := newFakeImageErrIdentifier(fakeOriginalImage, "original")
 			cacheDeleter := NewImageDeleter(testLogger)
 
-			_, err := cacheDeleter.OriginAndNewImagesAreTheSame(fakeErrorImage, fakeNewImage)
+			_, err := cacheDeleter.ImagesEq(fakeErrorImage, fakeNewImage)
 
 			h.AssertError(t, err, "getting identifier for original image")
 		})
@@ -77,7 +77,7 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 			fakeErrorImage := newFakeImageErrIdentifier(fakeNewImage, "new")
 			cacheDeleter := NewImageDeleter(testLogger)
 
-			_, err := cacheDeleter.OriginAndNewImagesAreTheSame(fakeOriginalImage, fakeErrorImage)
+			_, err := cacheDeleter.ImagesEq(fakeOriginalImage, fakeErrorImage)
 
 			h.AssertError(t, err, "getting identifier for new image")
 		})

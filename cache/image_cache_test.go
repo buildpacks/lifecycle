@@ -7,6 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+
+	"github.com/buildpacks/lifecycle/testmock"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
@@ -45,8 +49,12 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 		fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+		mockController := gomock.NewController(t)
+		fakeImageDeleter := testmock.NewMockImageDeleter(mockController)
+		fakeImageDeleter.EXPECT().ImagesEq(fakeOriginalImage, fakeNewImage).AnyTimes()
+		fakeImageDeleter.EXPECT().DeleteImage(fakeOriginalImage).AnyTimes()
 		testLogger = cmd.DefaultLogger
-		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
+		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger, fakeImageDeleter)
 
 		testLayerTarPath = filepath.Join(tmpDir, "some-layer.tar")
 		h.AssertNil(t, os.WriteFile(testLayerTarPath, []byte("dummy data"), 0600))
@@ -291,7 +299,6 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, err, "cache cannot be modified after commit")
 			})
 		})
-
 	})
 }
 

@@ -23,19 +23,21 @@ type ImageCache struct {
 	origImage    imgutil.Image
 	newImage     imgutil.Image
 	logger       log.Logger
-	imageDeleter ImageDeleterImpl
+	imageDeleter ImageDeleter
 }
 
-func NewImageCache(origImage imgutil.Image, newImage imgutil.Image, logger log.Logger) *ImageCache {
+// NewImageCache creates a new ImageCache instance
+func NewImageCache(origImage imgutil.Image, newImage imgutil.Image, logger log.Logger, imageDeleter ImageDeleter) *ImageCache {
 	return &ImageCache{
 		origImage:    origImage,
 		newImage:     newImage,
 		logger:       logger,
-		imageDeleter: NewImageDeleter(logger),
+		imageDeleter: imageDeleter,
 	}
 }
 
-func NewImageCacheFromName(name string, keychain authn.Keychain, logger log.Logger) (*ImageCache, error) {
+// NewImageCacheFromName creates a new ImageCache from the name that has been provided
+func NewImageCacheFromName(name string, keychain authn.Keychain, logger log.Logger, imageDeleter ImageDeleter) (*ImageCache, error) {
 	origImage, err := remote.NewImage(
 		name,
 		keychain,
@@ -56,7 +58,7 @@ func NewImageCacheFromName(name string, keychain authn.Keychain, logger log.Logg
 		return nil, fmt.Errorf("creating new cache image %q: %v", name, err)
 	}
 
-	return NewImageCache(origImage, emptyImage, logger), nil
+	return NewImageCache(origImage, emptyImage, logger, imageDeleter), nil
 }
 
 func (c *ImageCache) Exists() bool {
@@ -128,7 +130,7 @@ func (c *ImageCache) Commit() error {
 
 func deleteOldOrigImgIfExists(c *ImageCache) {
 	if c.origImage.Found() {
-		sameImage, err := c.imageDeleter.OriginAndNewImagesAreTheSame(c.origImage, c.newImage)
+		sameImage, err := c.imageDeleter.ImagesEq(c.origImage, c.newImage)
 		if err != nil {
 			c.logger.Warnf("Unable to compare the image: %v", err.Error())
 		}
