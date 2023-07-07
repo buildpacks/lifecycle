@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -289,5 +291,74 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, err, "cache cannot be modified after commit")
 			})
 		})
+
+		when("attempting to delete original image gives non nil error", func() {
+			var (
+				fakeErrorImage *fakeErrorImage
+				mockLogger     *MockLogger
+			)
+
+			it.Before(func() {
+				fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
+				fakeErrorImage = newFakeImageErrIdentifier(fakeOriginalImage)
+				fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
+				mockLogger = &MockLogger{Logger: testLogger}
+				subject = cache.NewImageCache(fakeErrorImage, fakeNewImage, mockLogger)
+			})
+			it("should log error as warning", func() {
+				err := subject.Commit()
+				h.AssertNil(t, err)
+				h.AssertEq(t, mockLogger.Calls, 1)
+			})
+		})
+
+		when("with #DeleteOrigImage", func() {
+			when("original and new image are different", func() {
+				it.Before(func() {
+					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
+					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
+				})
+				it("should delete original image", func() {
+					err := subject.DeleteOrigImage()
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeOriginalImage.Found(), false)
+				})
+			})
+
+			when("original and new image are the same", func() {
+				it.Before(func() {
+					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
+					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
+				})
+				it("should not delete original image", func() {
+					err := subject.DeleteOrigImage()
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeOriginalImage.Found(), true)
+				})
+			})
+		})
 	})
+}
+
+type fakeErrorImage struct {
+	imgutil.Image
+}
+
+func newFakeImageErrIdentifier(origImage imgutil.Image) *fakeErrorImage {
+	return &fakeErrorImage{Image: origImage}
+}
+
+func (f *fakeErrorImage) Identifier() (imgutil.Identifier, error) {
+	return nil, errors.New("error deleting original image")
+}
+
+type MockLogger struct {
+	log.Logger
+	Calls int
+}
+
+func (l *MockLogger) Warnf(fmt string, v ...interface{}) {
+	l.Calls++
 }
