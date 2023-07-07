@@ -292,53 +292,6 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("attempting to delete original image gives non nil error", func() {
-			var (
-				fakeErrorImage *fakeErrorImage
-				mockLogger     *MockLogger
-			)
-
-			it.Before(func() {
-				fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
-				fakeErrorImage = newFakeImageErrIdentifier(fakeOriginalImage)
-				fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-				mockLogger = &MockLogger{Logger: testLogger}
-				subject = cache.NewImageCache(fakeErrorImage, fakeNewImage, mockLogger)
-			})
-			it("should log error as warning", func() {
-				err := subject.Commit()
-				h.AssertNil(t, err)
-				h.AssertEq(t, mockLogger.Calls, 1)
-			})
-		})
-
-		when("with #DeleteOrigImage", func() {
-			when("original and new image are different", func() {
-				it.Before(func() {
-					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
-					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
-				})
-				it("should delete original image", func() {
-					err := subject.DeleteOrigImage()
-					h.AssertNil(t, err)
-					h.AssertEq(t, fakeOriginalImage.Found(), false)
-				})
-			})
-
-			when("original and new image are the same", func() {
-				it.Before(func() {
-					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
-					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
-					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
-				})
-				it("should not delete original image", func() {
-					err := subject.DeleteOrigImage()
-					h.AssertNil(t, err)
-					h.AssertEq(t, fakeOriginalImage.Found(), true)
-				})
-			})
-		})
 	})
 }
 

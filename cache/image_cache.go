@@ -19,17 +19,19 @@ import (
 const MetadataLabel = "io.buildpacks.lifecycle.cache.metadata"
 
 type ImageCache struct {
-	committed bool
-	origImage imgutil.Image
-	newImage  imgutil.Image
-	logger    log.Logger
+	committed    bool
+	origImage    imgutil.Image
+	newImage     imgutil.Image
+	logger       log.Logger
+	cacheDeleter ImageDeleterImpl
 }
 
 func NewImageCache(origImage imgutil.Image, newImage imgutil.Image, logger log.Logger) *ImageCache {
 	return &ImageCache{
-		origImage: origImage,
-		newImage:  newImage,
-		logger:    logger,
+		origImage:    origImage,
+		newImage:     newImage,
+		logger:       logger,
+		cacheDeleter: NewImageDeleter(logger),
 	}
 }
 
@@ -111,36 +113,27 @@ func (c *ImageCache) Commit() error {
 		return errCacheCommitted
 	}
 
-	// Check if the cache image exists prior to saving the new cache at that same location
-	origImgExists := c.origImage.Found()
-
 	if err := c.newImage.Save(); err != nil {
 		return errors.Wrapf(err, "saving image '%s'", c.newImage.Name())
 	}
 	c.committed = true
 
-	if origImgExists {
-		// Deleting the original image is for cleanup only and should not fail the commit.
-		if err := c.DeleteOrigImage(); err != nil {
-			c.logger.Warnf("Unable to delete previous cache image: %v", err.Error())
-		}
-	}
+	// Check if the cache image exists prior to saving the new cache at that same location
+	deleteOldOrigImgIfExists(c)
+
 	c.origImage = c.newImage
 
 	return nil
 }
 
-func (c *ImageCache) DeleteOrigImage() error {
-	origIdentifier, err := c.origImage.Identifier()
-	if err != nil {
-		return errors.Wrap(err, "getting identifier for original image")
+func deleteOldOrigImgIfExists(c *ImageCache) {
+	if c.origImage.Found() {
+		sameImage, err := c.cacheDeleter.OriginAndNewImagesAreTheSame(c.origImage, c.newImage)
+		if err != nil {
+			c.logger.Warnf("Unable to compare the image: %v", err.Error())
+		}
+		if !sameImage {
+			c.cacheDeleter.DeleteImage(c.origImage)
+		}
 	}
-	newIdentifier, err := c.newImage.Identifier()
-	if err != nil {
-		return errors.Wrap(err, "getting identifier for new image")
-	}
-	if origIdentifier.String() == newIdentifier.String() {
-		return nil
-	}
-	return c.origImage.Delete()
 }
