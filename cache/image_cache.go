@@ -23,7 +23,7 @@ type ImageCache struct {
 	origImage    imgutil.Image
 	newImage     imgutil.Image
 	logger       log.Logger
-	cacheDeleter ImageDeleterImpl
+	imageDeleter ImageDeleterImpl
 }
 
 func NewImageCache(origImage imgutil.Image, newImage imgutil.Image, logger log.Logger) *ImageCache {
@@ -31,7 +31,7 @@ func NewImageCache(origImage imgutil.Image, newImage imgutil.Image, logger log.L
 		origImage:    origImage,
 		newImage:     newImage,
 		logger:       logger,
-		cacheDeleter: NewImageDeleter(logger),
+		imageDeleter: NewImageDeleter(logger),
 	}
 }
 
@@ -128,12 +128,12 @@ func (c *ImageCache) Commit() error {
 
 func deleteOldOrigImgIfExists(c *ImageCache) {
 	if c.origImage.Found() {
-		sameImage, err := c.cacheDeleter.OriginAndNewImagesAreTheSame(c.origImage, c.newImage)
+		sameImage, err := c.imageDeleter.OriginAndNewImagesAreTheSame(c.origImage, c.newImage)
 		if err != nil {
 			c.logger.Warnf("Unable to compare the image: %v", err.Error())
 		}
 		if !sameImage {
-			c.cacheDeleter.DeleteImage(c.origImage)
+			c.imageDeleter.DeleteImage(c.origImage)
 		}
 	}
 }
