@@ -11,10 +11,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/testmock"
 
-	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
-	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -300,25 +298,4 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-type fakeErrorImage struct {
-	imgutil.Image
-}
-
-func newFakeImageErrIdentifier(origImage imgutil.Image) *fakeErrorImage {
-	return &fakeErrorImage{Image: origImage}
-}
-
-func (f *fakeErrorImage) Identifier() (imgutil.Identifier, error) {
-	return nil, errors.New("error deleting original image")
-}
-
-type MockLogger struct {
-	log.Logger
-	Calls int
-}
-
-func (l *MockLogger) Warnf(fmt string, v ...interface{}) {
-	l.Calls++
 }

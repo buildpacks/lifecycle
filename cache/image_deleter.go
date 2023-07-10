@@ -18,18 +18,21 @@ type ImageDeleter interface {
 
 // ImageDeleterImpl is a component to manage cache image deletion
 type ImageDeleterImpl struct {
-	logger log.Logger
+	logger          log.Logger
+	deletionEnabled bool
 }
 
 // NewImageDeleter creates a new ImageDeleter implementation
-func NewImageDeleter(logger log.Logger) *ImageDeleterImpl {
-	return &ImageDeleterImpl{logger: logger}
+func NewImageDeleter(logger log.Logger, deletionEnabled bool) *ImageDeleterImpl {
+	return &ImageDeleterImpl{logger: logger, deletionEnabled: deletionEnabled}
 }
 
 // DeleteImage deletes an image
 func (c *ImageDeleterImpl) DeleteImage(image imgutil.Image) {
-	if err := image.Delete(); err != nil {
-		c.logger.Warnf("Unable to delete cache image: %v", err.Error())
+	if c.deletionEnabled {
+		if err := image.Delete(); err != nil {
+			c.logger.Warnf("Unable to delete cache image: %v", err.Error())
+		}
 	}
 }
 

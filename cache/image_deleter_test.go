@@ -27,33 +27,45 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		testLogger = cmd.DefaultLogger
-		cacheDeleter = NewImageDeleter(testLogger)
+		cacheDeleter = NewImageDeleter(testLogger, true)
 	})
 
-	it("should delete the image when provided", func() {
-		fakeImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+	when("delete functionality has ben activated", func() {
+		it("should delete the image when provided", func() {
+			fakeImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
 
-		cacheDeleter.DeleteImage(fakeImage)
+			cacheDeleter.DeleteImage(fakeImage)
 
-		h.AssertEq(t, fakeImage.Found(), false)
+			h.AssertEq(t, fakeImage.Found(), false)
+		})
+
+		it("should raise a warning if delete doesn't work properly", func() {
+			fakeImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+			fakeErrorImage := newFakeImageErrIdentifier(fakeImage, "original")
+			mockLogger := &MockLogger{Logger: cmd.DefaultLogger}
+			cacheDeleter := NewImageDeleter(mockLogger, true)
+
+			cacheDeleter.DeleteImage(fakeErrorImage)
+
+			h.AssertEq(t, mockLogger.Calls, 1)
+		})
 	})
 
-	it("should raise a warning if delete doesn't work properly", func() {
-		fakeImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
-		fakeErrorImage := newFakeImageErrIdentifier(fakeImage, "original")
-		mockLogger := &MockLogger{Logger: cmd.DefaultLogger}
-		cacheDeleter := NewImageDeleter(mockLogger)
+	when("delete functionality has been deactivated", func() {
+		it("should avoid performing deleting operations", func() {
+			fakeImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+			cacheDeleter = NewImageDeleter(testLogger, false)
 
-		cacheDeleter.DeleteImage(fakeErrorImage)
+			cacheDeleter.DeleteImage(fakeImage)
 
-		h.AssertEq(t, mockLogger.Calls, 1)
+			h.AssertEq(t, fakeImage.Found(), true)
+		})
 	})
 
 	when("Comparing two images: orig and new", func() {
 		it("doesn't do anything", func() {
 			fakeOldImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOldImage"})
 			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-			cacheDeleter := NewImageDeleter(testLogger)
 
 			result, _ := cacheDeleter.ImagesEq(fakeOldImage, fakeNewImage)
 
@@ -64,7 +76,6 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 			fakeOriginalImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
 			fakeErrorImage := newFakeImageErrIdentifier(fakeOriginalImage, "original")
-			cacheDeleter := NewImageDeleter(testLogger)
 
 			_, err := cacheDeleter.ImagesEq(fakeErrorImage, fakeNewImage)
 
@@ -75,7 +86,6 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 			fakeOriginalImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
 			fakeErrorImage := newFakeImageErrIdentifier(fakeNewImage, "new")
-			cacheDeleter := NewImageDeleter(testLogger)
 
 			_, err := cacheDeleter.ImagesEq(fakeOriginalImage, fakeErrorImage)
 

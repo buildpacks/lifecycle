@@ -345,7 +345,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							// Retrieve the cache image from the ephemeral registry
 							h.Run(t, exec.Command("docker", "pull", cacheImageName))
 							logger := cmd.DefaultLogger
-							subject, err := cache.NewImageCacheFromName(cacheImageName, authn.DefaultKeychain, logger, cache.NewImageDeleter(logger))
+							subject, err := cache.NewImageCacheFromName(cacheImageName, authn.DefaultKeychain, logger, cache.NewImageDeleter(logger, api.MustParse(platformAPI).LessThan("0.13")))
 							h.AssertNil(t, err)
 
 							//Assert the cache image was created with an empty layer
