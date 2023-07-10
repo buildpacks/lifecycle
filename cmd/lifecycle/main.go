@@ -91,7 +91,7 @@ func NewCacheHandler(keychain authn.Keychain) *DefaultCacheHandler {
 	}
 }
 
-// InitCache it's a factory used to create either a NewImageCache or a NewVolumeCache
+// InitCache is a factory used to create either a NewImageCache or a NewVolumeCache
 func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, deletionEnabled bool) (lifecycle.Cache, error) {
 	var (
 		cacheStore lifecycle.Cache

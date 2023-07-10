@@ -52,7 +52,7 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("delete functionality has been deactivated", func() {
-		it("should avoid performing deleting operations", func() {
+		it("should not perform deleting operations", func() {
 			fakeImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
 			cacheDeleter = NewImageDeleter(testLogger, false)
 
@@ -63,7 +63,7 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("Comparing two images: orig and new", func() {
-		it("doesn't do anything", func() {
+		it("checks if the images have the same identifier", func() {
 			fakeOldImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOldImage"})
 			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
 
@@ -72,7 +72,7 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, result, false)
 		})
 
-		it("Should returns an error if it's impossible to get the original image identifier", func() {
+		it("returns an error if it's impossible to get the original image identifier", func() {
 			fakeOriginalImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
 			fakeErrorImage := newFakeImageErrIdentifier(fakeOriginalImage, "original")
@@ -82,7 +82,7 @@ func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, err, "getting identifier for original image")
 		})
 
-		it("Should returns an error if it's impossible to get the new image identifier", func() {
+		it("returns an error if it's impossible to get the new image identifier", func() {
 			fakeOriginalImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
 			fakeErrorImage := newFakeImageErrIdentifier(fakeNewImage, "new")
