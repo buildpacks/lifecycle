@@ -53,7 +53,6 @@ type Analyzer struct {
 	Buildpacks            []buildpack.GroupElement
 	Cache                 Cache
 	LayerMetadataRestorer layer.MetadataRestorer
-	RestoresLayerMetadata bool
 }
 
 func (f *AnalyzerFactory) NewAnalyzer(
@@ -77,19 +76,8 @@ func (f *AnalyzerFactory) NewAnalyzer(
 		PlatformAPI:           f.platformAPI,
 	}
 
-	if f.platformAPI.AtLeast("0.7") {
-		if err := f.ensureRegistryAccess(additionalTags, cacheImageRef, outputImageRef, runImageRef, previousImageRef); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := f.setBuildpacks(analyzer, legacyGroup, legacyGroupPath, logger); err != nil {
-			return nil, err
-		}
-		if err := f.setCache(analyzer, cacheImageRef, legacyCacheDir); err != nil {
-			return nil, err
-		}
-		analyzer.LayerMetadataRestorer = layer.NewDefaultMetadataRestorer(layersDir, skipLayers, logger)
-		analyzer.RestoresLayerMetadata = true
+	if err := f.ensureRegistryAccess(additionalTags, cacheImageRef, outputImageRef, runImageRef, previousImageRef); err != nil {
+		return nil, err
 	}
 
 	if f.platformAPI.AtLeast("0.8") && !skipLayers {
@@ -193,7 +181,6 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 	var (
 		err              error
 		appMeta          files.LayersMetadata
-		cacheMeta        platform.CacheMetadata
 		previousImageRef string
 		runImageRef      string
 	)
@@ -226,18 +213,6 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 			if atm.OS == "" {
 				platform.GetTargetOSFromFileSystem(&fsutil.Detect{}, atm, a.Logger)
 			}
-		}
-	}
-
-	if a.RestoresLayerMetadata {
-		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
-		if err != nil {
-			return files.Analyzed{}, err
-		}
-
-		useShaFiles := true
-		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layer.NewSHAStore(useShaFiles)); err != nil {
-			return files.Analyzed{}, err
 		}
 	}
 
@@ -294,7 +269,7 @@ func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (platform.CacheMe
 }
 
 func (a *Analyzer) retrieveAppMetadata() (files.LayersMetadata, string, error) {
-	if a.PreviousImage == nil { // Previous image is optional in Platform API >= 0.7
+	if a.PreviousImage == nil {
 		return files.LayersMetadata{}, "", nil
 	}
 	previousImageRef, err := a.getImageIdentifier(a.PreviousImage)

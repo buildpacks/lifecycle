@@ -141,25 +141,9 @@ type SHAStore interface {
 	Get(buildpackID string, layer buildpack.Layer) (string, error)
 }
 
-func NewSHAStore(useShaFiles bool) SHAStore {
-	if useShaFiles {
-		return &fileStore{}
-	}
+// NewSHAStore TODO
+func NewSHAStore() SHAStore {
 	return &memoryStore{make(map[string]layerToSha)}
-}
-
-type fileStore struct{}
-
-func (fs *fileStore) add(_, sha string, layer *buildpack.Layer) error {
-	return layer.WriteSha(sha)
-}
-
-func (fs *fileStore) Get(_ string, layer buildpack.Layer) (string, error) {
-	data, err := layer.Read()
-	if err != nil {
-		return "", errors.Wrapf(err, "reading layer")
-	}
-	return data.SHA, nil
 }
 
 type memoryStore struct {

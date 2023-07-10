@@ -33,13 +33,6 @@ type rebaseCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *rebaseCmd) DefineFlags() {
-	cli.FlagGID(&r.GID)
-	cli.FlagReportPath(&r.ReportPath)
-	cli.FlagRunImage(&r.RunImageRef)
-	cli.FlagUID(&r.UID)
-	cli.FlagUseDaemon(&r.UseDaemon)
-	cli.DeprecatedFlagRunImage(&r.DeprecatedRunImageRef)
-
 	if r.PlatformAPI.AtLeast("0.11") {
 		cli.FlagPreviousImage(&r.PreviousImageRef)
 	}
@@ -47,6 +40,12 @@ func (r *rebaseCmd) DefineFlags() {
 	if r.PlatformAPI.AtLeast("0.12") {
 		cli.FlagForceRebase(&r.ForceRebase)
 	}
+	cli.FlagGID(&r.GID)
+	cli.FlagReportPath(&r.ReportPath)
+	cli.FlagRunImage(&r.RunImageRef)
+	cli.FlagUID(&r.UID)
+	cli.FlagUseDaemon(&r.UseDaemon)
+	cli.DeprecatedFlagRunImage(&r.DeprecatedRunImageRef)
 }
 
 // Args validates arguments and flags, and fills in default values.

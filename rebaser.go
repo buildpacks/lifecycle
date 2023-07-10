@@ -134,10 +134,6 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 	if err != nil {
 		return RebaseReport{}, err
 	}
-	if !r.supportsManifestSize() {
-		// unset manifest size in report.toml for old platform API versions
-		report.Image.ManifestSize = 0
-	}
 
 	return report, err
 }
@@ -241,8 +237,4 @@ func (r *Rebaser) validateTarget(appImg imgutil.Image, newBaseImg imgutil.Image)
 		)
 	}
 	return nil
-}
-
-func (r *Rebaser) supportsManifestSize() bool {
-	return r.PlatformAPI.AtLeast("0.6")
 }

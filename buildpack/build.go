@@ -162,15 +162,6 @@ func runBuildCmd(d BpDescriptor, bpLayersDir, planPath string, inputs BuildInput
 }
 
 func (d BpDescriptor) processLayers(layersDir string, logger log.Logger) (map[string]LayerMetadataFile, error) {
-	if api.MustParse(d.WithAPI).LessThan("0.6") {
-		return eachLayer(layersDir, d.WithAPI, func(path, buildpackAPI string) (LayerMetadataFile, error) {
-			layerMetadataFile, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI, logger)
-			if err != nil {
-				return LayerMetadataFile{}, err
-			}
-			return layerMetadataFile, nil
-		})
-	}
 	return eachLayer(layersDir, d.WithAPI, func(path, buildpackAPI string) (LayerMetadataFile, error) {
 		layerMetadataFile, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI, logger)
 		if err != nil {
@@ -245,74 +236,42 @@ func (d BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn
 	bomValidator := NewBOMValidator(d.WithAPI, bpLayersDir, logger)
 
 	var err error
-	if api.MustParse(d.WithAPI).LessThan("0.5") {
-		// read buildpack plan
-		var bpPlanOut Plan
-		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
-			return BuildOutputs{}, err
-		}
-
-		// set BOM and MetRequires
-		br.LaunchBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, bpPlanOut.toBOM())
-		if err != nil {
-			return BuildOutputs{}, err
-		}
-		br.MetRequires = names(bpPlanOut.Entries)
-
-		// set BOM files
-		br.BOMFiles, err = d.processSBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
-		if err != nil {
-			return BuildOutputs{}, err
-		}
-
-		// read launch.toml, return if not exists
-		if err := DecodeLaunchTOML(launchPath, d.WithAPI, &launchTOML); os.IsNotExist(err) {
-			return br, nil
-		} else if err != nil {
-			return BuildOutputs{}, err
-		}
-	} else {
-		// read build.toml
-		var buildTOML BuildTOML
-		buildPath := filepath.Join(bpLayersDir, "build.toml")
-		if _, err := toml.DecodeFile(buildPath, &buildTOML); err != nil && !os.IsNotExist(err) {
-			return BuildOutputs{}, err
-		}
-		if _, err := bomValidator.ValidateBOM(bpFromBpInfo, buildTOML.BOM); err != nil {
-			return BuildOutputs{}, err
-		}
-		br.BuildBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, buildTOML.BOM)
-		if err != nil {
-			return BuildOutputs{}, err
-		}
-
-		// set MetRequires
-		if err := validateUnmet(buildTOML.Unmet, bpPlanIn); err != nil {
-			return BuildOutputs{}, err
-		}
-		br.MetRequires = names(bpPlanIn.filter(buildTOML.Unmet).Entries)
-
-		// set BOM files
-		br.BOMFiles, err = d.processSBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
-		if err != nil {
-			return BuildOutputs{}, err
-		}
-
-		// read launch.toml, return if not exists
-		if err := DecodeLaunchTOML(launchPath, d.WithAPI, &launchTOML); os.IsNotExist(err) {
-			return br, nil
-		} else if err != nil {
-			return BuildOutputs{}, err
-		}
-
-		// set BOM
-		br.LaunchBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, launchTOML.BOM)
-		if err != nil {
-			return BuildOutputs{}, err
-		}
+	// read build.toml
+	var buildTOML BuildTOML
+	buildPath := filepath.Join(bpLayersDir, "build.toml")
+	if _, err := toml.DecodeFile(buildPath, &buildTOML); err != nil && !os.IsNotExist(err) {
+		return BuildOutputs{}, err
+	}
+	if _, err := bomValidator.ValidateBOM(bpFromBpInfo, buildTOML.BOM); err != nil {
+		return BuildOutputs{}, err
+	}
+	br.BuildBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, buildTOML.BOM)
+	if err != nil {
+		return BuildOutputs{}, err
 	}
 
-	if err := overrideDefaultForOldBuildpacks(launchTOML.Processes, d.WithAPI, logger); err != nil {
+	// set MetRequires
+	if err := validateUnmet(buildTOML.Unmet, bpPlanIn); err != nil {
+		return BuildOutputs{}, err
+	}
+	br.MetRequires = names(bpPlanIn.filter(buildTOML.Unmet).Entries)
+
+	// set BOM files
+	br.BOMFiles, err = d.processSBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
+	if err != nil {
+		return BuildOutputs{}, err
+	}
+
+	// read launch.toml, return if not exists
+	if err := DecodeLaunchTOML(launchPath, d.WithAPI, &launchTOML); os.IsNotExist(err) {
+		return br, nil
+	} else if err != nil {
+		return BuildOutputs{}, err
+	}
+
+	// set BOM
+	br.LaunchBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, launchTOML.BOM)
+	if err != nil {
 		return BuildOutputs{}, err
 	}
 
@@ -359,23 +318,6 @@ func validateUnmet(unmet []Unmet, bpPlan Plan) error {
 		if !found {
 			return fmt.Errorf("unmet.name '%s' must match a requested dependency", unmet.Name)
 		}
-	}
-	return nil
-}
-
-func overrideDefaultForOldBuildpacks(processes []ProcessEntry, bpAPI string, logger log.Logger) error {
-	if api.MustParse(bpAPI).AtLeast("0.6") {
-		return nil
-	}
-	var replacedDefaults []string
-	for i := range processes {
-		if processes[i].Default {
-			replacedDefaults = append(replacedDefaults, processes[i].Type)
-		}
-		processes[i].Default = false
-	}
-	if len(replacedDefaults) > 0 {
-		logger.Warn(fmt.Sprintf("Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [%s]", strings.Join(replacedDefaults, ", ")))
 	}
 	return nil
 }

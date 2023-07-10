@@ -19,8 +19,8 @@ type Restorer struct {
 	Logger    log.Logger
 
 	Buildpacks            []buildpack.GroupElement
-	LayerMetadataRestorer layer.MetadataRestorer // Platform API >= 0.7
-	LayersMetadata        files.LayersMetadata   // Platform API >= 0.7
+	LayerMetadataRestorer layer.MetadataRestorer
+	LayersMetadata        files.LayersMetadata
 	PlatformAPI           *api.Version
 	SBOMRestorer          layer.SBOMRestorer
 }
@@ -33,13 +33,10 @@ func (r *Restorer) Restore(cache Cache) error {
 		return err
 	}
 
-	useShaFiles := !r.restoresLayerMetadata()
-	layerSHAStore := layer.NewSHAStore(useShaFiles)
-	if r.restoresLayerMetadata() {
-		r.Logger.Debug("Restoring Layer Metadata")
-		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
-			return err
-		}
+	layerSHAStore := layer.NewSHAStore()
+	r.Logger.Debug("Restoring Layer Metadata")
+	if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
+		return err
 	}
 
 	var g errgroup.Group
@@ -47,19 +44,11 @@ func (r *Restorer) Restore(cache Cache) error {
 		cachedLayers := cacheMeta.MetadataForBuildpack(bp.ID).Layers
 
 		var cachedFn func(buildpack.Layer) bool
-		if api.MustParse(bp.API).AtLeast("0.6") {
-			// On Buildpack API 0.6+, the <layer>.toml file never contains layer types information.
-			// The cache metadata is the only way to identify cache=true layers.
-			cachedFn = func(l buildpack.Layer) bool {
-				bpLayer, ok := cachedLayers[filepath.Base(l.Path())]
-				return ok && bpLayer.Cache
-			}
-		} else {
-			// On Buildpack API < 0.6, the <layer>.toml file contains layer types information.
-			// Prefer <layer>.toml file to cache metadata in case the cache was cleared between builds and
-			// the analyzer that wrote the files is on a previous version of the lifecycle, that doesn't cross-reference the cache metadata when writing the files.
-			// This allows the restorer to clean up <layer>.toml files for layers that are not actually in the cache.
-			cachedFn = buildpack.MadeCached
+		// The <layer>.toml file never contains layer types information.
+		// The cache metadata is the only way to identify cache=true layers.
+		cachedFn = func(l buildpack.Layer) bool {
+			bpLayer, ok := cachedLayers[filepath.Base(l.Path())]
+			return ok && bpLayer.Cache
 		}
 
 		r.Logger.Debugf("Reading Buildpack Layers directory %s", r.LayersDir)
@@ -119,7 +108,7 @@ func (r *Restorer) Restore(cache Cache) error {
 }
 
 func (r *Restorer) restoresLayerMetadata() bool {
-	return r.PlatformAPI.AtLeast("0.7")
+	return true
 }
 
 func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {

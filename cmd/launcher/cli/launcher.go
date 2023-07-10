@@ -67,9 +67,6 @@ func boolEnv(k string) bool {
 }
 
 func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) string {
-	if platformAPI.LessThan("0.4") {
-		return cmd.EnvOrDefault(platform.EnvProcessType, platform.DefaultProcessType)
-	}
 	if pType := os.Getenv(platform.EnvProcessType); pType != "" {
 		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in Platform API %s", platformAPI)
 		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", pType, pType)

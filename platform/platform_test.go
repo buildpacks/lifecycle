@@ -20,38 +20,15 @@ func TestPlatform(t *testing.T) {
 func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		when("#NewPlatformFor", func() {
-			when("Platform API >= 0.6", func() {
-				it.Before(func() {
-					h.SkipIf(t, platformAPI.LessThan("0.6"), "")
-				})
+			it("configures the platform", func() {
+				foundPlatform := platform.NewPlatformFor(platformAPI.String())
 
-				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatformFor(platformAPI.String())
+				t.Log("with a default exiter")
+				_, ok := foundPlatform.Exiter.(*platform.DefaultExiter)
+				h.AssertEq(t, ok, true)
 
-					t.Log("with a default exiter")
-					_, ok := foundPlatform.Exiter.(*platform.DefaultExiter)
-					h.AssertEq(t, ok, true)
-
-					t.Log("with an api")
-					h.AssertEq(t, foundPlatform.API(), platformAPI)
-				})
-			})
-
-			when("Platform API < 0.6", func() {
-				it.Before(func() {
-					h.SkipIf(t, platformAPI.AtLeast("0.6"), "")
-				})
-
-				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatformFor(platformAPI.String())
-
-					t.Log("with a legacy exiter")
-					_, ok := foundPlatform.Exiter.(*platform.LegacyExiter)
-					h.AssertEq(t, ok, true)
-
-					t.Log("with an api")
-					h.AssertEq(t, foundPlatform.API(), platformAPI)
-				})
+				t.Log("with an api")
+				h.AssertEq(t, foundPlatform.API(), platformAPI)
 			})
 		})
 	}

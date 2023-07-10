@@ -27,13 +27,8 @@ type analyzeCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (a *analyzeCmd) DefineFlags() {
-	if a.PlatformAPI.LessThan("0.12") && a.PlatformAPI.AtLeast("0.7") {
+	if a.PlatformAPI.LessThan("0.12") {
 		cli.FlagStackPath(&a.StackPath)
-	}
-	if a.PlatformAPI.LessThan("0.7") {
-		cli.FlagCacheDir(&a.CacheDir)
-		cli.FlagGroupPath(&a.GroupPath)
-		cli.FlagSkipLayers(&a.SkipLayers)
 	}
 	switch {
 	case a.PlatformAPI.AtLeast("0.12"):
@@ -45,12 +40,10 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagLaunchCacheDir(&a.LaunchCacheDir)
 		cli.FlagSkipLayers(&a.SkipLayers)
 		fallthrough
-	case a.PlatformAPI.AtLeast("0.7"):
+	default:
 		cli.FlagPreviousImage(&a.PreviousImageRef)
 		cli.FlagRunImage(&a.RunImageRef)
 		cli.FlagTags(&a.AdditionalTags)
-		fallthrough
-	default:
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)

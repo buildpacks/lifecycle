@@ -702,60 +702,28 @@ version = "4.5.6"
 					h.AssertNil(t, fakeAppImage.SetEnv("PATH", "some-path"))
 				})
 
-				when("platform API >= 0.4", func() {
-					it("prepends the process and lifecycle dirs to PATH", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
+				it("prepends the process and lifecycle dirs to PATH", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
 
-						val, err := opts.WorkingImage.Env("PATH")
-						h.AssertNil(t, err)
-						if runtime.GOOS == "windows" {
-							h.AssertEq(t, val, `c:\cnb\process;c:\cnb\lifecycle;some-path`)
-						} else {
-							h.AssertEq(t, val, `/cnb/process:/cnb/lifecycle:some-path`)
-						}
-					})
-				})
-
-				when("platform API < 0.4", func() {
-					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.3")
-					})
-
-					it("doesn't prepend the process dir", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						val, err := opts.WorkingImage.Env("PATH")
-						h.AssertNil(t, err)
-						h.AssertEq(t, val, "some-path")
-					})
+					val, err := opts.WorkingImage.Env("PATH")
+					h.AssertNil(t, err)
+					if runtime.GOOS == "windows" {
+						h.AssertEq(t, val, `c:\cnb\process;c:\cnb\lifecycle;some-path`)
+					} else {
+						h.AssertEq(t, val, `/cnb/process:/cnb/lifecycle:some-path`)
+					}
 				})
 			})
 
 			when("working directory", func() {
-				when("platform API > 0.5", func() {
-					it("sets WorkingDir", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
+				it("sets WorkingDir", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
 
-						val, err := fakeAppImage.WorkingDir()
-						h.AssertNil(t, err)
-						h.AssertEq(t, val, opts.AppDir)
-					})
-				})
-
-				when("platform API <= 0.5", func() {
-					platformAPI = api.MustParse("0.5")
-
-					it("doesn't set WorkingDir", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						val, err := fakeAppImage.WorkingDir()
-						h.AssertNil(t, err)
-						h.AssertEq(t, val, "")
-					})
+					val, err := fakeAppImage.WorkingDir()
+					h.AssertNil(t, err)
+					h.AssertEq(t, val, opts.AppDir)
 				})
 			})
 
@@ -959,24 +927,12 @@ version = "4.5.6"
 				assertAddLayerLog(t, logHandler, "launcher")
 			})
 
-			when("platform API >= 0.4", func() {
-				it("creates process-types layer", func() {
-					_, err := exporter.Export(opts)
-					h.AssertNil(t, err)
+			it("creates process-types layer", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
 
-					assertHasLayer(t, fakeAppImage, "process-types")
-					assertAddLayerLog(t, logHandler, "process-types")
-				})
-			})
-
-			when("platform API < 0.4", func() {
-				it("doesn't create process-types layer", func() {
-					exporter.PlatformAPI = api.MustParse("0.3")
-					_, err := exporter.Export(opts)
-					h.AssertNil(t, err)
-
-					assertDoesNotHaveLayer(t, fakeAppImage, "process-types")
-				})
+				assertHasLayer(t, fakeAppImage, "process-types")
+				assertAddLayerLog(t, logHandler, "process-types")
 			})
 
 			it("adds launch layers", func() {
@@ -1211,67 +1167,6 @@ version = "4.5.6"
 					})
 				})
 			})
-
-			when("platform API < 0.6", func() {
-				platformAPI = api.MustParse("0.5")
-
-				it.Before(func() {
-					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
-				})
-
-				when("-process-type is set to a process type that doesn't exist", func() {
-					it.Before(func() {
-						opts.DefaultProcessType = "some-non-existing-process-type"
-					})
-					it("warns the process type doesn't exist, and sets the ENTRYPOINT to the launcher", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-						assertLogEntry(t, logHandler, "default process type 'some-non-existing-process-type' not present in list [some-process-type]")
-						assertHasEntrypoint(t, fakeAppImage, filepath.Join(path.RootDir, "cnb", "lifecycle", "launcher"+path.ExecExt))
-					})
-				})
-
-				when("-process-type is not set and there is exactly one process", func() {
-					it("sets the ENTRYPOINT to the only process", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-						assertHasEntrypoint(t, fakeAppImage, filepath.Join(path.RootDir, "cnb", "process", "some-process-type"+path.ExecExt))
-					})
-				})
-			})
-
-			when("platform API < 0.4", func() {
-				it.Before(func() {
-					exporter.PlatformAPI = api.MustParse("0.3")
-					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
-				})
-
-				when("-process-type is set to an existing process type", func() {
-					it.Before(func() {
-						opts.DefaultProcessType = "some-process-type"
-					})
-
-					it("sets CNB_PROCESS_TYPE", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
-						h.AssertNil(t, err)
-						h.AssertEq(t, val, "some-process-type")
-					})
-				})
-
-				when("-process-type is not set", func() {
-					it("doesn't set CNB_PROCESS_TYPE", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
-						h.AssertNil(t, err)
-						h.AssertEq(t, val, "")
-					})
-				})
-			})
 		})
 
 		when("report.toml", func() {
@@ -1281,59 +1176,38 @@ version = "4.5.6"
 					opts.LayersDir = filepath.Join("testdata", "exporter", "empty-metadata", "layers")
 				})
 
-				when("platform API is < 0.6", func() {
+				when("image has a manifest", func() {
 					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.5")
+						fakeRemoteManifestSize = 12345
+						fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
 					})
-					when("image has a manifest", func() {
-						it.Before(func() {
-							fakeRemoteManifestSize = 12345
-							fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
-						})
 
-						it("doesn't set the manifest size in the report.toml", func() {
-							report, err := exporter.Export(opts)
-							h.AssertNil(t, err)
+					it("outputs the manifest size", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
 
-							h.AssertEq(t, report.Image.ManifestSize, int64(0))
-						})
+						assertLogEntry(t, logHandler, fmt.Sprintf("*** Manifest Size: %d", fakeRemoteManifestSize))
+					})
+
+					it("add the manifest size to the report", func() {
+						report, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, report.Image.ManifestSize, fakeRemoteManifestSize)
 					})
 				})
 
-				when("platform API is >= 0.6", func() {
-					when("image has a manifest", func() {
-						it.Before(func() {
-							fakeRemoteManifestSize = 12345
-							fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
-						})
-
-						it("outputs the manifest size", func() {
-							_, err := exporter.Export(opts)
-							h.AssertNil(t, err)
-
-							assertLogEntry(t, logHandler, fmt.Sprintf("*** Manifest Size: %d", fakeRemoteManifestSize))
-						})
-
-						it("add the manifest size to the report", func() {
-							report, err := exporter.Export(opts)
-							h.AssertNil(t, err)
-
-							h.AssertEq(t, report.Image.ManifestSize, fakeRemoteManifestSize)
-						})
+				when("image doesn't have a manifest", func() {
+					it.Before(func() {
+						fakeRemoteManifestSize = 0
+						fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
 					})
 
-					when("image doesn't have a manifest", func() {
-						it.Before(func() {
-							fakeRemoteManifestSize = 0
-							fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
-						})
+					it("doesn't set the manifest size in the report.toml", func() {
+						report, err := exporter.Export(opts)
+						h.AssertNil(t, err)
 
-						it("doesn't set the manifest size in the report.toml", func() {
-							report, err := exporter.Export(opts)
-							h.AssertNil(t, err)
-
-							h.AssertEq(t, report.Image.ManifestSize, int64(0))
-						})
+						h.AssertEq(t, report.Image.ManifestSize, int64(0))
 					})
 				})
 			})
@@ -1560,46 +1434,6 @@ version = "4.5.6"
 
 					h.AssertPathExists(t, filepath.Join(opts.LayersDir, "sbom", "launch", "buildpacksio_lifecycle", "launcher", "some-sbom-file.sbom.spdx.json"))
 					h.AssertPathDoesNotExist(t, filepath.Join(opts.LayersDir, "sbom", "launch", "buildpacksio_lifecycle", "launcher", "a-regular-file.txt"))
-				})
-			})
-		})
-
-		when("buildpack API < 0.6", func() {
-			it.Before(func() {
-				exporter.Buildpacks = []buildpack.GroupElement{{ID: "old.buildpack.id", API: "0.5"}}
-			})
-
-			when("previous image exists", func() {
-				it.Before(func() {
-					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "previous-image-exists", "layers"), opts.LayersDir)
-				})
-
-				when("the launch flag is in the types table", func() {
-					it.Before(func() {
-						fakeAppImage.AddPreviousLayer("bad-layer-digest", "")
-						opts.OrigMetadata = files.LayersMetadata{
-							Buildpacks: []buildpack.LayersMetadata{{
-								ID:     "old.buildpack.id",
-								Layers: map[string]buildpack.LayerMetadata{"bad-layer": {SHA: "bad-layer-digest"}},
-							}},
-						}
-					})
-
-					it("should warn", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-						expected := "Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
-						assertLogEntry(t, logHandler, expected)
-						h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 0)
-					})
-
-					it("creates app layer on run image", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						assertHasLayer(t, fakeAppImage, "app")
-						assertLogEntry(t, logHandler, "Adding 1/1 app layer(s)")
-					})
 				})
 			})
 		})

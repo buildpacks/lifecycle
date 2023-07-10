@@ -285,63 +285,6 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				assertCacheHasLayer(t, testCache, "buildpack.id:layer-2")
 			})
 		})
-
-		when("buildpack API < 0.6", func() {
-			it.Before(func() {
-				exporter.Buildpacks = []buildpack.GroupElement{{ID: "old.buildpack.id", API: "0.5"}}
-			})
-			when("the layers are valid", func() {
-				it.Before(func() {
-					layerFactory.EXPECT().
-						DirLayer(gomock.Any(), gomock.Any(), gomock.Any()).
-						DoAndReturn(func(id string, dir string, createdBy string) (layers.Layer, error) {
-							return createTestLayer(id, tmpDir)
-						}).AnyTimes()
-
-					layersDir = filepath.Join("testdata", "cacher", "layers")
-				})
-
-				when("there are previously cached layers", func() {
-					when("the SHAs match", func() {
-						it.Before(func() {
-							metadataTemplate := `{
-							"buildpacks": [
-							 {
-							   "key": "old.buildpack.id",
-							   "layers": {
-								 "cache-true-layer": {
-								   "cache": true,
-								   "sha": "%s",
-								   "data": {"old":"data"}
-								 }
-							   }
-							 }
-							]
-							}`
-							initializeCache(t, exporter, &testCache, cacheDir, layersDir, metadataTemplate)
-						})
-
-						it("sets cache metadata", func() {
-							err := exporter.Cache(layersDir, testCache)
-							h.AssertNil(t, err)
-
-							metadata, err := testCache.RetrieveMetadata()
-							h.AssertNil(t, err)
-
-							t.Log("adds layer shas to metadata")
-							h.AssertEq(t, metadata.Buildpacks[0].ID, "old.buildpack.id")
-							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, testLayerDigest("buildpack.id:cache-true-layer"))
-							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
-							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
-							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
-							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]interface{}{
-								"cache-true-key": "cache-true-val",
-							})
-						})
-					})
-				})
-			})
-		})
 	})
 }
 

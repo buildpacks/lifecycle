@@ -295,47 +295,6 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 			})
-
-			when("buildpack api = 0.2", func() {
-				it.Before(func() {
-					descriptor.WithAPI = "0.2"
-				})
-
-				it("errors if the plan has a top level version and a metadata version that are different", func() {
-					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
-
-					toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-A-v1.toml")
-					toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
-					toappfile("\n[requires.metadata]\n version = \"some-other-version\"", "detect-plan-A-v1.toml")
-
-					detectRun := executor.Detect(descriptor, inputs, logger)
-
-					h.AssertEq(t, detectRun.Code, -1)
-					err := detectRun.Err
-					if err == nil {
-						t.Fatalf("Expected error")
-					}
-					h.AssertEq(t, err.Error(), `buildpack A has a "version" key that does not match "metadata.version"`)
-				})
-
-				it("errors if there is an alternate plan with a top level version and a metadata version that are different", func() {
-					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
-
-					toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-A-v1.toml")
-					toappfile("\n[[or]]", "detect-plan-A-v1.toml")
-					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
-					toappfile("\n[or.requires.metadata]\n version = \"some-other-version\"", "detect-plan-A-v1.toml")
-
-					detectRun := executor.Detect(descriptor, inputs, logger)
-
-					h.AssertEq(t, detectRun.Code, -1)
-					err := detectRun.Err
-					if err == nil {
-						t.Fatalf("Expected error")
-					}
-					h.AssertEq(t, err.Error(), `buildpack A has a "version" key that does not match "metadata.version"`)
-				})
-			})
 		})
 
 		when("for extension", func() {

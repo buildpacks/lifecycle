@@ -75,10 +75,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("app", func() {
 					it("is created", func() {
 						exportFlags := []string{"-daemon", "-log-level", "debug"}
-						if api.MustParse(platformAPI).LessThan("0.7") {
-							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...) // though the run image is registry image, it also exists in the daemon with the same tag
-						}
-
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
 						exportedImageName = "some-exported-image-" + h.RandString(10)
 						exportArgs = append(exportArgs, exportedImageName)
@@ -204,10 +200,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					expectedTime := time.Date(2022, 1, 5, 5, 5, 5, 0, time.UTC)
 
 					exportFlags := []string{"-daemon"}
-					if api.MustParse(platformAPI).LessThan("0.7") {
-						exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
-					}
-
 					exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
 					exportedImageName = "some-exported-image-" + h.RandString(10)
 					exportArgs = append(exportArgs, exportedImageName)
@@ -235,10 +227,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("app", func() {
 					it("is created", func() {
 						var exportFlags []string
-						if api.MustParse(platformAPI).LessThan("0.7") {
-							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
-						}
-
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
 						exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
 						exportArgs = append(exportArgs, exportedImageName)
@@ -265,10 +253,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						expectedTime := time.Date(2022, 1, 5, 5, 5, 5, 0, time.UTC)
 
 						var exportFlags []string
-						if api.MustParse(platformAPI).LessThan("0.7") {
-							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
-						}
-
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
 						exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
 						exportArgs = append(exportArgs, exportedImageName)
@@ -295,10 +279,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						it("is created", func() {
 							cacheImageName := exportTest.RegRepoName("some-cache-image-" + h.RandString(10))
 							exportFlags := []string{"-cache-image", cacheImageName}
-							if api.MustParse(platformAPI).LessThan("0.7") {
-								exportFlags = append(exportFlags, "-run-image", exportRegFixtures.ReadOnlyRunImage)
-							}
-
 							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
 							exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
 							exportArgs = append(exportArgs, exportedImageName)
@@ -321,10 +301,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						it("is created with empty layer", func() {
 							cacheImageName := exportTest.RegRepoName("some-empty-cache-image-" + h.RandString(10))
 							exportFlags := []string{"-cache-image", cacheImageName, "-layers", "/other_layers"}
-							if api.MustParse(platformAPI).LessThan("0.7") {
-								exportFlags = append(exportFlags, "-run-image", exportRegFixtures.ReadOnlyRunImage)
-							}
-
 							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
 							exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
 							exportArgs = append(exportArgs, exportedImageName)
