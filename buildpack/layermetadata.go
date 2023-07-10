@@ -27,7 +27,7 @@ func EncodeLayerMetadataFile(lmf LayerMetadataFile, path, buildpackAPI string) e
 	encoders := supportedEncoderDecoders()
 
 	for _, encoder := range encoders {
-		if encoder.IsSupported() {
+		if encoder.IsSupported(buildpackAPI) {
 			return encoder.Encode(fh, lmf)
 		}
 	}
@@ -46,7 +46,7 @@ func DecodeLayerMetadataFile(path string, buildpackAPI string, logger log.Logger
 	decoders := supportedEncoderDecoders()
 
 	for _, decoder := range decoders {
-		if decoder.IsSupported() {
+		if decoder.IsSupported(buildpackAPI) {
 			lmf, str, err := decoder.Decode(path)
 			if str != "" {
 				return LayerMetadataFile{}, errors.New(str)
@@ -58,7 +58,7 @@ func DecodeLayerMetadataFile(path string, buildpackAPI string, logger log.Logger
 }
 
 type encoderDecoder interface {
-	IsSupported() bool
+	IsSupported(buildpackAPI string) bool
 	Encode(file *os.File, lmf LayerMetadataFile) error
 	Decode(path string) (LayerMetadataFile, string, error)
 }
@@ -71,7 +71,7 @@ func supportedEncoderDecoders() []encoderDecoder {
 
 type defaultEncoderDecoder struct{}
 
-func (d *defaultEncoderDecoder) IsSupported() bool {
+func (d *defaultEncoderDecoder) IsSupported(buildpackAPI string) bool {
 	return true
 }
 

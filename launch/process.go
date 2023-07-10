@@ -10,7 +10,7 @@ import (
 
 // ProcessFor creates a process from container cmd
 //
-//	If the Platform API if 0.4 or greater and DefaultProcess is set:
+//	If DefaultProcess is set:
 //	  * The default process is returned with `cmd` appended to the process args
 //	Else
 //	  * it constructs a new process from cmd

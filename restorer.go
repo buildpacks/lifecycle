@@ -107,10 +107,6 @@ func (r *Restorer) Restore(cache Cache) error {
 	return nil
 }
 
-func (r *Restorer) restoresLayerMetadata() bool {
-	return true
-}
-
 func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {
 	// Sanity check to prevent panic.
 	if cache == nil {

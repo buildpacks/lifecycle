@@ -136,12 +136,13 @@ func (r *NopMetadataRestorer) Restore(_ []buildpack.GroupElement, _ files.Layers
 	return nil
 }
 
+// SHAStore when provided a buildpack ID and layer name will return the SHA of the layer.
 type SHAStore interface {
 	add(buildpackID, sha string, layer *buildpack.Layer) error
 	Get(buildpackID string, layer buildpack.Layer) (string, error)
 }
 
-// NewSHAStore TODO
+// NewSHAStore returns a SHAStore backed by an in-memory map.
 func NewSHAStore() SHAStore {
 	return &memoryStore{make(map[string]layerToSha)}
 }
