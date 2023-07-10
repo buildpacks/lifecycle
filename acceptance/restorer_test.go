@@ -70,7 +70,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called with arguments", func() {
 			it("errors", func() {
-				command := exec.Command("docker", "run", "--rm", restoreImage, "some-arg")
+				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restoreImage, "some-arg")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
 				expected := "failed to parse arguments: received unexpected Args"
@@ -81,7 +81,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("called with -analyzed (on older platforms)", func() {
 			it("errors", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -analyzed flag")
-				command := exec.Command("docker", "run", "--rm", restoreImage, "-analyzed some-file-location")
+				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restoreImage, "-analyzed some-file-location")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
 				expected := "flag provided but not defined: -analyzed"
@@ -92,7 +92,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("called with -skip-layers (on older platforms)", func() {
 			it("errors", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -skip-layers flag")
-				command := exec.Command("docker", "run", "--rm", restoreImage, "-skip-layers true")
+				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restoreImage, "-skip-layers true")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
 				expected := "flag provided but not defined: -skip-layers"
