@@ -1,4 +1,4 @@
 [[group]]
-  api = "0.2"
+  api = "0.10"
   id = "hello_world"
   version = "0.0.1"

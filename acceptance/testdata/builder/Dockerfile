@@ -10,7 +10,7 @@ ENTRYPOINT ["/cnb/lifecycle/builder"]
 RUN groupadd cnb --gid ${cnb_gid} && \
   useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb
 
-RUN chown -R "${cnb_uid}:${cnb_gid}" "/layers"
+RUN chown -R "${cnb_uid}:${cnb_gid}" "/layers" "/layers-1" "/layers-2"
 
 WORKDIR /layers
 

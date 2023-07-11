@@ -128,7 +128,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			// check builder metadata.toml for success test
 			_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
-			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+			h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 		})
@@ -152,7 +152,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			// prevent regression of inline table serialization
 			h.AssertStringDoesNotContain(t, contents, "processes =")
-			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+			h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 			h.AssertEq(t, len(md.Processes), 1)
@@ -161,7 +161,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, md.Processes[0].Command.Entries[0], "echo world")
 			h.AssertEq(t, len(md.Processes[0].Args), 1)
 			h.AssertEq(t, md.Processes[0].Args[0], "arg1")
-			h.AssertEq(t, md.Processes[0].Direct, false)
+			h.AssertEq(t, md.Processes[0].Direct, true)
 			h.AssertEq(t, md.Processes[0].WorkingDirectory, "")
 			h.AssertEq(t, md.Processes[0].Default, false)
 		})
@@ -184,7 +184,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				// prevent regression of inline table serialization
 				h.AssertStringDoesNotContain(t, contents, "processes =")
-				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 				h.AssertEq(t, len(md.Processes), 1)
@@ -193,7 +193,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, md.Processes[0].Command.Entries[0], "echo world")
 				h.AssertEq(t, len(md.Processes[0].Args), 1)
 				h.AssertEq(t, md.Processes[0].Args[0], "arg1")
-				h.AssertEq(t, md.Processes[0].Direct, false)
+				h.AssertEq(t, md.Processes[0].Direct, true)
 				h.AssertEq(t, md.Processes[0].WorkingDirectory, "")
 				h.AssertEq(t, md.Processes[0].Default, false)
 			})
@@ -216,10 +216,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			// check builder metadata.toml for success test
 			_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
-			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+			h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
-			h.AssertStringContains(t, md.Extensions[0].API, "0.9")
+			h.AssertStringContains(t, md.Extensions[0].API, "0.10")
 			h.AssertEq(t, md.Extensions[0].Extension, false) // this shows that `extension = true` is not redundantly printed in group.toml
 			h.AssertStringContains(t, md.Extensions[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Extensions[0].Version, "0.0.1")
@@ -338,7 +338,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					// check builder metadata.toml for success test
 					_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
-					h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+					h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 					h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 					h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 				})
@@ -371,17 +371,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
-					ctrPath("/layers"),
+					ctrPath("/layers-1"),
 					builderImage,
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-						"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
+						"--env", "CNB_LAYERS_DIR=/layers-1",
 						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan_buildpack_2.toml",
 					),
 				)
-				_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
+				_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers-1/config/metadata.toml"))
 
-				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world_2")
 				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.2")
 			})
@@ -393,17 +393,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
-					ctrPath("/layers"),
+					ctrPath("/layers-1"),
 					builderImage,
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-						"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
+						"--env", "CNB_LAYERS_DIR=/layers-1",
 						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group_buildpack2.toml",
 					),
 				)
-				_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
+				_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers-1/config/metadata.toml"))
 
-				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world_2")
 				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.2")
 			})
@@ -419,12 +419,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-				"--env", "CNB_APP_DIR=/env_folders/different_cnb_app_dir_from_env",
+				"--env", "CNB_APP_DIR=/other-workspace",
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
 			h.AssertNil(t, err)
-			expected := "CNB_APP_DIR: /env_folders/different_cnb_app_dir_from_env"
+			expected := "CNB_APP_DIR: /other-workspace"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
@@ -438,12 +438,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-				"--env", "CNB_BUILDPACKS_DIR=/env_folders/different_buildpack_dir_from_env",
+				"--env", "CNB_BUILDPACKS_DIR=/cnb/other-buildpacks",
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
 			h.AssertNil(t, err)
-			expected := "CNB_BUILDPACK_DIR: /env_folders/different_buildpack_dir_from_env"
+			expected := "CNB_BUILDPACK_DIR: /cnb/other-buildpacks"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
@@ -457,12 +457,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-				"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
+				"--env", "CNB_LAYERS_DIR=/layers-1",
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
+			if err != nil {
+				t.Log(string(output))
+			}
 			h.AssertNil(t, err)
-			expected := "LAYERS_DIR: /layers/different_layer_dir_from_env/hello_world"
+			expected := "LAYERS_DIR: /layers-1/hello_world"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
@@ -494,12 +497,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-				"--env", "CNB_PLATFORM_DIR=/env_folders/different_platform_dir_from_env",
+				"--env", "CNB_PLATFORM_DIR=/other-platform",
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
 			h.AssertNil(t, err)
-			expected := "PLATFORM_DIR: /env_folders/different_platform_dir_from_env"
+			expected := "PLATFORM_DIR: /other-platform"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
@@ -511,12 +514,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				"run",
 				"--rm",
 				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-				"--env", "CNB_LAYERS_DIR=/layers/03_layer",
+				"--env", "CNB_LAYERS_DIR=/layers-2",
 				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan_buildpack_3.toml",
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
-			fmt.Println(string(output))
+			if err != nil {
+				t.Log(string(output))
+			}
 			h.AssertNil(t, err)
 			h.AssertStringContains(t, string(output), "CNB_TARGET_ARCH: amd64")
 			h.AssertStringContains(t, string(output), "CNB_TARGET_ARCH_VARIANT: some-variant")
