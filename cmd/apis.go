@@ -10,6 +10,8 @@ import (
 )
 
 const (
+	// EnvPlatformAPI configures the Platform API version.
+	EnvPlatformAPI         = "CNB_PLATFORM_API"
 	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
 	DefaultDeprecationMode = ModeWarn
 
@@ -64,6 +66,13 @@ func buildpackAPIError(moduleKind string, name string, requested string) error {
 }
 
 func VerifyPlatformAPI(requested string, logger log.Logger) error {
+	if strings.TrimSpace(requested) == "" {
+		return FailErrCode(
+			nil,
+			CodeForIncompatiblePlatformAPI,
+			fmt.Sprintf("get platform API version; please set '%s' to specify the desired platform API version", EnvPlatformAPI),
+		)
+	}
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
 		return FailErrCode(

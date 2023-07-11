@@ -142,6 +142,7 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				w(tc.description, func() {
 					it("only prints the version", func() {
 						cmd := lifecycleCmd(tc.command, tc.args...)
+						cmd.Env = []string{fmt.Sprintf("CNB_PLATFORM_API=%s", api.Platform.Latest().String())}
 						output, err := cmd.CombinedOutput()
 						if err != nil {
 							t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)

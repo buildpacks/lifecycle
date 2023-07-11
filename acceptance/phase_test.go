@@ -127,7 +127,12 @@ func (p *PhaseTest) Start(t *testing.T, phaseOp ...func(*testing.T, *PhaseTest))
 
 	h.MakeAndCopyLifecycle(t, p.targetDaemon.os, p.targetDaemon.arch, p.containerBinaryDir)
 	copyFakeSboms(t)
-	h.DockerBuild(t, p.testImageRef, p.testImageDockerContext, h.WithArgs("-f", filepath.Join(p.testImageDockerContext, dockerfileName)))
+	h.DockerBuild(
+		t,
+		p.testImageRef,
+		p.testImageDockerContext,
+		h.WithArgs("-f", filepath.Join(p.testImageDockerContext, dockerfileName)),
+	)
 }
 
 func (p *PhaseTest) Stop(t *testing.T) {

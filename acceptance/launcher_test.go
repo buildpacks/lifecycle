@@ -89,10 +89,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("appends any args to the process args", func() {
-				cmd := exec.Command("docker", "run", "--rm",
+				cmd := exec.Command( //nolint
+					"docker", "run", "--rm",
 					"--entrypoint=web",
 					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
-					launchImage, "with user provided args")
+					launchImage, "with user provided args",
+				)
 				if runtime.GOOS == "windows" {
 					assertOutput(t, cmd, `Executing web process-type "with user provided args"`)
 				} else {
@@ -103,15 +105,20 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		when("entrypoint is a not a process", func() {
 			it("builds a process from the arguments", func() {
-				cmd := exec.Command("docker", "run", "--rm",
+				cmd := exec.Command( //nolint
+					"docker", "run", "--rm",
 					"--entrypoint=launcher",
 					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
-					launchImage, "--", "env")
+					launchImage, "--",
+					"env",
+				)
 				if runtime.GOOS == "windows" {
-					cmd = exec.Command("docker", "run", "--rm",
+					cmd = exec.Command( //nolint
+						"docker", "run", "--rm",
 						`--entrypoint=launcher`,
 						"--env=CNB_PLATFORM_API=0.4",
-						launchImage, "--", "cmd", "/c", "set",
+						launchImage, "--",
+						"cmd", "/c", "set",
 					)
 				}
 
@@ -254,14 +261,29 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 	when("provided CMD is not a process-type", func() {
 		it("sources profiles and executes the command in a shell", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo", "something")
+			cmd := exec.Command( //nolint
+				"docker", "run", "--rm",
+				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+				launchImage,
+				"echo", "something",
+			)
 			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsomething")
 		})
 
 		it("sets env vars from layers", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo", "$SOME_VAR", "$OTHER_VAR", "$WORKER_VAR")
+			cmd := exec.Command( //nolint
+				"docker", "run", "--rm",
+				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+				launchImage,
+				"echo", "$SOME_VAR", "$OTHER_VAR", "$WORKER_VAR",
+			)
 			if runtime.GOOS == "windows" {
-				cmd = exec.Command("docker", "run", "--rm", launchImage, "echo", "%SOME_VAR%", "%OTHER_VAR%", "%WORKER_VAR%")
+				cmd = exec.Command( //nolint
+					"docker", "run", "--rm",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+					launchImage,
+					"echo", "%SOME_VAR%", "%OTHER_VAR%", "%WORKER_VAR%",
+				)
 			}
 			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-bp-val other-bp-val worker-no-process-val")
 		})
@@ -276,6 +298,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					[]string{
 						"run", "--rm",
 						"--env", "CNB_APP_DIR=" + ctrPath("/workspace"),
+						"--env=CNB_PLATFORM_API=" + latestPlatformAPI,
 						"--env", "SOME_USER_VAR=some-user-val",
 						"--env", "OTHER_VAR=other-user-val",
 						launchImage,
@@ -293,7 +316,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("adds buildpack bin dirs to the path", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "bp-executable")
+			cmd := exec.Command( //nolint
+				"docker", "run", "--rm",
+				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+				launchImage,
+				"bp-executable",
+			)
 			assertOutput(t, cmd, "bp executable")
 		})
 	})
@@ -301,18 +329,38 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	when("CMD provided starts with --", func() {
 		it("launches command directly", func() {
 			if runtime.GOOS == "windows" {
-				cmd := exec.Command("docker", "run", "--rm", launchImage, "--", "ping", "/?")
+				cmd := exec.Command( //nolint
+					"docker", "run", "--rm",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+					launchImage, "--",
+					"ping", "/?",
+				)
 				assertOutput(t, cmd, "Usage: ping")
 			} else {
-				cmd := exec.Command("docker", "run", "--rm", launchImage, "--", "echo", "something")
+				cmd := exec.Command( //nolint
+					"docker", "run", "--rm",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+					launchImage, "--",
+					"echo", "something",
+				)
 				assertOutput(t, cmd, "something")
 			}
 		})
 
 		it("sets env vars from layers", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "--", "env")
+			cmd := exec.Command( //nolint
+				"docker", "run", "--rm",
+				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+				launchImage, "--",
+				"env",
+			)
 			if runtime.GOOS == "windows" {
-				cmd = exec.Command("docker", "run", "--rm", launchImage, "--", "cmd", "/c", "set")
+				cmd = exec.Command( //nolint
+					"docker", "run", "--rm",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+					launchImage, "--",
+					"cmd", "/c", "set",
+				)
 			}
 
 			assertOutput(t, cmd,
@@ -322,15 +370,19 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("passes through env vars from user, excluding excluded vars", func() {
-			cmd := exec.Command("docker", "run", "--rm",
+			cmd := exec.Command( //nolint
+				"docker", "run", "--rm",
 				"--env", "CNB_APP_DIR=/workspace",
+				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 				"--env", "SOME_USER_VAR=some-user-val",
 				launchImage, "--",
 				"env",
 			)
 			if runtime.GOOS == "windows" {
-				cmd = exec.Command("docker", "run", "--rm",
+				cmd = exec.Command( //nolint
+					"docker", "run", "--rm",
 					"--env", "CNB_APP_DIR=/workspace",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "SOME_USER_VAR=some-user-val",
 					launchImage, "--",
 					"cmd", "/c", "set",
@@ -352,7 +404,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("adds buildpack bin dirs to the path before looking up command", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "--", "bp-executable")
+			cmd := exec.Command( //nolint
+				"docker", "run", "--rm",
+				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+				launchImage, "--",
+				"bp-executable",
+			)
 			assertOutput(t, cmd, "bp executable")
 		})
 	})
