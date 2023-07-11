@@ -1,7 +1,7 @@
 [[buildpacks]]
-  id = "0.6/buildpack"
+  id = "0.9/buildpack"
   version = "0.0.1"
-  api = "0.6"
+  api = "0.9"
 
 [[buildpacks]]
   id = "some/buildpack"
