@@ -110,7 +110,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			if runtime.GOOS == "windows" {
 				cmd = exec.Command("docker", "run", "--rm", //nolint
 					`--entrypoint=launcher`,
-					"--env=CNB_PLATFORM_API=0.4",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 					launchImage, "--", "cmd", "/c", "set",
 				)
 			}
