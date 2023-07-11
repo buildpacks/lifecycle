@@ -3,54 +3,48 @@ package cache
 
 import (
 	"github.com/buildpacks/imgutil"
-	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/log"
 )
 
-//go:generate mockgen -package testmock -destination ../testmock/image_deleter.go github.com/buildpacks/lifecycle/cache ImageDeleter
+//go:generate mockgen -package testmockcache -destination ../testmock/cache/image_deleter.go github.com/buildpacks/lifecycle/cache ImageDeleter
 
 // ImageDeleter defines the methods available to delete and compare cached images
 type ImageDeleter interface {
-	DeleteImage(image imgutil.Image)
-	ImagesEq(oldImage imgutil.Image, newImage imgutil.Image) (bool, error)
+	DeleteOrigImageIfDifferentFromNewImage(origImage, newImage imgutil.Image)
 }
 
 // ImageDeleterImpl is a component to manage cache image deletion
 type ImageDeleterImpl struct {
 	logger          log.Logger
 	deletionEnabled bool
+	comparer        ImageComparer
 }
 
 // NewImageDeleter creates a new ImageDeleter implementation
-func NewImageDeleter(logger log.Logger, deletionEnabled bool) *ImageDeleterImpl {
-	return &ImageDeleterImpl{logger: logger, deletionEnabled: deletionEnabled}
+func NewImageDeleter(comparer ImageComparer, logger log.Logger, deletionEnabled bool) *ImageDeleterImpl {
+	return &ImageDeleterImpl{comparer: comparer, logger: logger, deletionEnabled: deletionEnabled}
 }
 
-// DeleteImage deletes an image
-func (c *ImageDeleterImpl) DeleteImage(image imgutil.Image) {
+// DeleteOrigImageIfDifferentFromNewImage compares the two images, and it tries to delete it if they are not the same
+func (c *ImageDeleterImpl) DeleteOrigImageIfDifferentFromNewImage(origImage, newImage imgutil.Image) {
+	if c.deletionEnabled {
+		same, err := c.comparer.ImagesEq(origImage, newImage)
+		if err != nil {
+			c.logger.Warnf("Unable to compare the image: %v", err.Error())
+		}
+
+		if !same {
+			c.deleteImage(origImage)
+		}
+	}
+}
+
+// deleteImage deletes an image
+func (c *ImageDeleterImpl) deleteImage(image imgutil.Image) {
 	if c.deletionEnabled {
 		if err := image.Delete(); err != nil {
 			c.logger.Warnf("Unable to delete cache image: %v", err.Error())
 		}
 	}
-}
-
-// ImagesEq checks if the origin and the new images are the same
-func (c *ImageDeleterImpl) ImagesEq(oldImage imgutil.Image, newImage imgutil.Image) (bool, error) {
-	origIdentifier, err := oldImage.Identifier()
-	if err != nil {
-		return false, errors.Wrap(err, "getting identifier for original image")
-	}
-
-	newIdentifier, err := newImage.Identifier()
-	if err != nil {
-		return false, errors.Wrap(err, "getting identifier for new image")
-	}
-
-	if origIdentifier.String() == newIdentifier.String() {
-		return true, nil
-	}
-
-	return false, nil
 }

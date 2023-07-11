@@ -6,6 +6,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
+	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -13,83 +14,73 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/log"
 	h "github.com/buildpacks/lifecycle/testhelpers"
+	cacheMock "github.com/buildpacks/lifecycle/testmock/cache"
 )
 
-func TestCacheDeleter(t *testing.T) {
-	spec.Run(t, "Exporter", testCacheDeleter, spec.Parallel(), spec.Report(report.Terminal{}))
+func TestImageDeleter(t *testing.T) {
+	spec.Run(t, "ImageDeleter", testImageDeleter, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testCacheDeleter(t *testing.T, when spec.G, it spec.S) {
+func testImageDeleter(t *testing.T, when spec.G, it spec.S) {
 	var (
-		testLogger   log.Logger
-		cacheDeleter ImageDeleter
+		testLogger        log.Logger
+		imageDeleter      ImageDeleter
+		fakeImageComparer *cacheMock.MockImageComparer
 	)
 
 	it.Before(func() {
 		testLogger = cmd.DefaultLogger
-		cacheDeleter = NewImageDeleter(testLogger, true)
+		mockController := gomock.NewController(t)
+		fakeImageComparer = cacheMock.NewMockImageComparer(mockController)
+		imageDeleter = NewImageDeleter(fakeImageComparer, testLogger, true)
 	})
 
 	when("delete functionality has ben activated", func() {
-		it("should delete the image when provided", func() {
-			fakeImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+		it("should delete the image when provided and orig and new images are differents", func() {
+			fakeOrigImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+			fakeNewImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
+			fakeImageComparer.EXPECT().ImagesEq(fakeOrigImage, fakeNewImage).AnyTimes().Return(false, nil)
 
-			cacheDeleter.DeleteImage(fakeImage)
+			imageDeleter.DeleteOrigImageIfDifferentFromNewImage(fakeOrigImage, fakeNewImage)
 
-			h.AssertEq(t, fakeImage.Found(), false)
+			h.AssertEq(t, fakeOrigImage.Found(), false)
 		})
 
 		it("should raise a warning if delete doesn't work properly", func() {
-			fakeImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
-			fakeErrorImage := newFakeImageErrIdentifier(fakeImage, "original")
+			fakeNewImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
+			fakeOriginalErrorImage := newFakeImageErrIdentifier(fakeNewImage, "original")
 			mockLogger := &MockLogger{Logger: cmd.DefaultLogger}
-			cacheDeleter := NewImageDeleter(mockLogger, true)
+			fakeImageComparer.EXPECT().ImagesEq(fakeOriginalErrorImage, fakeNewImage).AnyTimes().Return(false, nil)
+			imageDeleter := NewImageDeleter(fakeImageComparer, mockLogger, true)
 
-			cacheDeleter.DeleteImage(fakeErrorImage)
+			imageDeleter.DeleteOrigImageIfDifferentFromNewImage(fakeOriginalErrorImage, fakeNewImage)
 
 			h.AssertEq(t, mockLogger.Calls, 1)
+		})
+
+		when("comparing two images: orig and new and they are the same", func() {
+			it("should not perform deleting operations", func() {
+				fakeOrigImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+				fakeNewImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+				fakeImageComparer.EXPECT().ImagesEq(fakeOrigImage, fakeNewImage).AnyTimes().Return(true, nil)
+				imageDeleter = NewImageDeleter(fakeImageComparer, testLogger, true)
+
+				imageDeleter.DeleteOrigImageIfDifferentFromNewImage(fakeOrigImage, fakeNewImage)
+
+				h.AssertEq(t, fakeOrigImage.Found(), true)
+			})
 		})
 	})
 
 	when("delete functionality has been deactivated", func() {
 		it("should not perform deleting operations", func() {
-			fakeImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
-			cacheDeleter = NewImageDeleter(testLogger, false)
+			fakeOrigImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+			fakeNewImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
+			imageDeleter = NewImageDeleter(fakeImageComparer, testLogger, false)
 
-			cacheDeleter.DeleteImage(fakeImage)
+			imageDeleter.DeleteOrigImageIfDifferentFromNewImage(fakeOrigImage, fakeNewImage)
 
-			h.AssertEq(t, fakeImage.Found(), true)
-		})
-	})
-
-	when("Comparing two images: orig and new", func() {
-		it("checks if the images have the same identifier", func() {
-			fakeOldImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOldImage"})
-			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-
-			result, _ := cacheDeleter.ImagesEq(fakeOldImage, fakeNewImage)
-
-			h.AssertEq(t, result, false)
-		})
-
-		it("returns an error if it's impossible to get the original image identifier", func() {
-			fakeOriginalImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
-			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-			fakeErrorImage := newFakeImageErrIdentifier(fakeOriginalImage, "original")
-
-			_, err := cacheDeleter.ImagesEq(fakeErrorImage, fakeNewImage)
-
-			h.AssertError(t, err, "getting identifier for original image")
-		})
-
-		it("returns an error if it's impossible to get the new image identifier", func() {
-			fakeOriginalImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
-			fakeNewImage := fakes.NewImage("fake-new-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-			fakeErrorImage := newFakeImageErrIdentifier(fakeNewImage, "new")
-
-			_, err := cacheDeleter.ImagesEq(fakeOriginalImage, fakeErrorImage)
-
-			h.AssertError(t, err, "getting identifier for new image")
+			h.AssertEq(t, fakeOrigImage.Found(), true)
 		})
 	})
 }
