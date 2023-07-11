@@ -35,7 +35,7 @@ func (c *ImageDeleterImpl) DeleteOrigImageIfDifferentFromNewImage(origImage, new
 		}
 
 		if !same {
-			c.deleteImage(origImage)
+			go c.deleteImage(origImage)
 		}
 	}
 }

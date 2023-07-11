@@ -2,6 +2,7 @@ package cache
 
 import (
 	"testing"
+	"time"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
@@ -18,7 +19,7 @@ import (
 )
 
 func TestImageDeleter(t *testing.T) {
-	spec.Run(t, "ImageDeleter", testImageDeleter, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "ImageDeleter", testImageDeleter, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testImageDeleter(t *testing.T, when spec.G, it spec.S) {
@@ -41,9 +42,10 @@ func testImageDeleter(t *testing.T, when spec.G, it spec.S) {
 			fakeNewImage := fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
 			fakeImageComparer.EXPECT().ImagesEq(fakeOrigImage, fakeNewImage).AnyTimes().Return(false, nil)
 
-			imageDeleter.DeleteOrigImageIfDifferentFromNewImage(fakeOrigImage, fakeNewImage)
-
-			h.AssertEq(t, fakeOrigImage.Found(), false)
+			h.Eventually(t, func() bool {
+				imageDeleter.DeleteOrigImageIfDifferentFromNewImage(fakeOrigImage, fakeNewImage)
+				return fakeOrigImage.Found() == false
+			}, time.Millisecond, time.Second*2)
 		})
 
 		it("should raise a warning if delete doesn't work properly", func() {
@@ -53,9 +55,10 @@ func testImageDeleter(t *testing.T, when spec.G, it spec.S) {
 			fakeImageComparer.EXPECT().ImagesEq(fakeOriginalErrorImage, fakeNewImage).AnyTimes().Return(false, nil)
 			imageDeleter := NewImageDeleter(fakeImageComparer, mockLogger, true)
 
-			imageDeleter.DeleteOrigImageIfDifferentFromNewImage(fakeOriginalErrorImage, fakeNewImage)
-
-			h.AssertEq(t, mockLogger.Calls, 1)
+			h.Eventually(t, func() bool {
+				imageDeleter.DeleteOrigImageIfDifferentFromNewImage(fakeOriginalErrorImage, fakeNewImage)
+				return mockLogger.Calls == 1
+			}, time.Millisecond, time.Second*2)
 		})
 
 		when("comparing two images: orig and new and they are the same", func() {
