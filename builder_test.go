@@ -387,8 +387,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("bom", func() {
 				it("omits bom and saves the aggregated legacy boms to <layers>/sbom/", func() {
 					builder.Group.Group = []buildpack.GroupElement{
-						{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
-						{ID: "B", Version: "v2", API: "0.2"},
+						{ID: "A", Version: "v1", Homepage: "Buildpack A Homepage"},
+						{ID: "B", Version: "v2"},
 					}
 
 					bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
