@@ -1,4 +1,0 @@
-[[group]]
-id = "some-buildpack-id"
-version = "some-buildpack-version"
-api = "0.2"

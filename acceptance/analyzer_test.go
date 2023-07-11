@@ -182,7 +182,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				)
 
 				h.AssertMatch(t, output, "2222 3333 .+ \\.")
-				h.AssertMatch(t, output, "2222 3333 .+ group.toml")
+				h.AssertMatch(t, output, "2222 3333 .+ .gitkeep")
 			})
 		})
 
