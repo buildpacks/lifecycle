@@ -1,5 +1,4 @@
 [[order]]
-
   [[order.group]]
     id = "fail_detect_buildpack"
     version = "some_version"

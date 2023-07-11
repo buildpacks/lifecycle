@@ -1,5 +1,4 @@
 [[order]]
-
   [[order.group]]
     id = "always_detect_buildpack"
     version = "always_detect_buildpack_version"

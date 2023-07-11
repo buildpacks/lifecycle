@@ -205,8 +205,8 @@ fail: fail_detect_buildpack@some_version
 				detectImage,
 				h.WithFlags("--user", userID,
 					"--env", "CNB_ORDER_PATH=/cnb/orders/always_detect_order.toml",
-					"--env", "CNB_BUILDPACKS_DIR=/cnb/custom_buildpacks",
-					"--env", "CNB_APP_DIR=/custom_workspace",
+					"--env", "CNB_BUILDPACKS_DIR=/cnb/other-buildpacks",
+					"--env", "CNB_APP_DIR=/other-workspace",
 					"--env", "CNB_GROUP_PATH=./custom_group.toml",
 					"--env", "CNB_PLAN_PATH=./custom_plan.toml",
 					"--env", "CNB_PLATFORM_DIR=/custom_platform",
@@ -232,7 +232,7 @@ fail: fail_detect_buildpack@some_version
 			// check platform directory
 			logs := h.Run(t, exec.Command("docker", "logs", containerName))
 			expectedPlatformPath := "platform_path: /custom_platform"
-			expectedAppDir := "app_dir: /custom_workspace"
+			expectedAppDir := "app_dir: /other-workspace"
 			h.AssertStringContains(t, logs, expectedPlatformPath)
 			h.AssertStringContains(t, logs, expectedAppDir)
 		})

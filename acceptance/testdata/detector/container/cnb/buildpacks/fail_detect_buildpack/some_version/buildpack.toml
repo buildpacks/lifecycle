@@ -1,4 +1,5 @@
 api = "0.9"
+
 [buildpack]
     id = "fail_detect_buildpack"
     version = "some_version"
