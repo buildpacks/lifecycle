@@ -129,7 +129,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 
 				it("does not restore cache=true layers not in cache", func() {
-					output := h.DockerRunAndCopy(t,
+					h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
 						"/layers",
@@ -141,9 +141,6 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					// check uncached layer is not restored
 					uncachedFile := filepath.Join(copyDir, "layers", "cacher_buildpack", "uncached-layer")
 					h.AssertPathDoesNotExist(t, uncachedFile)
-
-					// check output to confirm why this layer was not restored from cache
-					h.AssertStringContains(t, string(output), "Removing \"cacher_buildpack:layer-not-in-cache\", not in cache")
 				})
 
 				it("does not restore unused buildpack layer data", func() {

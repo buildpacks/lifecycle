@@ -44,7 +44,8 @@ func (r *Restorer) Restore(cache Cache) error {
 		cachedLayers := cacheMeta.MetadataForBuildpack(bp.ID).Layers
 
 		var cachedFn func(buildpack.Layer) bool
-		// The <layer>.toml file never contains layer types information.
+		// At this point in the build, <layer>.toml files never contain layer types information
+		// (this information is added by buildpacks during the `build` phase).
 		// The cache metadata is the only way to identify cache=true layers.
 		cachedFn = func(l buildpack.Layer) bool {
 			bpLayer, ok := cachedLayers[filepath.Base(l.Path())]
@@ -61,6 +62,7 @@ func (r *Restorer) Restore(cache Cache) error {
 		for _, bpLayer := range foundLayers {
 			cachedLayer, exists := cachedLayers[bpLayer.Name()]
 			if !exists {
+				// This should be unreachable, as "find layers" uses the same cache metadata as the map
 				r.Logger.Infof("Removing %q, not in cache", bpLayer.Identifier())
 				if err := bpLayer.Remove(); err != nil {
 					return errors.Wrapf(err, "removing layer")
