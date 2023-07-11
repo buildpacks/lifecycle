@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/platform/files"
-
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -17,6 +14,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -112,12 +110,7 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	// Analyze, Detect
-	var (
-		analyzedMD files.Analyzed
-		group      buildpack.Group
-		plan       files.Plan
-	)
+	// Analyze
 	cmd.DefaultLogger.Phase("ANALYZING")
 	analyzerFactory := lifecycle.NewAnalyzerFactory(
 		c.PlatformAPI,
@@ -144,11 +137,12 @@ func (c *createCmd) Exec() error {
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize analyzer")
 	}
-	analyzedMD, err = analyzer.Analyze()
+	analyzedMD, err := analyzer.Analyze()
 	if err != nil {
 		return err
 	}
 
+	// Detect
 	cmd.DefaultLogger.Phase("DETECTING")
 	detectorFactory := lifecycle.NewDetectorFactory(
 		c.PlatformAPI,
@@ -160,7 +154,7 @@ func (c *createCmd) Exec() error {
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}
-	group, plan, err = doDetect(detector, c.Platform)
+	group, plan, err := doDetect(detector, c.Platform)
 	if err != nil {
 		return err // pass through error
 	}
@@ -168,21 +162,20 @@ func (c *createCmd) Exec() error {
 	// Restore
 	if !c.SkipLayers || c.PlatformAPI.AtLeast("0.10") {
 		cmd.DefaultLogger.Phase("RESTORING")
-		restoreCmd := &restoreCmd{
+		restorer := &restoreCmd{
 			Platform: c.Platform,
 			keychain: c.keychain,
 		}
-		err := restoreCmd.restore(analyzedMD.LayersMetadata, group, cacheStore)
-		if err != nil {
+		if err = restorer.restore(analyzedMD.LayersMetadata, group, cacheStore); err != nil {
 			return err
 		}
 	}
 
 	// Build
-	stopPinging := startPinging(c.docker) // send pings to docker daemon while building to prevent connection closure
 	cmd.DefaultLogger.Phase("BUILDING")
-	buildCmd := &buildCmd{Platform: c.Platform}
-	err = buildCmd.build(group, plan, analyzedMD)
+	stopPinging := startPinging(c.docker) // send pings to docker daemon while building to prevent connection closure
+	builder := &buildCmd{Platform: c.Platform}
+	err = builder.build(group, plan, analyzedMD)
 	stopPinging()
 	if err != nil {
 		return err
@@ -190,12 +183,12 @@ func (c *createCmd) Exec() error {
 
 	// Export
 	cmd.DefaultLogger.Phase("EXPORTING")
-	exportCmd := &exportCmd{
+	exporter := &exportCmd{
 		Platform: c.Platform,
 		docker:   c.docker,
 		keychain: c.keychain,
 	}
-	return exportCmd.export(group, cacheStore, analyzedMD)
+	return exporter.export(group, cacheStore, analyzedMD)
 }
 
 func startPinging(docker client.CommonAPIClient) (stopPinging func()) {
