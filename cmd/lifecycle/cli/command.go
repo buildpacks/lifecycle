@@ -57,6 +57,12 @@ func Run(c Command, withPhaseName string, asSubcommand bool) {
 	}
 	cmd.DefaultLogger.Debugf("Starting %s...", withPhaseName)
 
+	for _, arg := range flagSet.Args() {
+		if arg[0:1] == "-" {
+			cmd.DefaultLogger.Warnf("Warning: unconsumed flag-like positional arg: \n\t%s\n\t This will not be interpreted as a flag.\n\t Did you mean to put this before the first positional argument?", arg)
+		}
+	}
+
 	// Warn when CNB_PLATFORM_API is unset
 	if os.Getenv(platform.EnvPlatformAPI) == "" {
 		cmd.DefaultLogger.Warnf("%s is unset; using Platform API version '%s'", platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
