@@ -177,6 +177,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			_, err := builder.Build()
 			h.AssertNil(t, err)
 		})
+
 		it("gets the correct env vars", func() {
 			builder.AnalyzeMD.RunImage = &files.RunImage{Reference: "foo", TargetMetadata: &files.TargetMetadata{
 				OS:   "linux",
@@ -212,6 +213,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			_, err := builder.Build()
 			h.AssertNil(t, err)
 		})
+
 		it("doesnt gets the new env vars if its old", func() {
 			builder.PlatformAPI = api.MustParse("0.8")
 			builder.AnalyzeMD.RunImage = &files.RunImage{Reference: "foo", TargetMetadata: &files.TargetMetadata{
@@ -387,8 +389,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("bom", func() {
 				it("omits bom and saves the aggregated legacy boms to <layers>/sbom/", func() {
 					builder.Group.Group = []buildpack.GroupElement{
-						{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
-						{ID: "B", Version: "v2", API: "0.2"},
+						{ID: "A", Version: "v1", Homepage: "Buildpack A Homepage"},
+						{ID: "B", Version: "v2"},
 					}
 
 					bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
@@ -816,108 +818,46 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("there is a web process", func() {
-					when("buildpack API >= 0.6", func() {
-						it.Before(func() {
-							builder.Group.Group = []buildpack.GroupElement{
-								{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
-							}
-						})
+					it.Before(func() {
+						builder.Group.Group = []buildpack.GroupElement{
+							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
+						}
+					})
 
-						it("does not set it as a default process", func() {
-							bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
-							dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
-							executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).Return(buildpack.BuildOutputs{
-								Processes: []launch.Process{
-									{
-										Type:        "web",
-										Command:     launch.NewRawCommand([]string{"web-cmd"}),
-										Args:        []string{"web-arg"},
-										Direct:      false,
-										BuildpackID: "A",
-										Default:     false,
-									},
-								},
-							}, nil)
-
-							metadata, err := builder.Build()
-							h.AssertNil(t, err)
-
-							if s := cmp.Diff(metadata.Processes, []launch.Process{
+					it("does not set it as a default process", func() {
+						bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
+						executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).Return(buildpack.BuildOutputs{
+							Processes: []launch.Process{
 								{
-									Type: "web",
-									Command: launch.NewRawCommand([]string{"web-cmd"}).
-										WithPlatformAPI(builder.PlatformAPI),
+									Type:        "web",
+									Command:     launch.NewRawCommand([]string{"web-cmd"}),
 									Args:        []string{"web-arg"},
 									Direct:      false,
 									BuildpackID: "A",
 									Default:     false,
-									PlatformAPI: builder.PlatformAPI,
 								},
-							}); s != "" {
-								t.Fatalf("Unexpected:\n%s\n", s)
-							}
-							h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
-						})
-					})
+							},
+						}, nil)
 
-					when("buildpack api < 0.6", func() {
-						it.Before(func() {
-							builder.Group.Group = []buildpack.GroupElement{
-								{ID: "A", Version: "v1", API: "0.5"},
-							}
-						})
+						metadata, err := builder.Build()
+						h.AssertNil(t, err)
 
-						it("sets it as a default process", func() {
-							bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
-							dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
-							executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).Return(buildpack.BuildOutputs{
-								Processes: []launch.Process{
-									{
-										Type:        "web",
-										Command:     launch.NewRawCommand([]string{"web-cmd"}),
-										Args:        []string{"web-arg"},
-										Direct:      false,
-										BuildpackID: "A",
-										Default:     false,
-									},
-									{
-										Type:        "not-web",
-										Command:     launch.NewRawCommand([]string{"not-web-cmd"}),
-										Args:        []string{"not-web-arg"},
-										Direct:      true,
-										BuildpackID: "A",
-										Default:     false,
-									},
-								},
-							}, nil)
-
-							metadata, err := builder.Build()
-							h.AssertNil(t, err)
-
-							if s := cmp.Diff(metadata.Processes, []launch.Process{
-								{
-									Type: "not-web",
-									Command: launch.NewRawCommand([]string{"not-web-cmd"}).
-										WithPlatformAPI(builder.PlatformAPI),
-									Args:        []string{"not-web-arg"},
-									Direct:      true,
-									BuildpackID: "A",
-									PlatformAPI: builder.PlatformAPI,
-								},
-								{
-									Type: "web",
-									Command: launch.NewRawCommand([]string{"web-cmd"}).
-										WithPlatformAPI(builder.PlatformAPI),
-									Args:        []string{"web-arg"},
-									Direct:      false,
-									BuildpackID: "A",
-									PlatformAPI: builder.PlatformAPI,
-								},
-							}); s != "" {
-								t.Fatalf("Unexpected:\n%s\n", s)
-							}
-							h.AssertEq(t, metadata.BuildpackDefaultProcessType, "web")
-						})
+						if s := cmp.Diff(metadata.Processes, []launch.Process{
+							{
+								Type: "web",
+								Command: launch.NewRawCommand([]string{"web-cmd"}).
+									WithPlatformAPI(builder.PlatformAPI),
+								Args:        []string{"web-arg"},
+								Direct:      false,
+								BuildpackID: "A",
+								Default:     false,
+								PlatformAPI: builder.PlatformAPI,
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
 					})
 				})
 
@@ -1063,92 +1003,46 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("there is a web process", func() {
-				when("buildpack API >= 0.6", func() {
-					it.Before(func() {
-						builder.Group.Group = []buildpack.GroupElement{
-							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
-						}
-					})
-
-					it("does not set it as a default process", func() {
-						bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
-						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
-						executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).Return(buildpack.BuildOutputs{
-							Processes: []launch.Process{
-								{
-									Type:        "web",
-									Command:     launch.NewRawCommand([]string{"web-cmd"}),
-									Args:        []string{"web-arg"},
-									Direct:      false,
-									BuildpackID: "A",
-									Default:     false,
-								},
-							},
-						}, nil)
-
-						metadata, err := builder.Build()
-						h.AssertNil(t, err)
-
-						if s := cmp.Diff(metadata.Processes, []launch.Process{
-							{
-								Type: "web",
-								Command: launch.NewRawCommand([]string{"web-cmd"}).
-									WithPlatformAPI(builder.PlatformAPI),
-								Args:        []string{"web-arg"},
-								Direct:      false,
-								BuildpackID: "A",
-								Default:     false,
-								PlatformAPI: builder.PlatformAPI,
-							},
-						}); s != "" {
-							t.Fatalf("Unexpected:\n%s\n", s)
-						}
-						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
-					})
+				it.Before(func() {
+					builder.Group.Group = []buildpack.GroupElement{
+						{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
+					}
 				})
 
-				when("buildpack api < 0.6", func() {
-					it.Before(func() {
-						builder.Group.Group = []buildpack.GroupElement{
-							{ID: "A", Version: "v1", API: "0.5"},
-						}
-					})
-
-					it("does not set it as a default process", func() {
-						bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
-						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
-						executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).Return(buildpack.BuildOutputs{
-							Processes: []launch.Process{
-								{
-									Type:        "web",
-									Command:     launch.NewRawCommand([]string{"web-cmd"}),
-									Args:        []string{"web-arg"},
-									Direct:      false,
-									BuildpackID: "A",
-									Default:     false,
-								},
-							},
-						}, nil)
-
-						metadata, err := builder.Build()
-						h.AssertNil(t, err)
-
-						if s := cmp.Diff(metadata.Processes, []launch.Process{
+				it("does not set it as a default process", func() {
+					bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
+					executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).Return(buildpack.BuildOutputs{
+						Processes: []launch.Process{
 							{
-								Type: "web",
-								Command: launch.NewRawCommand([]string{"web-cmd"}).
-									WithPlatformAPI(builder.PlatformAPI),
+								Type:        "web",
+								Command:     launch.NewRawCommand([]string{"web-cmd"}),
 								Args:        []string{"web-arg"},
 								Direct:      false,
 								BuildpackID: "A",
 								Default:     false,
-								PlatformAPI: builder.PlatformAPI,
 							},
-						}); s != "" {
-							t.Fatalf("Unexpected:\n%s\n", s)
-						}
-						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
-					})
+						},
+					}, nil)
+
+					metadata, err := builder.Build()
+					h.AssertNil(t, err)
+
+					if s := cmp.Diff(metadata.Processes, []launch.Process{
+						{
+							Type: "web",
+							Command: launch.NewRawCommand([]string{"web-cmd"}).
+								WithPlatformAPI(builder.PlatformAPI),
+							Args:        []string{"web-arg"},
+							Direct:      false,
+							BuildpackID: "A",
+							Default:     false,
+							PlatformAPI: builder.PlatformAPI,
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected:\n%s\n", s)
+					}
+					h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
 				})
 			})
 		})

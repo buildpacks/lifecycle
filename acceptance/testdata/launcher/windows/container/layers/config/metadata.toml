@@ -1,12 +1,12 @@
 [[buildpacks]]
-  id = "0.6/buildpack"
+  id = "0.9/buildpack"
   version = "0.0.1"
-  api = "0.6"
+  api = "0.9"
 
 [[buildpacks]]
   id = "some/buildpack"
   version = "0.0.1"
-  api = "0.4"
+  api = "0.8"
 
 [[processes]]
   type = "web"
@@ -48,7 +48,7 @@
   command = "cmd"
   args = ["/c", "echo VAR_FROM_EXEC_D: %VAR_FROM_EXEC_D%"]
   direct = false
-  buildpack-id = "0.5/buildpack"
+  buildpack-id = "0.9/buildpack"
 
 [[processes]]
   type = "process.with.period"

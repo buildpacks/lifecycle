@@ -717,9 +717,6 @@ func (e *Exporter) makeBuildReport(layersDir string) (files.BuildReport, error) 
 	}
 	var out []buildpack.BOMEntry
 	for _, bp := range e.Buildpacks {
-		if api.MustParse(bp.API).LessThan("0.5") {
-			continue
-		}
 		var bpBuildReport files.BuildReport
 		bpBuildTOML := filepath.Join(layersDir, launch.EscapeID(bp.ID), "build.toml")
 		if _, err := toml.DecodeFile(bpBuildTOML, &bpBuildReport); err != nil && !os.IsNotExist(err) {

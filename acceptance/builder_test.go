@@ -128,7 +128,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			// check builder metadata.toml for success test
 			_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
-			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+			h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 		})
@@ -152,7 +152,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			// prevent regression of inline table serialization
 			h.AssertStringDoesNotContain(t, contents, "processes =")
-			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+			h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 			h.AssertEq(t, len(md.Processes), 1)
@@ -161,7 +161,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, md.Processes[0].Command.Entries[0], "echo world")
 			h.AssertEq(t, len(md.Processes[0].Args), 1)
 			h.AssertEq(t, md.Processes[0].Args[0], "arg1")
-			h.AssertEq(t, md.Processes[0].Direct, false)
+			h.AssertEq(t, md.Processes[0].Direct, true)
 			h.AssertEq(t, md.Processes[0].WorkingDirectory, "")
 			h.AssertEq(t, md.Processes[0].Default, false)
 		})
@@ -184,7 +184,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				// prevent regression of inline table serialization
 				h.AssertStringDoesNotContain(t, contents, "processes =")
-				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 				h.AssertEq(t, len(md.Processes), 1)
@@ -193,7 +193,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, md.Processes[0].Command.Entries[0], "echo world")
 				h.AssertEq(t, len(md.Processes[0].Args), 1)
 				h.AssertEq(t, md.Processes[0].Args[0], "arg1")
-				h.AssertEq(t, md.Processes[0].Direct, false)
+				h.AssertEq(t, md.Processes[0].Direct, true)
 				h.AssertEq(t, md.Processes[0].WorkingDirectory, "")
 				h.AssertEq(t, md.Processes[0].Default, false)
 			})
@@ -216,10 +216,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			// check builder metadata.toml for success test
 			_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
-			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+			h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
-			h.AssertStringContains(t, md.Extensions[0].API, "0.9")
+			h.AssertStringContains(t, md.Extensions[0].API, "0.10")
 			h.AssertEq(t, md.Extensions[0].Extension, false) // this shows that `extension = true` is not redundantly printed in group.toml
 			h.AssertStringContains(t, md.Extensions[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Extensions[0].Version, "0.0.1")
@@ -338,7 +338,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					// check builder metadata.toml for success test
 					_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
-					h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+					h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 					h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 					h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 				})
@@ -381,7 +381,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 				_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
 
-				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world_2")
 				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.2")
 			})
@@ -403,7 +403,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 				_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
 
-				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.10")
 				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world_2")
 				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.2")
 			})

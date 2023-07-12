@@ -145,46 +145,24 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			when("buildpack api < 0.6", func() {
-				it("restores layer metadata and preserves the values of the launch, build and cache flags in top level", func() {
-					buildpacks = []buildpack.GroupElement{
-						{ID: "metadata.buildpack", API: "0.5"},
-						{ID: "no.cache.buildpack", API: "0.5"},
-					}
+			it("restores layer metadata without the launch, build and cache flags", func() {
+				buildpacks = []buildpack.GroupElement{
+					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
+					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
+				}
 
-					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
-					h.AssertNil(t, err)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
+				h.AssertNil(t, err)
 
-					for _, data := range []struct{ name, want string }{
-						{"metadata.buildpack/launch.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  launch-key = \"launch-value\""},
-						{"no.cache.buildpack/some-layer.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  some-layer-key = \"some-layer-value\""},
-					} {
-						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
-						h.AssertStringContains(t, string(got), data.want)
-					}
-				})
-			})
-
-			when("buildpack api >= 0.6", func() {
-				it("restores layer metadata without the launch, build and cache flags", func() {
-					buildpacks = []buildpack.GroupElement{
-						{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
-						{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
-					}
-
-					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
-					h.AssertNil(t, err)
-
-					unsetFlags := "[types]"
-					for _, data := range []struct{ name, want string }{
-						{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
-						{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
-					} {
-						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
-						h.AssertStringContains(t, string(got), data.want)
-						h.AssertStringDoesNotContain(t, string(got), unsetFlags) // The [types] table shouldn't exist. The build, cache and launch flags are set to false.
-					}
-				})
+				unsetFlags := "[types]"
+				for _, data := range []struct{ name, want string }{
+					{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
+					{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
+				} {
+					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
+					h.AssertStringContains(t, string(got), data.want)
+					h.AssertStringDoesNotContain(t, string(got), unsetFlags) // The [types] table shouldn't exist. The build, cache and launch flags are set to false.
+				}
 			})
 
 			when("restoring sha files is not needed", func() {

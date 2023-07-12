@@ -41,30 +41,28 @@ func TestLauncher(t *testing.T) {
 }
 
 func testLauncher(t *testing.T, when spec.G, it spec.S) {
-	when("Buildpack API >= 0.5", func() {
-		when("exec.d", func() {
-			it("executes the binaries and modifies env before running profiles", func() {
-				cmd := exec.Command("docker", "run", "--rm",
-					"--env=CNB_PLATFORM_API=0.7",
-					"--entrypoint=exec.d-checker"+exe,
-					"--env=VAR_FROM_EXEC_D=orig-val",
-					launchImage)
+	when("exec.d", func() {
+		it("executes the binaries and modifies env before running profiles", func() {
+			cmd := exec.Command("docker", "run", "--rm", //nolint
+				"--env=CNB_PLATFORM_API=0.7",
+				"--entrypoint=exec.d-checker"+exe,
+				"--env=VAR_FROM_EXEC_D=orig-val",
+				launchImage)
 
-				helper := "helper" + exe
-				execDHelper := ctrPath("/layers", execDBpDir, "some_layer/exec.d", helper)
-				execDCheckerHelper := ctrPath("/layers", execDBpDir, "some_layer/exec.d/exec.d-checker", helper)
-				workDir := ctrPath("/workspace")
+			helper := "helper" + exe
+			execDHelper := ctrPath("/layers", execDBpDir, "some_layer/exec.d", helper)
+			execDCheckerHelper := ctrPath("/layers", execDBpDir, "some_layer/exec.d/exec.d-checker", helper)
+			workDir := ctrPath("/workspace")
 
-				expected := fmt.Sprintf("%s was executed\n", execDHelper)
-				expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
-				expected += fmt.Sprintf("%s was executed\n", execDCheckerHelper)
-				expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
-				expected += "sourced bp profile\n"
-				expected += "sourced app profile\n"
-				expected += "VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"
+			expected := fmt.Sprintf("%s was executed\n", execDHelper)
+			expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
+			expected += fmt.Sprintf("%s was executed\n", execDCheckerHelper)
+			expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
+			expected += "sourced bp profile\n"
+			expected += "sourced app profile\n"
+			expected += "VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"
 
-				assertOutput(t, cmd, expected)
-			})
+			assertOutput(t, cmd, expected)
 		})
 	})
 
@@ -199,46 +197,22 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("the process type has args", func() {
-				when("buildpack API 0.4", func() {
-					// buildpack API is determined by looking up the API of the process buildpack in metadata.toml
+				// buildpack API is determined by looking up the API of the process buildpack in metadata.toml
 
-					it("command and args become shell-parsed tokens in a script", func() {
-						var val2 string
-						if runtime.GOOS == "windows" {
-							val2 = `"val with space"` // windows values with spaces must contain quotes
-						} else {
-							val2 = "val with space"
-						}
-						cmd := exec.Command("docker", "run", "--rm",
-							"--env=CNB_PLATFORM_API=0.3",
-							"--env", "VAR1=val1",
-							"--env", "VAR2="+val2,
-							launchImage, "indirect-process-with-args",
-						) // #nosec G204
-						assertOutput(t, cmd, "'val1' 'val with space'")
-					})
-				})
-
-				when("buildpack API < 0.4", func() {
-					// buildpack API is determined by looking up the API of the process buildpack in metadata.toml
-
-					it("args become arguments to bash", func() {
-						h.SkipIf(t, runtime.GOOS == "windows", "scripts are unsupported on windows")
-						cmd := exec.Command("docker", "run", "--rm",
-							"--env=CNB_PLATFORM_API=0.3", launchImage, "legacy-indirect-process-with-args",
-						)
-						assertOutput(t, cmd, "'arg' 'arg with spaces'")
-					})
-
-					it("script must be explicitly written to accept bash args", func() {
-						h.SkipIf(t, runtime.GOOS == "windows", "scripts are unsupported on windows")
-						cmd := exec.Command("docker", "run", "--rm",
-							"--env=CNB_PLATFORM_API=0.3", launchImage, "legacy-indirect-process-with-incorrect-args",
-						)
-						output, err := cmd.CombinedOutput()
-						h.AssertNotNil(t, err)
-						h.AssertStringContains(t, string(output), "printf: usage: printf [-v var] format [arguments]")
-					})
+				it("command and args become shell-parsed tokens in a script", func() {
+					var val2 string
+					if runtime.GOOS == "windows" {
+						val2 = `"val with space"` // windows values with spaces must contain quotes
+					} else {
+						val2 = "val with space"
+					}
+					cmd := exec.Command("docker", "run", "--rm",
+						"--env=CNB_PLATFORM_API=0.3",
+						"--env", "VAR1=val1",
+						"--env", "VAR2="+val2,
+						launchImage, "indirect-process-with-args",
+					) // #nosec G204
+					assertOutput(t, cmd, "'val1' 'val with space'")
 				})
 			})
 

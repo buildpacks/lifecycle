@@ -79,10 +79,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			LayersDir:          filepath.Join(tmpDir, "launch"),
 			AppDir:             filepath.Join(tmpDir, "launch", "app"),
 			Buildpacks: []launch.Buildpack{
-				{API: "0.3", ID: "no-layers/buildpack"},
-				{API: "0.3", ID: "0.3/buildpack"},
-				{API: "0.4", ID: "0.4/buildpack"},
-				{API: "0.5", ID: "0.5/buildpack"},
+				{API: "0.7", ID: "no-layers/buildpack"},
+				{API: "0.7", ID: "0.7/buildpack"},
+				{API: "0.8", ID: "0.8/buildpack"},
+				{API: "0.9", ID: "0.9/buildpack"},
 			},
 			Env: mockEnv,
 			Exec: func(argv0 string, argv []string, envv []string) error {
@@ -200,33 +200,33 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			when("buildpacks have provided layer directories that could affect the environment", func() {
 				it.Before(func() {
 					mkdir(t,
-						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1"),
-						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2"),
-						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3"),
-						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4"),
-						filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5"),
+						filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1"),
+						filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2"),
+						filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3"),
+						filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4"),
+						filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5"),
 					)
 				})
 
 				it("should apply env modifications", func() {
 					gomock.InOrder(
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch"), env.ActionTypePrependPath),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1")),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2")),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env.launch"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env.launch"), env.ActionTypeOverride),
 
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch"), env.ActionTypePrependPath),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3")),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4")),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env.launch"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env.launch"), env.ActionTypeOverride),
 
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env"), env.ActionTypeOverride),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5")),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
 					)
 					h.AssertNil(t, launcher.LaunchProcess("", process))
 					if len(syscallExecArgsColl) != 1 {
@@ -241,28 +241,28 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 					it("should apply process-specific env modifications", func() {
 						gomock.InOrder(
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch", "some-process-type"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch", "some-process-type"), env.ActionTypePrependPath),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1")),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2")),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env.launch", "some-process-type"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env.launch", "some-process-type"), env.ActionTypeOverride),
 
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch", "some-process-type"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch", "some-process-type"), env.ActionTypePrependPath),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3")),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4")),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env.launch", "some-process-type"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env.launch", "some-process-type"), env.ActionTypeOverride),
 
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env"), env.ActionTypeOverride),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch", "some-process-type"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5")),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env.launch", "some-process-type"), env.ActionTypeOverride),
 						)
 						h.AssertNil(t, launcher.LaunchProcess("", process))
 						if len(syscallExecArgsColl) != 1 {
@@ -274,53 +274,46 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				when("buildpack API supports exec.d", func() {
 					it.Before(func() {
 						mkdir(t,
-							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "exec.d"),
-							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "exec.d", "some-process-type"),
-							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d"),
-							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type"),
+							filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "exec.d"),
+							filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "exec.d", "some-process-type"),
+							filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d"),
+							filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "some-process-type"),
 						)
 
-						// exec.d binaries from buildpacks with API < 0.5 should be ignored
 						mkfile(t, "",
-							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "exec.d", "exec_d_1"),
-							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "exec.d", "some-process-type", "exec_d_1"),
-						)
-
-						// exec.d binaries from buildpacks with API >= 0.5 should be executed
-						mkfile(t, "",
-							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_1"),
-							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_2"),
-							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_1"),
-							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_2"),
+							filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "exec_d_1"),
+							filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "exec_d_2"),
+							filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_1"),
+							filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_2"),
 						)
 					})
 
 					it("should run exec.d binaries after static env files", func() {
 						gomock.InOrder(
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch"), env.ActionTypePrependPath),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1")),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2")),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env.launch"), env.ActionTypeOverride),
 
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch"), env.ActionTypePrependPath),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3")),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4")),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env.launch"), env.ActionTypeOverride),
 
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env"), env.ActionTypeOverride),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5")),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
 
 							execd.EXPECT().ExecD(
-								filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_1"),
+								filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "exec_d_1"),
 								mockEnv,
 							),
 							execd.EXPECT().ExecD(
-								filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_2"),
+								filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "exec_d_2"),
 								mockEnv,
 							),
 						)
@@ -337,43 +330,43 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 						it("should run process-specific exec.d binaries", func() {
 							gomock.InOrder(
-								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
-								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch", "some-process-type"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch", "some-process-type"), env.ActionTypePrependPath),
+								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1")),
+								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2")),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env.launch"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env.launch", "some-process-type"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env.launch"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env.launch", "some-process-type"), env.ActionTypeOverride),
 
-								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
-								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch", "some-process-type"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch"), env.ActionTypePrependPath),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch", "some-process-type"), env.ActionTypePrependPath),
+								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3")),
+								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4")),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env.launch"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env.launch", "some-process-type"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env.launch"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env.launch", "some-process-type"), env.ActionTypeOverride),
 
-								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env"), env.ActionTypeOverride),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
-								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch", "some-process-type"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5")),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
+								mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env.launch", "some-process-type"), env.ActionTypeOverride),
 
 								execd.EXPECT().ExecD(
-									filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_1"),
+									filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "exec_d_1"),
 									mockEnv,
 								),
 								execd.EXPECT().ExecD(
-									filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_2"),
+									filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "exec_d_2"),
 									mockEnv,
 								),
 								execd.EXPECT().ExecD(
-									filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_1"),
+									filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_1"),
 									mockEnv,
 								),
 								execd.EXPECT().ExecD(
-									filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_2"),
+									filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_2"),
 									mockEnv,
 								),
 							)
@@ -440,22 +433,22 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			when("buildpack have provided profile scripts", func() {
 				it.Before(func() {
 					mkdir(t,
-						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d"),
-						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type"),
-						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d"),
-						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type"),
+						filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d"),
+						filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type"),
+						filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d"),
+						filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type"),
 					)
 
 					if runtime.GOOS == "windows" {
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1.bat"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type", "prof1.bat"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2.bat"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type", "prof2.bat"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1.bat"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1.bat"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2.bat"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2.bat"))
 					} else {
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type", "prof1"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type", "prof2"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2"))
 					}
 
 					mockEnv.EXPECT().AddRootDir(gomock.Any()).AnyTimes()
@@ -467,13 +460,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, shell.nCalls, 1)
 					if runtime.GOOS == "windows" {
 						h.AssertEq(t, shell.process.Profiles, []string{
-							filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1.bat"),
-							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2.bat"),
+							filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1.bat"),
+							filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2.bat"),
 						})
 					} else {
 						h.AssertEq(t, shell.process.Profiles, []string{
-							filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1"),
-							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2"),
+							filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1"),
+							filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2"),
 						})
 					}
 				})
@@ -488,17 +481,17 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, shell.nCalls, 1)
 						if runtime.GOOS == "windows" {
 							h.AssertEq(t, shell.process.Profiles, []string{
-								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1.bat"),
-								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type", "prof1.bat"),
-								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2.bat"),
-								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type", "prof2.bat"),
+								filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1.bat"),
+								filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1.bat"),
+								filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2.bat"),
+								filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2.bat"),
 							})
 						} else {
 							h.AssertEq(t, shell.process.Profiles, []string{
-								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1"),
-								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type", "prof1"),
-								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2"),
-								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type", "prof2"),
+								filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1"),
+								filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1"),
+								filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2"),
+								filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2"),
 							})
 						}
 					})
@@ -508,33 +501,33 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			when("buildpacks have provided layer directories that could affect the environment", func() {
 				it.Before(func() {
 					mkdir(t,
-						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1"),
-						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2"),
-						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3"),
-						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4"),
-						filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5"),
+						filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1"),
+						filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2"),
+						filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3"),
+						filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4"),
+						filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5"),
 					)
 				})
 
 				it("should apply env modifications", func() {
 					gomock.InOrder(
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch"), env.ActionTypePrependPath),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1")),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2")),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env.launch"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env.launch"), env.ActionTypeOverride),
 
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env"), env.ActionTypePrependPath),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch"), env.ActionTypePrependPath),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3")),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4")),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env.launch"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env.launch"), env.ActionTypeOverride),
 
-						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env"), env.ActionTypeOverride),
-						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5")),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env"), env.ActionTypeOverride),
+						mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
 					)
 					h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
 					h.AssertEq(t, shell.nCalls, 1)
@@ -547,28 +540,28 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 					it("should apply type-specific env modifications", func() {
 						gomock.InOrder(
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch", "some-process-type"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch", "some-process-type"), env.ActionTypePrependPath),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1")),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2")),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer1", "env.launch", "some-process-type"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer2", "env.launch", "some-process-type"), env.ActionTypeOverride),
 
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch", "some-process-type"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch"), env.ActionTypePrependPath),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch", "some-process-type"), env.ActionTypePrependPath),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3")),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4")),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer3", "env.launch", "some-process-type"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer4", "env.launch", "some-process-type"), env.ActionTypeOverride),
 
-							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env"), env.ActionTypeOverride),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
-							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch", "some-process-type"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5")),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env.launch"), env.ActionTypeOverride),
+							mockEnv.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.9_buildpack", "layer5", "env.launch", "some-process-type"), env.ActionTypeOverride),
 						)
 						h.AssertNil(t, launcher.LaunchProcess("", process))
 						h.AssertEq(t, shell.nCalls, 1)
@@ -577,77 +570,24 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("buildpack-provided", func() {
-				when("buildpack API >= 0.4", func() {
-					it.Before(func() {
-						process.BuildpackID = "0.4/buildpack"
-					})
+				it.Before(func() {
+					process.BuildpackID = "0.8/buildpack"
+				})
 
-					when("has args", func() {
-						it("is not script", func() {
-							h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
-							h.AssertEq(t, shell.nCalls, 1)
+				when("has args", func() {
+					it("is not script", func() {
+						h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
+						h.AssertEq(t, shell.nCalls, 1)
 
-							if shell.process.Script {
-								t.Fatalf("did not expect script process")
-							}
-						})
-					})
-
-					when("has no args", func() {
-						it.Before(func() {
-							process.Args = []string{}
-						})
-
-						when("linux", func() {
-							it.Before(func() {
-								h.SkipIf(t, runtime.GOOS == "windows", "linux test")
-							})
-
-							it("is script", func() {
-								h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
-								h.AssertEq(t, shell.nCalls, 1)
-
-								if !shell.process.Script {
-									t.Fatalf("expected script process")
-								}
-							})
-						})
-
-						when("windows", func() {
-							it.Before(func() {
-								h.SkipIf(t, runtime.GOOS != "windows", "windows test")
-							})
-
-							it("is not script", func() {
-								h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
-								h.AssertEq(t, shell.nCalls, 1)
-
-								if shell.process.Script {
-									t.Fatalf("did not expect script process")
-								}
-							})
-						})
+						if shell.process.Script {
+							t.Fatalf("did not expect script process")
+						}
 					})
 				})
 
-				when("buildpack API < 0.4", func() {
+				when("has no args", func() {
 					it.Before(func() {
-						process.BuildpackID = "0.3/buildpack"
-					})
-
-					when("windows", func() {
-						it.Before(func() {
-							h.SkipIf(t, runtime.GOOS != "windows", "windows test")
-						})
-
-						it("is not script", func() {
-							h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
-							h.AssertEq(t, shell.nCalls, 1)
-
-							if shell.process.Script {
-								t.Fatalf("did not expect script process")
-							}
-						})
+						process.Args = []string{}
 					})
 
 					when("linux", func() {
@@ -661,6 +601,21 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 							if !shell.process.Script {
 								t.Fatalf("expected script process")
+							}
+						})
+					})
+
+					when("windows", func() {
+						it.Before(func() {
+							h.SkipIf(t, runtime.GOOS != "windows", "windows test")
+						})
+
+						it("is not script", func() {
+							h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
+							h.AssertEq(t, shell.nCalls, 1)
+
+							if shell.process.Script {
+								t.Fatalf("did not expect script process")
 							}
 						})
 					})

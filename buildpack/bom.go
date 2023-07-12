@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -13,14 +12,7 @@ type BOMValidator interface {
 }
 
 func NewBOMValidator(bpAPI string, layersDir string, logger log.Logger) BOMValidator {
-	switch {
-	case api.MustParse(bpAPI).LessThan("0.5"):
-		return &legacyBOMValidator{}
-	case api.MustParse(bpAPI).LessThan("0.7"):
-		return &v05To06BOMValidator{}
-	default:
-		return &defaultBOMValidator{logger: logger, layersDir: layersDir}
-	}
+	return &defaultBOMValidator{logger: logger, layersDir: layersDir}
 }
 
 type defaultBOMValidator struct {

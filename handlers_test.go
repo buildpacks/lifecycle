@@ -36,26 +36,23 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 		groupTOMLContents = `
 [[group]]
 id = "A" # intentionally missing version
-api = "0.2"
 
 [[group]]
 id = "B"
 version = "v1"
-api = "0.3"
 homepage = "bp-B-v1-homepage"
 
 [[group-extensions]]
 id = "B"
 version = "v1"
-api = "0.9"
 homepage = "ext-B-v1-homepage"
 `
 		expectedGroupBp = []buildpack.GroupElement{
-			{ID: "A", API: "0.2"},
-			{ID: "B", Version: "v1", API: "0.3", Homepage: "bp-B-v1-homepage"},
+			{ID: "A"},
+			{ID: "B", Version: "v1", Homepage: "bp-B-v1-homepage"},
 		}
 		expectedGroupExt = []buildpack.GroupElement{
-			{ID: "B", Version: "v1", API: "0.9", Homepage: "ext-B-v1-homepage", Extension: true, Optional: true},
+			{ID: "B", Version: "v1", Homepage: "ext-B-v1-homepage", Extension: true, Optional: true},
 		}
 		orderTOMLContents = `
 [[order]]

@@ -28,9 +28,8 @@ echo
 cat > "${layers_dir}/launch.toml" << EOL
 [[processes]]
 type = "hello"
-command = "echo world"
+command = ["echo world"]
 args = ["arg1"]
-direct = false
 EOL
 
 echo "---> Done"
