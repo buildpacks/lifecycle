@@ -24,7 +24,7 @@ func testLocalImageHandler(t *testing.T, when spec.G, it spec.S) {
 	when("Local handler", func() {
 		it.Before(func() {
 			dockerClient = h.DockerCli(t)
-			imageHandler = image.NewHandler(dockerClient, nil, "", false)
+			imageHandler = image.NewHandler(dockerClient, nil, "", false, "")
 			h.AssertNotNil(t, imageHandler)
 		})
 

@@ -1,6 +1,8 @@
 package image
 
 import (
+	"strings"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -9,7 +11,8 @@ import (
 const RemoteKind = "remote"
 
 type RemoteHandler struct {
-	keychain authn.Keychain
+	keychain         authn.Keychain
+	insecureRegistry string
 }
 
 func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
@@ -17,10 +20,18 @@ func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
 		return nil, nil
 	}
 
+	options := []remote.ImageOption{
+		remote.FromBaseImage(imageRef),
+	}
+
+	if h.insecureRegistry != "" && strings.HasPrefix(imageRef, h.insecureRegistry) {
+		options = append(options, remote.WithRegistrySetting(h.insecureRegistry, true, true))
+	}
+
 	return remote.NewImage(
 		imageRef,
 		h.keychain,
-		remote.FromBaseImage(imageRef),
+		options...,
 	)
 }
 

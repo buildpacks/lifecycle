@@ -99,7 +99,7 @@ func (a *analyzeCmd) Exec() error {
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
-		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout),
+		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout, a.InsecureRegistry),
 		NewRegistryHandler(a.keychain),
 	)
 	analyzer, err := factory.NewAnalyzer(a.AdditionalTags, a.CacheImageRef, a.LaunchCacheDir, a.LayersDir, a.OutputImageRef, a.PreviousImageRef, a.RunImageRef, a.SkipLayers, cmd.DefaultLogger)

@@ -36,7 +36,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 	when("layout handler", func() {
 		it.Before(func() {
 			layoutDir = "layout-repo"
-			imageHandler = image.NewHandler(nil, nil, layoutDir, true)
+			imageHandler = image.NewHandler(nil, nil, layoutDir, true, "")
 			h.AssertNotNil(t, imageHandler)
 		})
 

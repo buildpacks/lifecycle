@@ -16,7 +16,7 @@ type Handler interface {
 // - WHEN a docker client is provided then it returns a LocalHandler
 // - WHEN an auth.Keychain is provided then it returns a RemoteHandler
 // - Otherwise nil is returned
-func NewHandler(docker client.CommonAPIClient, keychain authn.Keychain, layoutDir string, useLayout bool) Handler {
+func NewHandler(docker client.CommonAPIClient, keychain authn.Keychain, layoutDir string, useLayout bool, insecureRegistry string) Handler {
 	if layoutDir != "" && useLayout {
 		return &LayoutHandler{
 			layoutDir: layoutDir,
@@ -29,7 +29,8 @@ func NewHandler(docker client.CommonAPIClient, keychain authn.Keychain, layoutDi
 	}
 	if keychain != nil {
 		return &RemoteHandler{
-			keychain: keychain,
+			keychain:         keychain,
+			insecureRegistry: insecureRegistry,
 		}
 	}
 	return nil

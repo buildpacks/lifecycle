@@ -125,7 +125,7 @@ func (c *createCmd) Exec() error {
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(c.keychain),
 		lifecycle.NewConfigHandler(),
-		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
+		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistry),
 		NewRegistryHandler(c.keychain),
 	)
 	analyzer, err := analyzerFactory.NewAnalyzer(c.AdditionalTags, c.CacheImageRef, c.LaunchCacheDir, c.LayersDir, c.OutputImageRef, c.PreviousImageRef, c.RunImageRef, c.SkipLayers, cmd.DefaultLogger)

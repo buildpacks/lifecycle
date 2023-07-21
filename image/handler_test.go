@@ -31,7 +31,7 @@ func testHandler(t *testing.T, when spec.G, it spec.S) {
 
 	when("Remote handler", func() {
 		it("returns a remote handler", func() {
-			handler := NewHandler(nil, mockKeychain, "", false)
+			handler := NewHandler(nil, mockKeychain, "", false, "insecure-registry")
 
 			_, ok := handler.(*RemoteHandler)
 
@@ -44,7 +44,7 @@ func testHandler(t *testing.T, when spec.G, it spec.S) {
 			mockController := gomock.NewController(t)
 			mockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
 
-			handler := NewHandler(mockDockerClient, mockKeychain, "", false)
+			handler := NewHandler(mockDockerClient, mockKeychain, "", false, "")
 
 			_, ok := handler.(*LocalHandler)
 
@@ -54,7 +54,7 @@ func testHandler(t *testing.T, when spec.G, it spec.S) {
 
 	when("Layout handler", func() {
 		it("returns a layout handler", func() {
-			handler := NewHandler(nil, mockKeychain, "random-dir", true)
+			handler := NewHandler(nil, mockKeychain, "random-dir", true, "")
 
 			_, ok := handler.(*LayoutHandler)
 
