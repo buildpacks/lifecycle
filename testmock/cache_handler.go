@@ -36,16 +36,16 @@ func (m *MockCacheHandler) EXPECT() *MockCacheHandlerMockRecorder {
 }
 
 // InitCache mocks base method.
-func (m *MockCacheHandler) InitCache(arg0, arg1 string) (lifecycle.Cache, error) {
+func (m *MockCacheHandler) InitCache(arg0, arg1 string, arg2 bool) (lifecycle.Cache, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitCache", arg0, arg1)
+	ret := m.ctrl.Call(m, "InitCache", arg0, arg1, arg2)
 	ret0, _ := ret[0].(lifecycle.Cache)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InitCache indicates an expected call of InitCache.
-func (mr *MockCacheHandlerMockRecorder) InitCache(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockCacheHandlerMockRecorder) InitCache(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitCache", reflect.TypeOf((*MockCacheHandler)(nil).InitCache), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitCache", reflect.TypeOf((*MockCacheHandler)(nil).InitCache), arg0, arg1, arg2)
 }

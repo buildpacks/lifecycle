@@ -139,7 +139,7 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	cacheStore, err := initCache(r.CacheImageRef, r.CacheDir, r.keychain)
+	cacheStore, err := initCache(r.CacheImageRef, r.CacheDir, r.keychain, r.PlatformAPI.LessThan("0.13"))
 	if err != nil {
 		return err
 	}

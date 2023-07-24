@@ -103,7 +103,7 @@ func (c *createCmd) Privileges() error {
 }
 
 func (c *createCmd) Exec() error {
-	cacheStore, err := initCache(c.CacheImageRef, c.CacheDir, c.keychain)
+	cacheStore, err := initCache(c.CacheImageRef, c.CacheDir, c.keychain, c.PlatformAPI.LessThan("0.13"))
 	if err != nil {
 		return err
 	}

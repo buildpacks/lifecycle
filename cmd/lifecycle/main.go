@@ -92,13 +92,15 @@ func NewCacheHandler(keychain authn.Keychain) *DefaultCacheHandler {
 	}
 }
 
-func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string) (lifecycle.Cache, error) {
+// InitCache is a factory used to create either a NewImageCache or a NewVolumeCache
+func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, deletionEnabled bool) (lifecycle.Cache, error) {
 	var (
 		cacheStore lifecycle.Cache
 		err        error
 	)
 	if cacheImageRef != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain, cmd.DefaultLogger)
+		logger := cmd.DefaultLogger
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain, logger, cache.NewImageDeleter(cache.NewImageComparer(), logger, deletionEnabled))
 		if err != nil {
 			return nil, errors.Wrap(err, "creating image cache")
 		}
@@ -167,13 +169,14 @@ func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
 
 // helpers
 
-func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain) (lifecycle.Cache, error) {
+func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain, deletionEnabled bool) (lifecycle.Cache, error) {
 	var (
 		cacheStore lifecycle.Cache
 		err        error
 	)
 	if cacheImageTag != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain, cmd.DefaultLogger)
+		logger := cmd.DefaultLogger
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain, logger, cache.NewImageDeleter(cache.NewImageComparer(), logger, deletionEnabled))
 		if err != nil {
 			return nil, cmd.FailErr(err, "create image cache")
 		}

@@ -367,7 +367,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack-id@some-buildpack-version", "0.2", logger)
 
 				t.Log("processes cache")
-				fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir")
+				fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir", true)
 
 				t.Log("processes previous image")
 				fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
@@ -421,7 +421,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack-id@some-buildpack-version", "0.2", logger)
 
 					t.Log("processes cache")
-					fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir")
+					fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir", true)
 
 					t.Log("processes previous image")
 					fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
@@ -454,7 +454,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 			when("buildpack group is provided", func() {
 				it("uses the provided group", func() {
-					fakeCacheHandler.EXPECT().InitCache(gomock.Any(), gomock.Any())
+					fakeCacheHandler.EXPECT().InitCache(gomock.Any(), gomock.Any(), gomock.Any())
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 					fakeImageHandler.EXPECT().Kind().Return(image.RemoteKind)
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())

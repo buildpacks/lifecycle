@@ -11,7 +11,7 @@ import (
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	log "github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform/files"
+	files "github.com/buildpacks/lifecycle/platform/files"
 )
 
 // MockConfigHandler is a mock of ConfigHandler interface.

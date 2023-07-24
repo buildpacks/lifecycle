@@ -151,7 +151,7 @@ func (f *AnalyzerFactory) setBuildpacks(analyzer *Analyzer, group buildpack.Grou
 
 func (f *AnalyzerFactory) setCache(analyzer *Analyzer, imageRef string, dir string) error {
 	var err error
-	analyzer.Cache, err = f.cacheHandler.InitCache(imageRef, dir)
+	analyzer.Cache, err = f.cacheHandler.InitCache(imageRef, dir, f.platformAPI.LessThan("0.13"))
 	return err
 }
 

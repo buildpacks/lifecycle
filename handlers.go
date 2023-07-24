@@ -14,7 +14,7 @@ var Config = &DefaultConfigHandler{}
 
 //go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle CacheHandler
 type CacheHandler interface {
-	InitCache(imageRef, dir string) (Cache, error)
+	InitCache(imageRef, dir string, deletionEnabled bool) (Cache, error)
 }
 
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle DirStore
