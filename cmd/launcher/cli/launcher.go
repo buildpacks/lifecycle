@@ -85,11 +85,6 @@ func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) stri
 
 func verifyBuildpackAPIs(bps []launch.Buildpack) error {
 	for _, bp := range bps {
-		if bp.API == "" {
-			// If the same lifecycle is used for build and launcher we should never end up here
-			// but if for some reason we do, default to latest
-			bp.API = api.Buildpack.Latest().String()
-		}
 		if err := cmd.VerifyBuildpackAPI(KindBuildpack, bp.ID, bp.API, cmd.DefaultLogger); err != nil {
 			return err
 		}
