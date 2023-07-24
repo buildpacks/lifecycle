@@ -255,8 +255,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
-          check-latest: true
-          go-version-file: 'pack/go.mod'
+          go-version: '1.20.5'
       - uses: actions/download-artifact@v2
         with:
           name: version
@@ -297,8 +296,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
-          check-latest: true
-          go-version-file: 'pack/go.mod'
+          go-version: '1.20.5'
       - name: Add runner IP to daemon insecure-registries and firewall
         shell: powershell
         run: |
