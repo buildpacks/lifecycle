@@ -31,6 +31,10 @@ func testHandler(t *testing.T, when spec.G, it spec.S) {
 		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
 	})
 
+	it.After(func() {
+		mockController.Finish()
+	})
+
 	when("Remote handler", func() {
 		it("returns a remote handler", func() {
 			handler := NewHandler(nil, mockKeychain, "", false, []string{"insecure-registry"})
