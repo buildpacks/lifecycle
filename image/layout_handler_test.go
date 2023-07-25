@@ -21,7 +21,7 @@ const (
 )
 
 func TestLayoutImageHandler(t *testing.T) {
-	spec.Run(t, "VerifyAPIs", testLayoutImageHandler, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "layoutImageHandler", testLayoutImageHandler, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
@@ -36,7 +36,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 	when("layout handler", func() {
 		it.Before(func() {
 			layoutDir = "layout-repo"
-			imageHandler = image.NewHandler(nil, nil, layoutDir, true, "")
+			imageHandler = image.NewHandler(nil, nil, layoutDir, true, []string{})
 			h.AssertNotNil(t, imageHandler)
 		})
 

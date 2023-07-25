@@ -12,7 +12,7 @@ import (
 )
 
 func TestLocalImageHandler(t *testing.T) {
-	spec.Run(t, "VerifyAPIs", testLocalImageHandler, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "localImageHandler", testLocalImageHandler, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testLocalImageHandler(t *testing.T, when spec.G, it spec.S) {
@@ -24,7 +24,7 @@ func testLocalImageHandler(t *testing.T, when spec.G, it spec.S) {
 	when("Local handler", func() {
 		it.Before(func() {
 			dockerClient = h.DockerCli(t)
-			imageHandler = image.NewHandler(dockerClient, nil, "", false, "")
+			imageHandler = image.NewHandler(dockerClient, nil, "", false, []string{})
 			h.AssertNotNil(t, imageHandler)
 		})
 

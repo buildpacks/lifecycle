@@ -169,8 +169,8 @@ func FlagForceRebase(force *bool) {
 }
 
 // FlagInsecureRegistry sets insecure-registry parameter as available
-func FlagInsecureRegistry(insecureRegistry *string) {
-	flagSet.StringVar(insecureRegistry, "insecure-registry", *insecureRegistry, "to use an 'insecure' registry")
+func FlagInsecureRegistry(insecureRegistries *str.Slice) {
+	flagSet.Var(insecureRegistries, "insecure-registries", "to use 'insecure' registries")
 }
 
 // deprecated

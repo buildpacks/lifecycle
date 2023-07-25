@@ -12,19 +12,21 @@ import (
 )
 
 func TestRemoteImageHandler(t *testing.T) {
-	spec.Run(t, "VerifyAPIs", testRemoteImageHandler, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "remoteImageHandler", testRemoteImageHandler, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testRemoteImageHandler(t *testing.T, when spec.G, it spec.S) {
 	var (
-		imageHandler image.Handler
-		auth         authn.Keychain
+		imageHandler       image.Handler
+		auth               authn.Keychain
+		insecureRegistries []string
 	)
 
 	when("Remote handler", func() {
 		it.Before(func() {
 			auth = authn.DefaultKeychain
-			imageHandler = image.NewHandler(nil, auth, "", false, "host.docker.internal")
+			insecureRegistries = []string{"host.docker.internal", "another.host.internal"}
+			imageHandler = image.NewHandler(nil, auth, "", false, insecureRegistries)
 			h.AssertNotNil(t, imageHandler)
 		})
 
@@ -50,10 +52,19 @@ func testRemoteImageHandler(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNotNil(t, newImage)
 					h.AssertEq(t, newImage.Name(), "busybox")
 				})
-				it("creates an image using an insecure registry", func() {
+				it("creates an image using insecure registries", func() {
 					_, err := imageHandler.InitImage("host.docker.internal/bar")
 					h.AssertNotNil(t, err)
 					h.AssertError(t, err, "http://")
+
+					_, err = imageHandler.InitImage("another.host.internal/bar")
+					h.AssertNotNil(t, err)
+					h.AssertError(t, err, "http://")
+
+					_, err = imageHandler.InitImage("my.secure.domain/bar")
+					h.AssertNotNil(t, err)
+					h.AssertError(t, err, "https://")
+					h.AssertStringDoesNotContain(t, err.Error(), "http://")
 				})
 			})
 

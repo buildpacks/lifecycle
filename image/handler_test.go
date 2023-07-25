@@ -15,23 +15,25 @@ import (
 //go:generate mockgen -package testmockauth -destination ../testmock/auth/mock_keychain.go github.com/google/go-containerregistry/pkg/authn Keychain
 
 func TestHandler(t *testing.T) {
-	spec.Run(t, "VerifyAPIs", testHandler, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "ImageHandler", testHandler, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testHandler(t *testing.T, when spec.G, it spec.S) {
 	var (
-		mockController *gomock.Controller
-		mockKeychain   *testmockauth.MockKeychain
+		mockController   *gomock.Controller
+		mockKeychain     *testmockauth.MockKeychain
+		mockDockerClient *testmocks.MockCommonAPIClient
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockKeychain = testmockauth.NewMockKeychain(mockController)
+		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
 	})
 
 	when("Remote handler", func() {
 		it("returns a remote handler", func() {
-			handler := NewHandler(nil, mockKeychain, "", false, "insecure-registry")
+			handler := NewHandler(nil, mockKeychain, "", false, []string{"insecure-registry"})
 
 			_, ok := handler.(*RemoteHandler)
 
@@ -41,10 +43,7 @@ func testHandler(t *testing.T, when spec.G, it spec.S) {
 
 	when("Local handler", func() {
 		it("returns a local handler", func() {
-			mockController := gomock.NewController(t)
-			mockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-
-			handler := NewHandler(mockDockerClient, mockKeychain, "", false, "")
+			handler := NewHandler(mockDockerClient, mockKeychain, "", false, []string{})
 
 			_, ok := handler.(*LocalHandler)
 
@@ -54,7 +53,7 @@ func testHandler(t *testing.T, when spec.G, it spec.S) {
 
 	when("Layout handler", func() {
 		it("returns a layout handler", func() {
-			handler := NewHandler(nil, mockKeychain, "random-dir", true, "")
+			handler := NewHandler(nil, mockKeychain, "random-dir", true, []string{})
 
 			_, ok := handler.(*LayoutHandler)
 

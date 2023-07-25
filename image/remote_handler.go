@@ -11,8 +11,8 @@ import (
 const RemoteKind = "remote"
 
 type RemoteHandler struct {
-	keychain         authn.Keychain
-	insecureRegistry string
+	keychain           authn.Keychain
+	insecureRegistries []string
 }
 
 func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
@@ -24,8 +24,12 @@ func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
 		remote.FromBaseImage(imageRef),
 	}
 
-	if h.insecureRegistry != "" && strings.HasPrefix(imageRef, h.insecureRegistry) {
-		options = append(options, remote.WithRegistrySetting(h.insecureRegistry, true, true))
+	if len(h.insecureRegistries) > 0 {
+		for _, insecureRegistry := range h.insecureRegistries {
+			if strings.HasPrefix(imageRef, insecureRegistry) {
+				options = append(options, remote.WithRegistrySetting(insecureRegistry, true, true))
+			}
+		}
 	}
 
 	return remote.NewImage(

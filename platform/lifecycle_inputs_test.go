@@ -61,7 +61,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, inputs.UID, 0)
 			h.AssertEq(t, inputs.UseDaemon, false)
 			h.AssertEq(t, inputs.UseLayout, false)
-			h.AssertEq(t, inputs.InsecureRegistry, "")
+			h.AssertEq(t, inputs.InsecureRegistry, str.Slice(nil))
 		})
 
 		when("env vars are set", func() {
@@ -175,7 +175,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, inputs.UID, 1234)
 				h.AssertEq(t, inputs.UseDaemon, true)
 				h.AssertEq(t, inputs.UseLayout, true)
-				h.AssertEq(t, inputs.InsecureRegistry, "some-insecure-registry")
+				h.AssertEq(t, inputs.InsecureRegistry, str.Slice(nil))
 			})
 		})
 
