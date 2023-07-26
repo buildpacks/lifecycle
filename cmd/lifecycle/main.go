@@ -75,7 +75,7 @@ func subcommand(platformAPI string) {
 	case "extend":
 		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPI)}, phase, true)
 	default:
-		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
+		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase, "\nValid phases: detect, analyze, restore, build, export, rebase, create, extend"))
 	}
 }
 
