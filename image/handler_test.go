@@ -3,7 +3,8 @@ package image
 import (
 	"testing"
 
-	"github.com/buildpacks/pack/pkg/testmocks"
+	"github.com/docker/docker/client"
+
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -20,15 +21,15 @@ func TestHandler(t *testing.T) {
 
 func testHandler(t *testing.T, when spec.G, it spec.S) {
 	var (
-		mockController   *gomock.Controller
-		mockKeychain     *testmockauth.MockKeychain
-		mockDockerClient *testmocks.MockCommonAPIClient
+		mockController *gomock.Controller
+		mockKeychain   *testmockauth.MockKeychain
+		dockerClient   client.CommonAPIClient
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockKeychain = testmockauth.NewMockKeychain(mockController)
-		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
+		dockerClient = h.DockerCli(t)
 	})
 
 	it.After(func() {
@@ -47,7 +48,7 @@ func testHandler(t *testing.T, when spec.G, it spec.S) {
 
 	when("Local handler", func() {
 		it("returns a local handler", func() {
-			handler := NewHandler(mockDockerClient, mockKeychain, "", false, []string{})
+			handler := NewHandler(dockerClient, mockKeychain, "", false, []string{})
 
 			_, ok := handler.(*LocalHandler)
 
