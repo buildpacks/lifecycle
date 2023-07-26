@@ -54,21 +54,30 @@ func TestTimeLog(t *testing.T) {
 }
 
 func testTimeLog(t *testing.T, when spec.G, it spec.S) {
-	when("#it's like this", func() {
-		it("is like that", func() {
+	when("we use the time log", func() {
+		it("the granular api works step by step", func() {
 			logger := mockLog{callCount: map[string]int{}}
 			c1 := log.Chronit{}
-			c2 := log.NewRecordStart("value", logger)
 			nullTime := time.Time{}
-
+			h.AssertEq(t, c1.StartTime, nullTime)
 			h.AssertEq(t, c1.EndTime, nullTime)
-			h.AssertEq(t, c1.EndTime, nullTime)
 
-			h.AssertEq(t, c2.EndTime, nullTime)
-			h.AssertEq(t, c2.FunctionName, "value")
+			c1.Log = logger
+			c1.RecordStart()
 			h.AssertEq(t, logger.callCount["Info"], 1)
+			h.AssertEq(t, c1.StartTime == nullTime, false)
+			h.AssertEq(t, c1.EndTime, nullTime)
 
-			c2.RecordEnd()
+			c1.RecordEnd()
+			h.AssertEq(t, logger.callCount["Info"], 2)
+			h.AssertEq(t, c1.EndTime == nullTime, false)
+
+		})
+		it("the convenience functions call the logger", func() {
+			logger := mockLog{callCount: map[string]int{}}
+			endfunc := log.NewMeasurement("value", logger)
+			h.AssertEq(t, logger.callCount["Info"], 1)
+			endfunc()
 			h.AssertEq(t, logger.callCount["Info"], 2)
 		})
 	})

@@ -49,8 +49,7 @@ type Builder struct {
 }
 
 func (b *Builder) Build() (*files.BuildMetadata, error) {
-	ft := log.NewRecordStart("Builder", b.Logger)
-	defer ft.RecordEnd()
+	defer log.NewMeasurement("Builder", b.Logger)()
 
 	// ensure layers SBOM directory is removed
 	if err := os.RemoveAll(filepath.Join(b.LayersDir, "sbom")); err != nil {
