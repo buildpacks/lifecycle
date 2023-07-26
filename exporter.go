@@ -88,7 +88,7 @@ type ExportOptions struct {
 
 func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	var err error
-	ft := log.NewFuncTimer("Exporter", e.Logger)
+	ft := log.NewRecordStart("Exporter", e.Logger)
 	defer ft.RecordEnd()
 
 	if e.PlatformAPI.AtLeast("0.11") {

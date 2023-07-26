@@ -49,16 +49,16 @@ func (m mockLog) Errorf(fmt string, v ...interface{}) {
 	m.incr("Error")
 }
 
-func TestCache(t *testing.T) {
-	spec.Run(t, "Exporter", testCache, spec.Parallel(), spec.Report(report.Terminal{}))
+func TestTimeLog(t *testing.T) {
+	spec.Run(t, "Exporter", testTimeLog, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testCache(t *testing.T, when spec.G, it spec.S) {
+func testTimeLog(t *testing.T, when spec.G, it spec.S) {
 	when("#it's like this", func() {
-		it("it's like that", func() {
+		it("is like that", func() {
 			logger := mockLog{callCount: map[string]int{}}
 			c1 := log.Chronit{}
-			c2 := log.NewFuncTimer("value", logger)
+			c2 := log.NewRecordStart("value", logger)
 			nullTime := time.Time{}
 
 			h.AssertEq(t, c1.EndTime, nullTime)

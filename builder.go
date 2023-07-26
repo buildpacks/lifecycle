@@ -49,7 +49,7 @@ type Builder struct {
 }
 
 func (b *Builder) Build() (*files.BuildMetadata, error) {
-	ft := log.NewFuncTimer("Builder", b.Logger)
+	ft := log.NewRecordStart("Builder", b.Logger)
 	defer ft.RecordEnd()
 
 	// ensure layers SBOM directory is removed

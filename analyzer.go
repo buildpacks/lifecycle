@@ -190,7 +190,7 @@ func (f *AnalyzerFactory) setRun(analyzer *Analyzer, imageRef string) error {
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
 func (a *Analyzer) Analyze() (files.Analyzed, error) {
-	ft := log.NewFuncTimer("Analyzer", a.Logger)
+	ft := log.NewRecordStart("Analyzer", a.Logger)
 	defer ft.RecordEnd()
 	var (
 		err              error

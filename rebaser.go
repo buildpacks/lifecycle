@@ -36,7 +36,7 @@ type RebaseReport struct {
 }
 
 func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, outputImageRef string, additionalNames []string) (RebaseReport, error) {
-	ft := log.NewFuncTimer("Rebaser", r.Logger)
+	ft := log.NewRecordStart("Rebaser", r.Logger)
 	defer ft.RecordEnd()
 	appPlatformAPI, err := workingImage.Env(platform.EnvPlatformAPI)
 	if err != nil {

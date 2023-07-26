@@ -17,7 +17,7 @@ func saveImage(image imgutil.Image, additionalNames []string, logger log.Logger)
 }
 
 func saveImageAs(image imgutil.Image, name string, additionalNames []string, logger log.Logger) (files.ImageReport, error) {
-	ft := log.NewFuncTimer("Saving "+name+"...", logger)
+	ft := log.NewRecordStart("Saving "+name+"...", logger)
 	defer ft.RecordEnd()
 	var saveErr error
 	imageReport := files.ImageReport{}
