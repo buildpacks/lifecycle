@@ -126,6 +126,8 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 }
 
 func (d *Detector) Detect() (buildpack.Group, files.Plan, error) {
+	ft := log.NewFuncTimer("Detector", d.Logger)
+	defer ft.RecordEnd()
 	group, plan, detectErr := d.DetectOrder(d.Order)
 	for _, e := range d.memHandler.Entries {
 		if detectErr != nil || e.Level >= d.Logger.LogLevel() {

@@ -28,6 +28,8 @@ type Restorer struct {
 // Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
 // If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
 func (r *Restorer) Restore(cache Cache) error {
+	ft := log.NewFuncTimer("Restorer", r.Logger)
+	defer ft.RecordEnd()
 	cacheMeta, err := retrieveCacheMetadata(cache, r.Logger)
 	if err != nil {
 		return err

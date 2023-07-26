@@ -36,6 +36,8 @@ type RebaseReport struct {
 }
 
 func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, outputImageRef string, additionalNames []string) (RebaseReport, error) {
+	ft := log.NewFuncTimer("Rebaser", r.Logger)
+	defer ft.RecordEnd()
 	appPlatformAPI, err := workingImage.Env(platform.EnvPlatformAPI)
 	if err != nil {
 		return RebaseReport{}, fmt.Errorf("failed to get app image platform API: %w", err)

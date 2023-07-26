@@ -19,6 +19,8 @@ type LayerDir interface {
 }
 
 func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
+	ft := log.NewFuncTimer("Cache", e.Logger)
+	defer ft.RecordEnd()
 	var err error
 	if !cacheStore.Exists() {
 		e.Logger.Info("Layer cache not found")

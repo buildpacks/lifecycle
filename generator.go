@@ -118,6 +118,8 @@ type GenerateResult struct {
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
+	ft := log.NewFuncTimer("Generator", g.Logger)
+	defer ft.RecordEnd()
 	inputs := g.getGenerateInputs()
 	extensionOutputParentDir, err := os.MkdirTemp("", "cnb-extensions-generated.")
 	if err != nil {
