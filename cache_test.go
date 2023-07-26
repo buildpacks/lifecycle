@@ -269,19 +269,19 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 					AnyTimes()
 				layersDir = filepath.Join("testdata", "cacher", "invalid-layers")
 				h.AssertNil(t, exporter.Cache(layersDir, testCache))
-				h.AssertEq(t, len(logHandler.Entries), 3)
+				h.AssertEq(t, len(logHandler.Entries), 5)
 			})
 
 			it("warns when there is a cache=true layer without contents", func() {
-				h.AssertStringContains(t, logHandler.Entries[0].Message, "Failed to cache layer 'buildpack.id:cache-true-no-contents' because it has no contents")
+				h.AssertStringContains(t, logHandler.Entries[1].Message, "Failed to cache layer 'buildpack.id:cache-true-no-contents' because it has no contents")
 			})
 
 			it("warns when there is an error adding a layer", func() {
-				h.AssertStringContains(t, logHandler.Entries[1].Message, "Failed to cache layer 'buildpack.id:layer-1': creating layer 'buildpack.id:layer-1': test error")
+				h.AssertStringContains(t, logHandler.Entries[2].Message, "Failed to cache layer 'buildpack.id:layer-1': creating layer 'buildpack.id:layer-1': test error")
 			})
 
 			it("continues caching valid layers", func() {
-				h.AssertStringContains(t, logHandler.Entries[2].Message, "Adding cache layer 'buildpack.id:layer-2'")
+				h.AssertStringContains(t, logHandler.Entries[3].Message, "Adding cache layer 'buildpack.id:layer-2'")
 				assertCacheHasLayer(t, testCache, "buildpack.id:layer-2")
 			})
 		})
