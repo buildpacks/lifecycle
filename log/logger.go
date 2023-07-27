@@ -1,3 +1,4 @@
+// Package log has logging interfaces for convenience in lifecycle
 package log
 
 import "github.com/apex/log"

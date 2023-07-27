@@ -49,7 +49,7 @@ type Builder struct {
 }
 
 func (b *Builder) Build() (*files.BuildMetadata, error) {
-	b.Logger.Debug("Starting build")
+	defer log.NewMeasurement("Builder", b.Logger)()
 
 	// ensure layers SBOM directory is removed
 	if err := os.RemoveAll(filepath.Join(b.LayersDir, "sbom")); err != nil {
@@ -142,7 +142,6 @@ func (b *Builder) Build() (*files.BuildMetadata, error) {
 		b.Group.GroupExtensions[i] = ext.NoExtension().NoOpt()
 	}
 
-	b.Logger.Debug("Finished build")
 	return &files.BuildMetadata{
 		BOM:                         launchBOM,
 		Buildpacks:                  b.Group.Group,
