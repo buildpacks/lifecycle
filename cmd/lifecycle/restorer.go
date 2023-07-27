@@ -116,7 +116,7 @@ func (r *restoreCmd) Exec() error {
 			}
 		} else if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
-			remoteRunImage, err = remote.NewImage(runImageName, r.keychain)
+			remoteRunImage, err = remote.NewImage(runImageName, r.keychain, remote.FromBaseImage(runImageName))
 			if err != nil || !remoteRunImage.Found() {
 				return cmd.FailErr(err, "pull run image")
 			}
