@@ -71,7 +71,6 @@ func testTimeLog(t *testing.T, when spec.G, it spec.S) {
 			c1.RecordEnd()
 			h.AssertEq(t, logger.callCount["Info"], 2)
 			h.AssertEq(t, c1.EndTime == nullTime, false)
-
 		})
 		it("the convenience functions call the logger", func() {
 			logger := mockLog{callCount: map[string]int{}}
