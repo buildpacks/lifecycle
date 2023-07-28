@@ -22,7 +22,7 @@ func TestTargetData(t *testing.T) {
 func testTargetData(t *testing.T, when spec.G, it spec.S) {
 	when(".TargetSatisfiedForBuild", func() {
 		var baseTarget files.TargetMetadata
-		when("target data", func() {
+		when("base image data", func() {
 			when("has os and arch", func() {
 				baseTarget = files.TargetMetadata{OS: "Win95", Arch: "Pentium"}
 
@@ -36,7 +36,7 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("missing os and arch", func() {
-						it.Pend("matches", func() {
+						it("matches", func() {
 							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: "", Arch: ""}), true)
 						})
 					})
