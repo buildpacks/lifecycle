@@ -285,6 +285,7 @@ const (
 )
 
 func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v1.Image, error) {
+	defer log.NewMeasurement("Extender", logger)()
 	logger.Debugf("Extending base image for %s: %s", kind, e.ImageRef)
 	dockerfiles, err := e.dockerfilesFor(kind, logger)
 	if err != nil {

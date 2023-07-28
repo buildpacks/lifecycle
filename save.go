@@ -17,9 +17,9 @@ func saveImage(image imgutil.Image, additionalNames []string, logger log.Logger)
 }
 
 func saveImageAs(image imgutil.Image, name string, additionalNames []string, logger log.Logger) (files.ImageReport, error) {
+	defer log.NewMeasurement("Saving "+name+"...", logger)()
 	var saveErr error
 	imageReport := files.ImageReport{}
-	logger.Infof("Saving %s...\n", name)
 	if err := image.SaveAs(name, additionalNames...); err != nil {
 		var ok bool
 		if saveErr, ok = err.(imgutil.SaveError); !ok {
