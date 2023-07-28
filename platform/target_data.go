@@ -76,29 +76,37 @@ func GetTargetOSFromFileSystem(d fsutil.Detector, tm *files.TargetMetadata, logg
 }
 
 // TargetSatisfiedForBuild treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if all populated fields match
-func TargetSatisfiedForBuild(t files.TargetMetadata, o buildpack.TargetMetadata) bool {
-	if (o.Arch != "*" && t.Arch != o.Arch) || (o.OS != "*" && t.OS != o.OS) {
+func TargetSatisfiedForBuild(base files.TargetMetadata, module buildpack.TargetMetadata) bool {
+	if !matches(base.OS, module.OS) {
 		return false
 	}
-	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
+	if !matches(base.Arch, module.Arch) {
 		return false
 	}
-
-	// if either of the lengths of Distributions are zero, treat it as a wildcard.
-	if t.Distribution != nil && len(o.Distributions) > 0 {
-		// this could be more efficient but the lists are probably short...
-		found := false
-		for _, odist := range o.Distributions {
-			if t.Distribution.Name == odist.Name && t.Distribution.Version == odist.Version {
-				found = true
-				continue
-			}
+	if !matches(base.ArchVariant, module.ArchVariant) {
+		return false
+	}
+	if base.Distribution == nil || len(module.Distributions) == 0 {
+		return true
+	}
+	foundMatchingDist := false
+	for _, modDist := range module.Distributions {
+		if matches(base.Distribution.Name, modDist.Name) && matches(base.Distribution.Version, modDist.Version) {
+			foundMatchingDist = true
+			break
 		}
-		if !found {
-			return false
-		}
+	}
+	if !foundMatchingDist {
+		return false
 	}
 	return true
+}
+
+func matches(target1, target2 string) bool {
+	if target1 == "" || target2 == "" {
+		return true
+	}
+	return target1 == target2
 }
 
 // TargetSatisfiedForRebase treats optional fields (ArchVariant and Distribution fields) as wildcards if empty, returns true if all populated fields match
