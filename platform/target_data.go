@@ -114,9 +114,14 @@ func TargetSatisfiedForRebase(t files.TargetMetadata, appTargetMetadata files.Ta
 	if !matches(t.ArchVariant, appTargetMetadata.ArchVariant) {
 		return false
 	}
-	if t.Distribution != nil && appTargetMetadata.Distribution != nil {
-		if !matches(t.Distribution.Name, appTargetMetadata.Distribution.Name) ||
-			!matches(t.Distribution.Version, appTargetMetadata.Distribution.Version) {
+	if t.Distribution != nil {
+		if appTargetMetadata.Distribution == nil {
+			return false
+		}
+		if t.Distribution.Name != "" && t.Distribution.Name != appTargetMetadata.Distribution.Name {
+			return false
+		}
+		if t.Distribution.Version != "" && t.Distribution.Version != appTargetMetadata.Distribution.Version {
 			return false
 		}
 	}

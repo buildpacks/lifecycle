@@ -158,8 +158,8 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						when("missing distro information", func() {
-							it("matches", func() {
-								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+							it("errors", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), false)
 							})
 						})
 					})
