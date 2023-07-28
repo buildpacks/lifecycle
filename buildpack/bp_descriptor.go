@@ -77,7 +77,7 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
 				descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "amd64", Distributions: []OSDistribution{{Name: "ubuntu", Version: "18.04"}}})
 			} else if stack.ID == "*" {
-				descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "*", Arch: "*", Distributions: []OSDistribution{}})
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{}) // matches any
 			}
 		}
 	}
@@ -93,10 +93,10 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 				bf := binFiles[len(binFiles)-i-1] // we're iterating backwards b/c os.ReadDir sorts "build.exe" after "build" but we want to preferentially detect windows first.
 				fname := bf.Name()
 				if fname == "build.exe" || fname == "build.bat" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "windows", Arch: "*"})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "windows"})
 				}
 				if fname == "build" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "*"})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux"})
 				}
 			}
 		}

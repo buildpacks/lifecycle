@@ -196,7 +196,7 @@ func isWildcard(t files.TargetMetadata) bool {
 
 func hasWildcard(ts []buildpack.TargetMetadata) bool {
 	for _, tm := range ts {
-		if tm.OS == "*" && tm.Arch == "*" {
+		if tm.OS == "" && tm.Arch == "" {
 			return true
 		}
 	}

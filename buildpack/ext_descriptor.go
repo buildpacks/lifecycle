@@ -48,19 +48,18 @@ func (d *ExtDescriptor) inferTargets() error {
 				bf := binFiles[len(binFiles)-i-1] // we're iterating backwards b/c os.ReadDir sorts "foo.exe" after "foo" but we want to preferentially detect windows first.
 				fname := bf.Name()
 				if !windowsDetected && (fname == "detect.exe" || fname == "detect.bat" || fname == "generate.exe" || fname == "generate.bat") {
-					d.Targets = append(d.Targets, TargetMetadata{OS: "windows", Arch: "*"})
+					d.Targets = append(d.Targets, TargetMetadata{OS: "windows"})
 					windowsDetected = true
 				}
 				if !linuxDetected && (fname == "detect" || fname == "generate") {
-					d.Targets = append(d.Targets, TargetMetadata{OS: "linux", Arch: "*"})
+					d.Targets = append(d.Targets, TargetMetadata{OS: "linux"})
 					linuxDetected = true
 				}
 			}
 		}
 	}
-	// fallback: if nothing worked just mark it */*
 	if len(d.Targets) == 0 {
-		d.Targets = append(d.Targets, TargetMetadata{OS: "*", Arch: "*"})
+		d.Targets = append(d.Targets, TargetMetadata{}) // matches any
 	}
 	return nil
 }

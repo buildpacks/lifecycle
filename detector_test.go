@@ -872,7 +872,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					WithAPI:   "0.12",
 					Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 					Targets: []buildpack.TargetMetadata{
-						{Arch: "*", OS: "*"}},
+						{Arch: "", OS: ""}},
 				}
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
 				executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())
