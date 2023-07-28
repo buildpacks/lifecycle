@@ -94,6 +94,80 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when(".TargetSatisfiedForRebase", func() {
+		var baseTarget files.TargetMetadata
+		when("orig image data", func() {
+			when("has os and arch", func() {
+				baseTarget = files.TargetMetadata{OS: "Win95", Arch: "Pentium"}
+
+				when("new image data", func() {
+					it("must match", func() {
+						h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+						h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: "Win98", Arch: baseTarget.Arch}), false)
+						h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: "Pentium MMX"}), false)
+					})
+
+					when("has extra information", func() {
+						it("matches", func() {
+							h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "MMX"}), true)
+							h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{
+								OS:           baseTarget.OS,
+								Arch:         baseTarget.Arch,
+								Distribution: &files.OSDistribution{Name: "a", Version: "2"},
+							}), true)
+						})
+					})
+				})
+
+				when("has arch variant", func() {
+					baseTarget.ArchVariant = "some-arch-variant"
+
+					when("new image data", func() {
+						when("has arch variant", func() {
+							it("must match", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-arch-variant"}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-other-arch-variant"}), false)
+							})
+						})
+
+						when("missing arch variant", func() {
+							it("matches", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+							})
+						})
+					})
+				})
+
+				when("has distro information", func() {
+					baseTarget.Distribution = &files.OSDistribution{Name: "A", Version: "1"}
+
+					when("new image data", func() {
+						when("has distro information", func() {
+							it("must match", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{
+									OS:           baseTarget.OS,
+									Arch:         baseTarget.Arch,
+									Distribution: &files.OSDistribution{Name: "A", Version: "1"},
+								}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{
+									OS:           baseTarget.OS,
+									Arch:         baseTarget.Arch,
+									Distribution: &files.OSDistribution{Name: "B", Version: "2"},
+								}), false)
+							})
+						})
+
+						when("missing distro information", func() {
+							it("matches", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+							})
+						})
+					})
+				})
+			})
+		})
+	})
+
 	when(".GetTargetOSFromFileSystem", func() {
 		it("populates appropriately", func() {
 			logr := &log.Logger{Handler: memory.New()}
