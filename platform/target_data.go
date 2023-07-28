@@ -111,18 +111,15 @@ func matches(target1, target2 string) bool {
 
 // TargetSatisfiedForRebase treats optional fields (ArchVariant and Distribution fields) as wildcards if empty, returns true if all populated fields match
 func TargetSatisfiedForRebase(t files.TargetMetadata, appTargetMetadata files.TargetMetadata) bool {
-	if t.Arch != appTargetMetadata.Arch || t.OS != appTargetMetadata.OS {
+	if t.OS != appTargetMetadata.OS || t.Arch != appTargetMetadata.Arch {
 		return false
 	}
-	if t.ArchVariant != "" && appTargetMetadata.ArchVariant != "" && t.ArchVariant != appTargetMetadata.ArchVariant {
+	if !matches(t.ArchVariant, appTargetMetadata.ArchVariant) {
 		return false
 	}
-
 	if t.Distribution != nil && appTargetMetadata.Distribution != nil {
-		if t.Distribution.Name != appTargetMetadata.Distribution.Name {
-			return false
-		}
-		if t.Distribution.Version != appTargetMetadata.Distribution.Version {
+		if !matches(t.Distribution.Name, appTargetMetadata.Distribution.Name) ||
+			!matches(t.Distribution.Version, appTargetMetadata.Distribution.Version) {
 			return false
 		}
 	}
