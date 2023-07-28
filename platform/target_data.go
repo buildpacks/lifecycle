@@ -96,10 +96,7 @@ func TargetSatisfiedForBuild(base files.TargetMetadata, module buildpack.TargetM
 			break
 		}
 	}
-	if !foundMatchingDist {
-		return false
-	}
-	return true
+	return foundMatchingDist
 }
 
 func matches(target1, target2 string) bool {
