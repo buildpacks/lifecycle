@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -205,31 +206,47 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		return err
 	}
 
-	report, err := exporter.Export(lifecycle.ExportOptions{
-		AdditionalNames:    e.AdditionalTags,
-		AppDir:             e.AppDir,
-		DefaultProcessType: e.DefaultProcessType,
-		ExtendedDir:        e.ExtendedDir,
-		LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
-		LayersDir:          e.LayersDir,
-		OrigMetadata:       analyzedMD.LayersMetadata,
-		Project:            projectMD,
-		RunImageRef:        runImageID,
-		RunImageForExport:  runImageForExport,
-		WorkingImage:       appImage,
-	})
-	if err != nil {
-		return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "export")
+	var exportWaitGroup sync.WaitGroup
+	var report files.Report
+	var appErr error
+	appErr = nil
+
+	exportWaitGroup.Add(1)
+	go func() {
+		defer exportWaitGroup.Done()
+		report, appErr = exporter.Export(lifecycle.ExportOptions{
+			AdditionalNames:    e.AdditionalTags,
+			AppDir:             e.AppDir,
+			DefaultProcessType: e.DefaultProcessType,
+			ExtendedDir:        e.ExtendedDir,
+			LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
+			LayersDir:          e.LayersDir,
+			OrigMetadata:       analyzedMD.LayersMetadata,
+			Project:            projectMD,
+			RunImageRef:        runImageID,
+			RunImageForExport:  runImageForExport,
+			WorkingImage:       appImage,
+		})
+	}()
+
+	exportWaitGroup.Add(1)
+	go func() {
+		defer exportWaitGroup.Done()
+		if cacheStore != nil {
+			if cacheErr := exporter.Cache(e.LayersDir, cacheStore); cacheErr != nil {
+				cmd.DefaultLogger.Warnf("Failed to export cache: %v\n", cacheErr)
+			}
+		}
+	}()
+
+	exportWaitGroup.Wait()
+	if appErr != nil {
+		return cmd.FailErrCode(appErr, e.CodeFor(platform.ExportError), "export")
 	}
 	if err = encoding.WriteTOML(e.ReportPath, &report); err != nil {
 		return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "write export report")
 	}
 
-	if cacheStore != nil {
-		if cacheErr := exporter.Cache(e.LayersDir, cacheStore); cacheErr != nil {
-			cmd.DefaultLogger.Warnf("Failed to export cache: %v\n", cacheErr)
-		}
-	}
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 
@@ -27,7 +28,8 @@ type Factory struct {
 	UID, GID     int    // UID and GID are used to normalize layer entries
 	Logger       log.Logger
 
-	tarHashes map[string]string // tarHases Stores hashes of layer tarballs for reuse between the export and cache steps.
+	// tarHashes stores hashes of layer tarballs for reuse between the export and cache steps.
+	tarHashes sync.Map
 }
 
 type Layer struct {
@@ -39,15 +41,13 @@ type Layer struct {
 
 func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.NormalizingTarWriter) error) (layer Layer, err error) {
 	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
-	if f.tarHashes == nil {
-		f.tarHashes = make(map[string]string)
-	}
-	if sha, ok := f.tarHashes[tarPath]; ok {
-		f.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", id, sha)
+	if sha, ok := f.tarHashes.Load(tarPath); ok {
+		shaString := sha.(string)
+		f.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", id, shaString)
 		return Layer{
 			ID:      id,
 			TarPath: tarPath,
-			Digest:  sha,
+			Digest:  shaString,
 			History: v1.History{CreatedBy: createdBy},
 		}, nil
 	}
@@ -69,7 +69,7 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 		return Layer{}, err
 	}
 	digest := lw.Digest()
-	f.tarHashes[tarPath] = digest
+	f.tarHashes.Store(tarPath, digest)
 	return Layer{
 		ID:      id,
 		Digest:  digest,
