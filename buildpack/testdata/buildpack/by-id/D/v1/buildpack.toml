@@ -10,6 +10,6 @@ sbom-formats = ["application/vnd.cyclonedx+json"]
 [[targets]]
 os = "OpenVMS"
 arch = "IA64"
-[[targets.distributions]]
+[[targets.distros]]
 name = "VSI OpenVMS"
 version = "V8.4-2L3"

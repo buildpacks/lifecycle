@@ -45,9 +45,9 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 						it("matches", func() {
 							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "MMX"}), true)
 							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{
-								OS:            baseTarget.OS,
-								Arch:          baseTarget.Arch,
-								Distributions: []buildpack.OSDistribution{{Name: "a", Version: "2"}},
+								OS:      baseTarget.OS,
+								Arch:    baseTarget.Arch,
+								Distros: []buildpack.OSDistro{{Name: "a", Version: "2"}},
 							}), true)
 						})
 					})
@@ -78,8 +78,8 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 					when("buildpack data", func() {
 						when("has distro information", func() {
 							it("must match", func() {
-								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distributions: []buildpack.OSDistribution{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}), true)
-								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distributions: []buildpack.OSDistribution{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}), false)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distros: []buildpack.OSDistro{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distros: []buildpack.OSDistro{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}), false)
 							})
 						})
 
