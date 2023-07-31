@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
@@ -17,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
@@ -29,12 +31,14 @@ const kanikoDir = "/kaniko"
 type restoreCmd struct {
 	*platform.Platform
 
-	keychain authn.Keychain // construct if necessary before dropping privileges
+	docker   client.CommonAPIClient // construct if necessary before dropping privileges
+	keychain authn.Keychain         // construct if necessary before dropping privileges
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *restoreCmd) DefineFlags() {
 	if r.PlatformAPI.AtLeast("0.12") {
+		cli.FlagUseDaemon(&r.UseDaemon)
 		cli.FlagGeneratedDir(&r.GeneratedDir)
 	}
 	if r.PlatformAPI.AtLeast("0.10") {
@@ -69,6 +73,13 @@ func (r *restoreCmd) Privileges() error {
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
+	if r.UseDaemon {
+		var err error
+		r.docker, err = priv.DockerClient()
+		if err != nil {
+			return cmd.FailErr(err, "initialize docker client")
+		}
+	}
 	if err = priv.EnsureOwner(r.UID, r.GID, r.LayersDir, r.CacheDir, r.KanikoDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
@@ -99,28 +110,29 @@ func (r *restoreCmd) Exec() error {
 			cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.BuildImage))
 		}
 		var (
-			remoteRunImage imgutil.Image
+			runImage imgutil.Image
 		)
 		runImageName := analyzedMD.RunImageImage() // FIXME: if we have a digest reference available in `Reference` (e.g., in the non-daemon case) we should use it
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata for %s...", runImageName)
-			remoteRunImage, err = r.pullSparse(runImageName)
+			runImage, err = r.pullSparse(runImageName)
 			if err != nil {
 				return cmd.FailErr(err, "pull run image")
 			}
 			// update analyzed metadata, even if we only needed to pull the image metadata, because
 			// the extender needs a digest reference in analyzed.toml,
 			// and daemon images will only have a daemon image ID
-			if err = updateAnalyzedMD(&analyzedMD, remoteRunImage); err != nil {
+			if err = updateAnalyzedMD(&analyzedMD, runImage); err != nil {
 				return cmd.FailErr(err, "update analyzed metadata")
 			}
 		} else if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
-			remoteRunImage, err = remote.NewImage(runImageName, r.keychain, remote.FromBaseImage(runImageName))
-			if err != nil || !remoteRunImage.Found() {
+			h := image.NewHandler(r.docker, r.keychain, r.LayoutDir, r.UseLayout)
+			runImage, err = h.InitImage(runImageName)
+			if err != nil || !runImage.Found() {
 				return cmd.FailErr(err, "pull run image")
 			}
-			if err = updateAnalyzedMD(&analyzedMD, remoteRunImage); err != nil {
+			if err = updateAnalyzedMD(&analyzedMD, runImage); err != nil {
 				return cmd.FailErr(err, "update analyzed metadata")
 			}
 		}
@@ -198,7 +210,7 @@ func (r *restoreCmd) supportsBuildImageExtension() bool {
 }
 
 func (r *restoreCmd) supportsRunImageExtension() bool {
-	return r.PlatformAPI.AtLeast("0.12")
+	return r.PlatformAPI.AtLeast("0.12") && !r.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1057
 }
 
 func (r *restoreCmd) supportsTargetData() bool {
