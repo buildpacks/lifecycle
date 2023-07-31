@@ -3,7 +3,7 @@
   os = "linux"
   arch = "amd64"
   arch-variant = "some-variant"
-  [run-image.target.distribution]
+  [run-image.target.distro]
     name = "ubuntu"
     version = "some-cute-version"
 

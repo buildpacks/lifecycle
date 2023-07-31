@@ -73,7 +73,7 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("has distro information", func() {
-					baseTarget.Distribution = &files.OSDistribution{Name: "A", Version: "1"}
+					baseTarget.Distro = &files.OSDistro{Name: "A", Version: "1"}
 
 					when("buildpack data", func() {
 						when("has distro information", func() {
@@ -111,9 +111,9 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 						it("matches", func() {
 							h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "MMX"}), true)
 							h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{
-								OS:           baseTarget.OS,
-								Arch:         baseTarget.Arch,
-								Distribution: &files.OSDistribution{Name: "a", Version: "2"},
+								OS:     baseTarget.OS,
+								Arch:   baseTarget.Arch,
+								Distro: &files.OSDistro{Name: "a", Version: "2"},
 							}), true)
 						})
 					})
@@ -139,20 +139,20 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("has distro information", func() {
-					baseTarget.Distribution = &files.OSDistribution{Name: "A", Version: "1"}
+					baseTarget.Distro = &files.OSDistro{Name: "A", Version: "1"}
 
 					when("new image data", func() {
 						when("has distro information", func() {
 							it("must match", func() {
 								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{
-									OS:           baseTarget.OS,
-									Arch:         baseTarget.Arch,
-									Distribution: &files.OSDistribution{Name: "A", Version: "1"},
+									OS:     baseTarget.OS,
+									Arch:   baseTarget.Arch,
+									Distro: &files.OSDistro{Name: "A", Version: "1"},
 								}), true)
 								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{
-									OS:           baseTarget.OS,
-									Arch:         baseTarget.Arch,
-									Distribution: &files.OSDistribution{Name: "B", Version: "2"},
+									OS:     baseTarget.OS,
+									Arch:   baseTarget.Arch,
+									Distro: &files.OSDistro{Name: "B", Version: "2"},
 								}), false)
 							})
 						})
@@ -176,8 +176,8 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 				t:       t,
 				HasFile: true}
 			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
-			h.AssertEq(t, "opensesame", tm.Distribution.Name)
-			h.AssertEq(t, "3.14", tm.Distribution.Version)
+			h.AssertEq(t, "opensesame", tm.Distro.Name)
+			h.AssertEq(t, "3.14", tm.Distro.Version)
 		})
 
 		it("doesn't populate if there's no file", func() {
@@ -187,7 +187,7 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 				t:       t,
 				HasFile: false}
 			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
-			h.AssertNil(t, tm.Distribution)
+			h.AssertNil(t, tm.Distro)
 		})
 
 		it("doesn't populate if there's an error reading the file", func() {
@@ -199,7 +199,7 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 				ReadFileErr: fmt.Errorf("I'm sorry Dave, I don't even remember exactly what HAL says"),
 			}
 			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
-			h.AssertNil(t, tm.Distribution)
+			h.AssertNil(t, tm.Distro)
 		})
 	})
 }
