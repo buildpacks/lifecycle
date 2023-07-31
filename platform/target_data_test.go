@@ -21,50 +21,150 @@ func TestTargetData(t *testing.T) {
 
 func testTargetData(t *testing.T, when spec.G, it spec.S) {
 	when(".TargetSatisfiedForBuild", func() {
-		it("requires equality of OS and Arch", func() {
-			d := files.TargetMetadata{OS: "Win95", Arch: "Pentium"}
+		var baseTarget files.TargetMetadata
+		when("base image data", func() {
+			when("has os and arch", func() {
+				baseTarget = files.TargetMetadata{OS: "Win95", Arch: "Pentium"}
 
-			if platform.TargetSatisfiedForBuild(d, buildpack.TargetMetadata{OS: "Win98", Arch: d.Arch}) {
-				t.Fatal("TargetMetadata with different OS were equal")
-			}
-			if platform.TargetSatisfiedForBuild(d, buildpack.TargetMetadata{OS: d.OS, Arch: "Pentium MMX"}) {
-				t.Fatal("TargetMetadata with different Arch were equal")
-			}
-			if !platform.TargetSatisfiedForBuild(d, buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, ArchVariant: "MMX"}) {
-				t.Fatal("blank arch variant was not treated as wildcard")
-			}
-			if !platform.TargetSatisfiedForBuild(d, buildpack.TargetMetadata{
-				OS:            d.OS,
-				Arch:          d.Arch,
-				Distributions: []buildpack.OSDistribution{{Name: "a", Version: "2"}},
-			}) {
-				t.Fatal("blank distributions list was not treated as wildcard")
-			}
+				when("buildpack data", func() {
+					when("has os and arch", func() {
+						it("must match", func() {
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: "Win98", Arch: baseTarget.Arch}), false)
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: "Pentium MMX"}), false)
+						})
+					})
 
-			d.Distribution = &files.OSDistribution{Name: "A", Version: "1"}
-			if platform.TargetSatisfiedForBuild(d, buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, Distributions: []buildpack.OSDistribution{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}) {
-				t.Fatal("unsatisfactory distribution lists were treated as satisfying")
-			}
-			if !platform.TargetSatisfiedForBuild(d, buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, Distributions: []buildpack.OSDistribution{}}) {
-				t.Fatal("blank distributions list was not treated as wildcard")
-			}
-			if !platform.TargetSatisfiedForBuild(d, buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, Distributions: []buildpack.OSDistribution{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}) {
-				t.Fatal("distributions list including target's distribution not recognized as satisfying")
-			}
+					when("missing os and arch", func() {
+						it("matches", func() {
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: "", Arch: ""}), true)
+						})
+					})
+
+					when("has extra information", func() {
+						it("matches", func() {
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "MMX"}), true)
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{
+								OS:            baseTarget.OS,
+								Arch:          baseTarget.Arch,
+								Distributions: []buildpack.OSDistribution{{Name: "a", Version: "2"}},
+							}), true)
+						})
+					})
+				})
+
+				when("has arch variant", func() {
+					baseTarget.ArchVariant = "some-arch-variant"
+
+					when("buildpack data", func() {
+						when("has arch variant", func() {
+							it("must match", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-arch-variant"}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-other-arch-variant"}), false)
+							})
+						})
+
+						when("missing arch variant", func() {
+							it("matches", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+							})
+						})
+					})
+				})
+
+				when("has distro information", func() {
+					baseTarget.Distribution = &files.OSDistribution{Name: "A", Version: "1"}
+
+					when("buildpack data", func() {
+						when("has distro information", func() {
+							it("must match", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distributions: []buildpack.OSDistribution{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distributions: []buildpack.OSDistribution{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}), false)
+							})
+						})
+
+						when("missing distro information", func() {
+							it("matches", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+							})
+						})
+					})
+				})
+			})
 		})
+	})
 
-		it("is cool with starry arches", func() {
-			d := files.TargetMetadata{OS: "windows", Arch: "amd64"}
-			if !platform.TargetSatisfiedForBuild(d, buildpack.TargetMetadata{OS: d.OS, Arch: "*"}) {
-				t.Fatal("Arch wildcard should have been satisfied with whatever we gave it")
-			}
-		})
+	when(".TargetSatisfiedForRebase", func() {
+		var baseTarget files.TargetMetadata
+		when("orig image data", func() {
+			when("has os and arch", func() {
+				baseTarget = files.TargetMetadata{OS: "Win95", Arch: "Pentium"}
 
-		it("is down with OS stars", func() {
-			d := files.TargetMetadata{OS: "plan 9", Arch: "amd64"}
-			if !platform.TargetSatisfiedForBuild(d, buildpack.TargetMetadata{OS: "*", Arch: d.Arch}) {
-				t.Fatal("OS wildcard should have been satisfied by plan 9")
-			}
+				when("new image data", func() {
+					it("must match", func() {
+						h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+						h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: "Win98", Arch: baseTarget.Arch}), false)
+						h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: "Pentium MMX"}), false)
+					})
+
+					when("has extra information", func() {
+						it("matches", func() {
+							h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "MMX"}), true)
+							h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{
+								OS:           baseTarget.OS,
+								Arch:         baseTarget.Arch,
+								Distribution: &files.OSDistribution{Name: "a", Version: "2"},
+							}), true)
+						})
+					})
+				})
+
+				when("has arch variant", func() {
+					baseTarget.ArchVariant = "some-arch-variant"
+
+					when("new image data", func() {
+						when("has arch variant", func() {
+							it("must match", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-arch-variant"}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-other-arch-variant"}), false)
+							})
+						})
+
+						when("missing arch variant", func() {
+							it("matches", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+							})
+						})
+					})
+				})
+
+				when("has distro information", func() {
+					baseTarget.Distribution = &files.OSDistribution{Name: "A", Version: "1"}
+
+					when("new image data", func() {
+						when("has distro information", func() {
+							it("must match", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{
+									OS:           baseTarget.OS,
+									Arch:         baseTarget.Arch,
+									Distribution: &files.OSDistribution{Name: "A", Version: "1"},
+								}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{
+									OS:           baseTarget.OS,
+									Arch:         baseTarget.Arch,
+									Distribution: &files.OSDistribution{Name: "B", Version: "2"},
+								}), false)
+							})
+						})
+
+						when("missing distro information", func() {
+							it("errors", func() {
+								h.AssertEq(t, platform.TargetSatisfiedForRebase(baseTarget, files.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), false)
+							})
+						})
+					})
+				})
+			})
 		})
 	})
 

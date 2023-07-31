@@ -76,45 +76,52 @@ func GetTargetOSFromFileSystem(d fsutil.Detector, tm *files.TargetMetadata, logg
 }
 
 // TargetSatisfiedForBuild treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if all populated fields match
-func TargetSatisfiedForBuild(t files.TargetMetadata, o buildpack.TargetMetadata) bool {
-	if (o.Arch != "*" && t.Arch != o.Arch) || (o.OS != "*" && t.OS != o.OS) {
+func TargetSatisfiedForBuild(base files.TargetMetadata, module buildpack.TargetMetadata) bool {
+	if !matches(base.OS, module.OS) {
 		return false
 	}
-	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
+	if !matches(base.Arch, module.Arch) {
 		return false
 	}
+	if !matches(base.ArchVariant, module.ArchVariant) {
+		return false
+	}
+	if base.Distribution == nil || len(module.Distributions) == 0 {
+		return true
+	}
+	foundMatchingDist := false
+	for _, modDist := range module.Distributions {
+		if matches(base.Distribution.Name, modDist.Name) && matches(base.Distribution.Version, modDist.Version) {
+			foundMatchingDist = true
+			break
+		}
+	}
+	return foundMatchingDist
+}
 
-	// if either of the lengths of Distributions are zero, treat it as a wildcard.
-	if t.Distribution != nil && len(o.Distributions) > 0 {
-		// this could be more efficient but the lists are probably short...
-		found := false
-		for _, odist := range o.Distributions {
-			if t.Distribution.Name == odist.Name && t.Distribution.Version == odist.Version {
-				found = true
-				continue
-			}
-		}
-		if !found {
-			return false
-		}
+func matches(target1, target2 string) bool {
+	if target1 == "" || target2 == "" {
+		return true
 	}
-	return true
+	return target1 == target2
 }
 
 // TargetSatisfiedForRebase treats optional fields (ArchVariant and Distribution fields) as wildcards if empty, returns true if all populated fields match
 func TargetSatisfiedForRebase(t files.TargetMetadata, appTargetMetadata files.TargetMetadata) bool {
-	if t.Arch != appTargetMetadata.Arch || t.OS != appTargetMetadata.OS {
+	if t.OS != appTargetMetadata.OS || t.Arch != appTargetMetadata.Arch {
 		return false
 	}
-	if t.ArchVariant != "" && appTargetMetadata.ArchVariant != "" && t.ArchVariant != appTargetMetadata.ArchVariant {
+	if !matches(t.ArchVariant, appTargetMetadata.ArchVariant) {
 		return false
 	}
-
-	if t.Distribution != nil && appTargetMetadata.Distribution != nil {
-		if t.Distribution.Name != appTargetMetadata.Distribution.Name {
+	if t.Distribution != nil {
+		if appTargetMetadata.Distribution == nil {
 			return false
 		}
-		if t.Distribution.Version != appTargetMetadata.Distribution.Version {
+		if t.Distribution.Name != "" && t.Distribution.Name != appTargetMetadata.Distribution.Name {
+			return false
+		}
+		if t.Distribution.Version != "" && t.Distribution.Version != appTargetMetadata.Distribution.Version {
 			return false
 		}
 	}
