@@ -184,63 +184,31 @@ else
 	ln -sf lifecycle.exe $(OUT_DIR)$/creator.exe
 endif
 
-build-darwin-amd64: build-darwin-amd64-lifecycle build-darwin-amd64-launcher
-
-build-darwin-amd64-lifecycle: $(BUILD_DIR)/darwin-amd64/lifecycle/lifecycle
-$(BUILD_DIR)/darwin-amd64/lifecycle/lifecycle: export GOOS:=darwin
-$(BUILD_DIR)/darwin-amd64/lifecycle/lifecycle: export GOARCH:=amd64
-$(BUILD_DIR)/darwin-amd64/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/darwin-amd64/lifecycle/lifecycle: $(GOFILES)
-$(BUILD_DIR)/darwin-amd64/lifecycle/lifecycle:
-	@echo "> Building lifecycle for darwin/amd64..."
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
-	@echo "> Creating lifecycle symlinks for darwin/amd64..."
-	ln -sf lifecycle $(OUT_DIR)/detector
-	ln -sf lifecycle $(OUT_DIR)/analyzer
-	ln -sf lifecycle $(OUT_DIR)/restorer
-	ln -sf lifecycle $(OUT_DIR)/builder
-	ln -sf lifecycle $(OUT_DIR)/exporter
-	ln -sf lifecycle $(OUT_DIR)/rebaser
-
-build-darwin-amd64-launcher: $(BUILD_DIR)/darwin-amd64/lifecycle/launcher
-$(BUILD_DIR)/darwin-amd64/lifecycle/launcher: export GOOS:=darwin
-$(BUILD_DIR)/darwin-amd64/lifecycle/launcher: export GOARCH:=amd64
-$(BUILD_DIR)/darwin-amd64/lifecycle/launcher: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/darwin-amd64/lifecycle/launcher: $(GOFILES)
-$(BUILD_DIR)/darwin-amd64/lifecycle/launcher:
-	@echo "> Building launcher for darwin/amd64..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
-
+## DARWIN ARM64/AMD64
+include darwin.mk
 build-darwin-arm64: build-darwin-arm64-lifecycle build-darwin-arm64-launcher
+build-darwin-arm64-lifecycle:
+	$(eval GOARCH := arm64)
+	$(eval TARGET := darwin-arm64)
+	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
+	$(call build_darwin_lifecycle)
+build-darwin-arm64-launcher:
+	$(eval GOARCH := arm64)
+	$(eval TARGET := darwin-arm64)
+	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
+	$(call build_darwin_launcher)
 
-build-darwin-arm64-lifecycle: $(BUILD_DIR)/darwin-arm64/lifecycle/lifecycle
-$(BUILD_DIR)/darwin-arm64/lifecycle/lifecycle: export GOOS:=darwin
-$(BUILD_DIR)/darwin-arm64/lifecycle/lifecycle: export GOARCH:=arm64
-$(BUILD_DIR)/darwin-arm64/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/darwin-arm64/lifecycle/lifecycle: $(GOFILES)
-$(BUILD_DIR)/darwin-arm64/lifecycle/lifecycle:
-	@echo "> Building lifecycle for darwin/arm64..."
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
-	@echo "> Creating lifecycle symlinks for darwin/arm64..."
-	ln -sf lifecycle $(OUT_DIR)/detector
-	ln -sf lifecycle $(OUT_DIR)/analyzer
-	ln -sf lifecycle $(OUT_DIR)/restorer
-	ln -sf lifecycle $(OUT_DIR)/builder
-	ln -sf lifecycle $(OUT_DIR)/exporter
-	ln -sf lifecycle $(OUT_DIR)/rebaser
-
-build-darwin-arm64-launcher: $(BUILD_DIR)/darwin-arm64/lifecycle/launcher
-$(BUILD_DIR)/darwin-arm64/lifecycle/launcher: export GOOS:=darwin
-$(BUILD_DIR)/darwin-arm64/lifecycle/launcher: export GOARCH:=arm64
-$(BUILD_DIR)/darwin-arm64/lifecycle/launcher: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/darwin-arm64/lifecycle/launcher: $(GOFILES)
-$(BUILD_DIR)/darwin-arm64/lifecycle/launcher:
-	@echo "> Building launcher for darwin/arm64..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
+build-darwin-amd64: build-darwin-amd64-lifecycle build-darwin-amd64-launcher
+build-darwin-amd64-lifecycle:
+	$(eval GOARCH := amd64)
+	$(eval TARGET := darwin-amd64)
+	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
+	$(call build_darwin_lifecycle)
+build-darwin-amd64-launcher:
+	$(eval GOARCH := amd64)
+	$(eval TARGET := darwin-amd64)
+	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
+	$(call build_darwin_launcher)
 
 generate-sbom: run-syft-windows run-syft-linux-amd64 run-syft-linux-arm64
 
