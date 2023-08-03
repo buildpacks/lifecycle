@@ -3,11 +3,12 @@
 package buildpack
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/buildpacks/lifecycle/internal/encoding"
 )
 
 type BpDescriptor struct {
@@ -25,27 +26,20 @@ type StackMetadata struct {
 }
 
 type TargetMetadata struct {
-	OS            string           `json:"os" toml:"os"`
-	Arch          string           `json:"arch" toml:"arch"`
-	ArchVariant   string           `json:"arch-variant,omitempty" toml:"arch-variant"`
-	Distributions []OSDistribution `json:"distributions,omitempty" toml:"distributions"`
+	OS          string     `json:"os" toml:"os"`
+	Arch        string     `json:"arch" toml:"arch"`
+	ArchVariant string     `json:"arch-variant,omitempty" toml:"arch-variant"`
+	Distros     []OSDistro `json:"distros,omitempty" toml:"distros"`
 }
 
 func (t *TargetMetadata) String() string {
-	s := fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s", t.OS, t.Arch, t.ArchVariant)
-	if len(t.Distributions) > 0 {
-		s += fmt.Sprintf(", Distributions: %s", t.Distributions)
-	}
-	return s
+	return encoding.ToJSONMaybe(*t)
 }
 
-type OSDistribution struct {
+// OSDistro is an OS distribution that a buildpack or extension can support.
+type OSDistro struct {
 	Name    string `json:"name" toml:"name"`
 	Version string `json:"version" toml:"version"`
-}
-
-func (d OSDistribution) String() string {
-	return fmt.Sprintf("Distribution: (Name: %s, Version: %s)", d.Name, d.Version)
 }
 
 type BpInfo struct {
@@ -75,7 +69,7 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 	if len(descriptor.Targets) == 0 {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
-				descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "amd64", Distributions: []OSDistribution{{Name: "ubuntu", Version: "18.04"}}})
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "amd64", Distros: []OSDistro{{Name: "ubuntu", Version: "18.04"}}})
 			} else if stack.ID == "*" {
 				descriptor.Targets = append(descriptor.Targets, TargetMetadata{}) // matches any
 			}
