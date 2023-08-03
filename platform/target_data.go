@@ -21,9 +21,6 @@ func EnvVarsFor(tm files.TargetMetadata) []string {
 	}
 	ret = append(ret, "CNB_TARGET_DISTRO_NAME="+distName)
 	ret = append(ret, "CNB_TARGET_DISTRO_VERSION="+distVersion)
-	if tm.ID != "" {
-		ret = append(ret, "CNB_TARGET_ID="+tm.ID)
-	}
 	return ret
 }
 

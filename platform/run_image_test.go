@@ -155,9 +155,8 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME="+tm.Distro.Name)
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION="+tm.Distro.Version)
-			h.AssertContains(t, observed, "CNB_TARGET_ID="+tm.ID)
 			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
-			h.AssertEq(t, len(observed), 6)
+			h.AssertEq(t, len(observed), 5)
 		})
 
 		it("does not return the wrong thing", func() {
