@@ -10,7 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 )
 
-// Analyzed is written by the analyzer as analyzed.toml to record information about:
+// Analyzed is written by the analyzer as analyzed.toml and updated in subsequent phases to record information about:
 // * the previous image (if it exists),
 // * the run image,
 // * the build image (if provided).
