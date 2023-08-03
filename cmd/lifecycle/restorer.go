@@ -88,7 +88,7 @@ func (r *restoreCmd) Exec() error {
 			cmd.DefaultLogger.Debugf("Pulling builder image metadata for %s...", r.BuildImageRef)
 			remoteBuildImage, err := r.pullSparse(r.BuildImageRef)
 			if err != nil {
-				return cmd.FailErr(err, "pull builder image")
+				return cmd.FailErr(err, fmt.Sprintf("pull builder image %s", remoteBuildImage.Name()))
 			}
 			digestRef, err := remoteBuildImage.Identifier()
 			if err != nil {
@@ -106,7 +106,7 @@ func (r *restoreCmd) Exec() error {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata for %s...", runImageName)
 			remoteRunImage, err = r.pullSparse(runImageName)
 			if err != nil {
-				return cmd.FailErr(err, "pull run image")
+				return cmd.FailErr(err, fmt.Sprintf("pull run image %s", remoteRunImage.Name()))
 			}
 			// update analyzed metadata, even if we only needed to pull the image metadata, because
 			// the extender needs a digest reference in analyzed.toml,
@@ -118,7 +118,7 @@ func (r *restoreCmd) Exec() error {
 			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
 			remoteRunImage, err = remote.NewImage(runImageName, r.keychain)
 			if err != nil || !remoteRunImage.Found() {
-				return cmd.FailErr(err, "pull run image")
+				return cmd.FailErr(err, fmt.Sprintf("pull run image %s", remoteRunImage.Name()))
 			}
 			if err = updateAnalyzedMD(&analyzedMD, remoteRunImage); err != nil {
 				return cmd.FailErr(err, "update analyzed metadata")
