@@ -59,7 +59,7 @@ func (c *createCmd) DefineFlags() {
 	cli.FlagTags(&c.AdditionalTags)
 	cli.FlagUID(&c.UID)
 	cli.FlagUseDaemon(&c.UseDaemon)
-	cli.FlagInsecureRegistry(&c.InsecureRegistry)
+	cli.FlagInsecureRegistry(&c.InsecureRegistries)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -125,7 +125,7 @@ func (c *createCmd) Exec() error {
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(c.keychain),
 		lifecycle.NewConfigHandler(),
-		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistry),
+		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistries),
 		NewRegistryHandler(c.keychain),
 	)
 	analyzer, err := analyzerFactory.NewAnalyzer(c.AdditionalTags, c.CacheImageRef, c.LaunchCacheDir, c.LayersDir, c.OutputImageRef, c.PreviousImageRef, c.RunImageRef, c.SkipLayers, cmd.DefaultLogger)

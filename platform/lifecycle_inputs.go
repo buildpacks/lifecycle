@@ -59,7 +59,7 @@ type LifecycleInputs struct {
 	UseLayout             bool
 	AdditionalTags        str.Slice // str.Slice satisfies the `Value` interface required by the `flag` package
 	KanikoCacheTTL        time.Duration
-	InsecureRegistry      str.Slice
+	InsecureRegistries    str.Slice
 }
 
 const PlaceholderLayers = "<layers>"
@@ -86,12 +86,12 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 	inputs := &LifecycleInputs{
 		// Operator config
 
-		LogLevel:         envOrDefault(EnvLogLevel, DefaultLogLevel),
-		PlatformAPI:      platformAPI,
-		ExtendKind:       envOrDefault(EnvExtendKind, DefaultExtendKind),
-		UseDaemon:        boolEnv(EnvUseDaemon),
-		InsecureRegistry: nil,
-		UseLayout:        boolEnv(EnvUseLayout),
+		LogLevel:           envOrDefault(EnvLogLevel, DefaultLogLevel),
+		PlatformAPI:        platformAPI,
+		ExtendKind:         envOrDefault(EnvExtendKind, DefaultExtendKind),
+		UseDaemon:          boolEnv(EnvUseDaemon),
+		InsecureRegistries: nil,
+		UseLayout:          boolEnv(EnvUseLayout),
 
 		// Provided by the base image
 
