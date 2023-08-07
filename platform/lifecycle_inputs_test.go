@@ -97,7 +97,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.Setenv(platform.EnvUID, "1234"))
 				h.AssertNil(t, os.Setenv(platform.EnvUseDaemon, "true"))
 				h.AssertNil(t, os.Setenv(platform.EnvUseLayout, "true"))
-				h.AssertNil(t, os.Setenv(platform.EnvInsecureRegistry, "some-insecure-registry"))
+				h.AssertNil(t, os.Setenv(platform.EnvInsecureRegistry, "some-insecure-registry,another-insecure-registry, just-another-registry"))
 			})
 
 			it.After(func() {
@@ -175,7 +175,11 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, inputs.UID, 1234)
 				h.AssertEq(t, inputs.UseDaemon, true)
 				h.AssertEq(t, inputs.UseLayout, true)
-				h.AssertEq(t, inputs.InsecureRegistries, str.Slice(nil))
+				h.AssertEq(t, inputs.InsecureRegistries, str.Slice{
+					"some-insecure-registry",
+					"another-insecure-registry",
+					"just-another-registry",
+				})
 			})
 		})
 

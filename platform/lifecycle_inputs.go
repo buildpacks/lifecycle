@@ -90,7 +90,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		PlatformAPI:        platformAPI,
 		ExtendKind:         envOrDefault(EnvExtendKind, DefaultExtendKind),
 		UseDaemon:          boolEnv(EnvUseDaemon),
-		InsecureRegistries: nil,
+		InsecureRegistries: sliceEnv(EnvInsecureRegistry),
 		UseLayout:          boolEnv(EnvUseLayout),
 
 		// Provided by the base image
@@ -235,6 +235,14 @@ func envOrDefault(key string, defaultVal string) string {
 		return envVal
 	}
 	return defaultVal
+}
+
+func sliceEnv(k string) str.Slice {
+	envVal := os.Getenv(k)
+	if envVal != "" {
+		return strings.Split(strings.ReplaceAll(envVal, " ", ""), ",")
+	}
+	return str.Slice(nil)
 }
 
 func intEnv(k string) int {
