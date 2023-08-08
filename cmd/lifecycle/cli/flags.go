@@ -168,8 +168,8 @@ func FlagForceRebase(force *bool) {
 	flagSet.BoolVar(force, "force", *force, "execute rebase even if operation is unsafe")
 }
 
-// FlagInsecureRegistry sets insecure-registry parameter as available
-func FlagInsecureRegistry(insecureRegistries *str.Slice) {
+// FlagInsecureRegistries sets insecure-registry parameter as available
+func FlagInsecureRegistries(insecureRegistries *str.Slice) {
 	flagSet.Var(insecureRegistries, "insecure-registry", "insecure registries")
 }
 
