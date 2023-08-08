@@ -127,7 +127,7 @@ func (r *restoreCmd) Exec() error {
 			}
 		} else if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
-			h := image.NewHandler(r.docker, r.keychain, r.LayoutDir, r.UseLayout)
+			h := image.NewHandler(r.docker, r.keychain, r.LayoutDir, r.UseLayout, r.InsecureRegistries)
 			runImage, err = h.InitImage(runImageName)
 			if err != nil || !runImage.Found() {
 				return cmd.FailErr(err, fmt.Sprintf("pull run image %s", runImageName))

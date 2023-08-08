@@ -49,6 +49,13 @@ func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...)) // #nosec G204
 }
 
+// DockerRunWithError allows to run docker command that might fail, reporting the error back to the caller
+func DockerRunWithError(t *testing.T, image string, ops ...DockerCmdOp) (string, int, error) {
+	t.Helper()
+	args := formatArgs([]string{image}, ops...)
+	return RunE(exec.Command("docker", append([]string{"run", "--rm"}, args...)...)) // #nosec G204
+}
+
 func DockerRunWithCombinedOutput(t *testing.T, image string, ops ...DockerCmdOp) string {
 	t.Helper()
 	args := formatArgs([]string{image}, ops...)

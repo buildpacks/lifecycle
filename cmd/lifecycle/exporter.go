@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -75,6 +76,7 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagRunImage(&e.RunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
 	cli.FlagUID(&e.UID)
 	cli.FlagUseDaemon(&e.UseDaemon)
+	cli.FlagInsecureRegistries(&e.InsecureRegistries)
 
 	cli.DeprecatedFlagRunImage(&e.DeprecatedRunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
 }
@@ -353,6 +355,15 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 
 	if e.supportsHistory() {
 		opts = append(opts, remote.WithHistory())
+	}
+
+	if len(e.InsecureRegistries) > 0 {
+		cmd.DefaultLogger.Infof("Found Insecure Registries: %+q", e.InsecureRegistries)
+		for _, insecureRegistry := range e.InsecureRegistries {
+			if strings.HasPrefix(e.RunImageRef, insecureRegistry) {
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+			}
+		}
 	}
 
 	if analyzedMD.PreviousImageRef() != "" {
