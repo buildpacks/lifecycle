@@ -90,7 +90,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		PlatformAPI:        platformAPI,
 		ExtendKind:         envOrDefault(EnvExtendKind, DefaultExtendKind),
 		UseDaemon:          boolEnv(EnvUseDaemon),
-		InsecureRegistries: sliceEnv(EnvInsecureRegistry),
+		InsecureRegistries: sliceEnv(EnvInsecureRegistries),
 		UseLayout:          boolEnv(EnvUseLayout),
 
 		// Provided by the base image
