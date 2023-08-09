@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/apex/log"
@@ -12,6 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	llog "github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -37,8 +39,20 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		})
 
+		when("is empty", func() {
+			it("errors with exit code 11", func() {
+				err := cmd.VerifyPlatformAPI(" ", logger)
+				failErr, ok := err.(*cmd.ErrorFail)
+				if !ok {
+					t.Fatalf("expected an error of type cmd.ErrorFail")
+				}
+				h.AssertEq(t, failErr.Code, 11)
+				h.AssertError(t, err, fmt.Sprintf("get platform API version; please set '%s' to specify the desired platform API version", platform.EnvPlatformAPI)) // uses platform.EnvPlatformAPI instead of cmd.EnvPlatformAPI to verify the constants are equal
+			})
+		})
+
 		when("is invalid", func() {
-			it("error with exit code 11", func() {
+			it("errors with exit code 11", func() {
 				err := cmd.VerifyPlatformAPI("bad-api", logger)
 				failErr, ok := err.(*cmd.ErrorFail)
 				if !ok {
@@ -49,7 +63,7 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("is unsupported", func() {
-			it("error with exit code 11", func() {
+			it("errors with exit code 11", func() {
 				err := cmd.VerifyPlatformAPI("2.2", logger)
 				failErr, ok := err.(*cmd.ErrorFail)
 				if !ok {
@@ -81,7 +95,7 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("CNB_DEPRECATION_MODE=error", func() {
-				it("error with exit code 11", func() {
+				it("errors with exit code 11", func() {
 					cmd.DeprecationMode = cmd.ModeError
 					err := cmd.VerifyPlatformAPI("1.1", logger)
 					failErr, ok := err.(*cmd.ErrorFail)
@@ -102,7 +116,7 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("is invalid", func() {
-			it("error with exit code 12", func() {
+			it("errors with exit code 12", func() {
 				err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "bad-api", logger)
 				failErr, ok := err.(*cmd.ErrorFail)
 				if !ok {
@@ -113,7 +127,7 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("is unsupported", func() {
-			it("error with exit code 11", func() {
+			it("errors with exit code 11", func() {
 				err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "2.2", logger)
 				failErr, ok := err.(*cmd.ErrorFail)
 				if !ok {
@@ -145,7 +159,7 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("CNB_DEPRECATION_MODE=error", func() {
-				it("error with exit code 11", func() {
+				it("errors with exit code 11", func() {
 					cmd.DeprecationMode = cmd.ModeError
 					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", logger)
 					failErr, ok := err.(*cmd.ErrorFail)

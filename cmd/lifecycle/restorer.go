@@ -99,7 +99,7 @@ func (r *restoreCmd) Exec() error {
 			cmd.DefaultLogger.Debugf("Pulling builder image metadata for %s...", r.BuildImageRef)
 			remoteBuildImage, err := r.pullSparse(r.BuildImageRef)
 			if err != nil {
-				return cmd.FailErr(err, "pull builder image")
+				return cmd.FailErr(err, fmt.Sprintf("pull builder image %s", r.BuildImageRef))
 			}
 			digestRef, err := remoteBuildImage.Identifier()
 			if err != nil {
@@ -117,7 +117,7 @@ func (r *restoreCmd) Exec() error {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata for %s...", runImageName)
 			runImage, err = r.pullSparse(runImageName)
 			if err != nil {
-				return cmd.FailErr(err, "pull run image")
+				return cmd.FailErr(err, fmt.Sprintf("pull run image %s", runImageName))
 			}
 			// update analyzed metadata, even if we only needed to pull the image metadata, because
 			// the extender needs a digest reference in analyzed.toml,
@@ -130,7 +130,7 @@ func (r *restoreCmd) Exec() error {
 			h := image.NewHandler(r.docker, r.keychain, r.LayoutDir, r.UseLayout)
 			runImage, err = h.InitImage(runImageName)
 			if err != nil || !runImage.Found() {
-				return cmd.FailErr(err, "pull run image")
+				return cmd.FailErr(err, fmt.Sprintf("pull run image %s", runImageName))
 			}
 			if err = updateAnalyzedMD(&analyzedMD, runImage); err != nil {
 				return cmd.FailErr(err, "update analyzed metadata")
@@ -151,7 +151,7 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	cacheStore, err := initCache(r.CacheImageRef, r.CacheDir, r.keychain)
+	cacheStore, err := initCache(r.CacheImageRef, r.CacheDir, r.keychain, r.PlatformAPI.LessThan("0.13"))
 	if err != nil {
 		return err
 	}

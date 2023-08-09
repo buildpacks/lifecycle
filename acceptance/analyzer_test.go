@@ -69,6 +69,23 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			os.RemoveAll(copyDir)
 		})
 
+		when("CNB_PLATFORM_API not provided", func() {
+			it("errors", func() {
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API= ",
+					analyzeImage,
+					ctrPath(analyzerPath),
+					"some-image",
+				) // #nosec G204
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "please set 'CNB_PLATFORM_API'"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
 		when("called without an app image", func() {
 			it("errors", func() {
 				cmd := exec.Command(
