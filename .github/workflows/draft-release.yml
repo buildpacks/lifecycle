@@ -22,7 +22,7 @@ jobs:
             exit 1
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
-      - name: Determine download urls for linux-x86-64, linux-arm64 and windows
+      - name: Determine download urls for linux-x86-64, linux-arm64, and windows
         id: artifact-urls
         uses: actions/github-script@v3.0.0
         with:
@@ -111,26 +111,71 @@ jobs:
         if: "!contains(env.LIFECYCLE_VERSION, 'rc') && !contains(env.LIFECYCLE_VERSION, 'pre')"
         run: |
           echo "RELEASE_KIND=release" >> $GITHUB_ENV
+      - name: Get previous release tag
+        id: get-previous-release-tag
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          result-encoding: string
+          script: |
+            return github.rest.repos.getLatestRelease({
+                owner: "buildpacks",
+                repo: "lifecycle",
+            }).then(result => {
+                return result.data.tag_name
+            })
+      - name: Setup go
+        uses: actions/setup-go@v4
+        with:
+          check-latest: true
+      - name: Get go version
+        id: get-go-version
+        run: |
+          mkdir tmp
+          tar xzvf ${{ env.ARTIFACTS_PATH }}/lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz -C tmp/
+          echo "GO_VERSION=$(go version tmp/lifecycle/lifecycle | cut -d ' ' -f 2 | sed -e "s/^go//") >> $GITHUB_ENV
       - name: Set release body text
         run: |
           cat << EOF > body.txt
           # lifecycle v${{ env.LIFECYCLE_VERSION }}
 
-          Welcome to v${{ env.LIFECYCLE_VERSION }}, a **beta** ${{ env.RELEASE_KIND }} of the Cloud Native Buildpacks Lifecycle.
+          Welcome to v${{ env.LIFECYCLE_VERSION }}, a ${{ env.RELEASE_KIND }} of the Cloud Native Buildpacks Lifecycle.
 
           ##  Prerequisites
 
-          The lifecycle runs as a normal user in a series of unprivileged containers. To export images and cache image layers, it requires access to a Docker daemon **or** Docker registry.
+          The lifecycle runs as a normal user in a series of unprivileged containers. To export images and cache image layers, it requires access to a Docker (compatible) daemon **or** an OCI registry.
 
           ## Install
 
-          Extract the .tgz file and copy the lifecycle binaries into a [build stack base image](https://github.com/buildpack/spec/blob/master/platform.md#stacks). The build image can then be orchestrated by a platform implementation such as the [pack CLI](https://github.com/buildpack/pack) or [tekton](https://github.com/tektoncd/catalog/blob/master/task/buildpacks/0.1/README.md).
+          Extract the .tgz file and copy the lifecycle binaries into a [build image](https://github.com/buildpacks/spec/blob/main/platform.md#build-image). The build image can then be orchestrated by a platform implementation such as the [pack CLI](https://github.com/buildpack/pack) or [tekton](https://github.com/tektoncd/catalog/tree/main/task/buildpacks).
 
           ## Lifecycle Image
 
           An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}.
+
+          ## Features
+
+          * TODO
+          * Updates go to version ${{ env.GO_VERSION }}
+
+          ## Bugfixes
+
+          * TODO
+
+          ## Chores
+
+          * TODO
+
+          **Full Changelog**: https://github.com/buildpacks/lifecycle/compare/${{ steps.get-previous-release-tag.outputs.result }}...release/${{ env.LIFECYCLE_VERSION }}
+
+          ## Contributors
+
+          We'd like to acknowledge that this release wouldn't be as good without the help of the following amazing contributors:
+
+          TODO
+
           EOF
-      - name: Create Pre Release
+      - name: Create pre-release
         if: "contains(env.LIFECYCLE_VERSION, 'rc') || contains(env.LIFECYCLE_VERSION, 'pre')" # e.g., 0.99.0-rc.1
         run: |
           cd ${{ env.ARTIFACTS_PATH }}
@@ -143,7 +188,7 @@ jobs:
             --title "lifecycle v${{ env.LIFECYCLE_VERSION }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create Release
+      - name: Create release
         if: "!contains(env.LIFECYCLE_VERSION, 'rc') && !contains(env.LIFECYCLE_VERSION, 'pre')"
         run: |
           cd ${{ env.ARTIFACTS_PATH }}

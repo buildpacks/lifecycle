@@ -1,4 +1,4 @@
-name: Check latest lifecycle release
+name: check-latest-release
 
 on:
   schedule:
