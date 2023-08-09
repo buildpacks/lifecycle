@@ -24,14 +24,14 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 						OS:          "some-os",
 						Arch:        "some-arch",
 						ArchVariant: "some-arch-variant",
-						Distributions: []buildpack.OSDistribution{
+						Distros: []buildpack.OSDistro{
 							{
 								Name:    "some-os-dist",
 								Version: "some-os-dist-version",
 							},
 						},
 					}
-					h.AssertEq(t, tm.String(), "OS: some-os, Arch: some-arch, ArchVariant: some-arch-variant, Distributions: [Distribution: (Name: some-os-dist, Version: some-os-dist-version)]")
+					h.AssertEq(t, tm.String(), `{"os":"some-os","arch":"some-arch","arch-variant":"some-arch-variant","distros":[{"name":"some-os-dist","version":"some-os-dist-version"}]}`)
 				})
 			})
 
@@ -42,7 +42,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 						Arch:        "some-arch",
 						ArchVariant: "some-arch-variant",
 					}
-					h.AssertEq(t, tm.String(), "OS: some-os, Arch: some-arch, ArchVariant: some-arch-variant")
+					h.AssertEq(t, tm.String(), `{"os":"some-os","arch":"some-arch","arch-variant":"some-arch-variant"}`)
 				})
 			})
 		})
@@ -77,8 +77,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, len(descriptor.Targets), 1)
 			h.AssertEq(t, descriptor.Targets[0].Arch, "IA64")
 			h.AssertEq(t, descriptor.Targets[0].OS, "OpenVMS")
-			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "VSI OpenVMS")
-			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "V8.4-2L3")
+			h.AssertEq(t, descriptor.Targets[0].Distros[0].Name, "VSI OpenVMS")
+			h.AssertEq(t, descriptor.Targets[0].Distros[0].Version, "V8.4-2L3")
 		})
 
 		it("does translate one special stack value into target values for older apis", func() {
@@ -97,8 +97,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, len(descriptor.Targets), 1)
 			h.AssertEq(t, descriptor.Targets[0].Arch, "amd64")
 			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
-			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "ubuntu")
-			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "18.04")
+			h.AssertEq(t, descriptor.Targets[0].Distros[0].Name, "ubuntu")
+			h.AssertEq(t, descriptor.Targets[0].Distros[0].Version, "18.04")
 		})
 
 		it("translates one special stack value into target values", func() {
@@ -117,8 +117,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, len(descriptor.Targets), 1)
 			h.AssertEq(t, descriptor.Targets[0].Arch, "amd64")
 			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
-			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "ubuntu")
-			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "18.04")
+			h.AssertEq(t, descriptor.Targets[0].Distros[0].Name, "ubuntu")
+			h.AssertEq(t, descriptor.Targets[0].Distros[0].Version, "18.04")
 		})
 
 		it("does not translate non-special stack values", func() {
@@ -152,9 +152,9 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Stacks[0].ID, "some.non-magic.value")
 			h.AssertEq(t, len(descriptor.Targets), 1)
 			h.AssertEq(t, len(descriptor.Targets), 1)
-			h.AssertEq(t, descriptor.Targets[0].Arch, "*")
+			h.AssertEq(t, descriptor.Targets[0].Arch, "")
 			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
-			h.AssertEq(t, len(descriptor.Targets[0].Distributions), 0)
+			h.AssertEq(t, len(descriptor.Targets[0].Distros), 0)
 		})
 
 		it("detects windows/* if batch files are present and ignores linux", func() {
@@ -170,9 +170,9 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
 			// specific behaviors for this test
 			h.AssertEq(t, len(descriptor.Targets), 2)
-			h.AssertEq(t, descriptor.Targets[0].Arch, "*")
+			h.AssertEq(t, descriptor.Targets[0].Arch, "")
 			h.AssertEq(t, descriptor.Targets[0].OS, "windows")
-			h.AssertEq(t, descriptor.Targets[1].Arch, "*")
+			h.AssertEq(t, descriptor.Targets[1].Arch, "")
 			h.AssertEq(t, descriptor.Targets[1].OS, "linux")
 		})
 	})

@@ -15,15 +15,12 @@ func EnvVarsFor(tm files.TargetMetadata) []string {
 	ret := []string{"CNB_TARGET_OS=" + tm.OS, "CNB_TARGET_ARCH=" + tm.Arch}
 	ret = append(ret, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
 	var distName, distVersion string
-	if tm.Distribution != nil {
-		distName = tm.Distribution.Name
-		distVersion = tm.Distribution.Version
+	if tm.Distro != nil {
+		distName = tm.Distro.Name
+		distVersion = tm.Distro.Version
 	}
 	ret = append(ret, "CNB_TARGET_DISTRO_NAME="+distName)
 	ret = append(ret, "CNB_TARGET_DISTRO_VERSION="+distVersion)
-	if tm.ID != "" {
-		ret = append(ret, "CNB_TARGET_ID="+tm.ID)
-	}
 	return ret
 }
 
@@ -46,10 +43,10 @@ func GetTargetMetadata(fromImage imgutil.Image) (*files.TargetMetadata, error) {
 	if err != nil {
 		return &tm, err
 	}
-	distName, distNameExists := labels[OSDistributionNameLabel]
-	distVersion, distVersionExists := labels[OSDistributionVersionLabel]
+	distName, distNameExists := labels[OSDistroNameLabel]
+	distVersion, distVersionExists := labels[OSDistroVersionLabel]
 	if distNameExists || distVersionExists {
-		tm.Distribution = &files.OSDistribution{Name: distName, Version: distVersion}
+		tm.Distro = &files.OSDistro{Name: distName, Version: distVersion}
 	}
 	if id, exists := labels[TargetLabel]; exists {
 		tm.ID = id
@@ -70,51 +67,58 @@ func GetTargetOSFromFileSystem(d fsutil.Detector, tm *files.TargetMetadata, logg
 		info := d.GetInfo(contents)
 		if info.Version != "" || info.Name != "" {
 			tm.OS = "linux"
-			tm.Distribution = &files.OSDistribution{Name: info.Name, Version: info.Version}
+			tm.Distro = &files.OSDistro{Name: info.Name, Version: info.Version}
 		}
 	}
 }
 
-// TargetSatisfiedForBuild treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if all populated fields match
-func TargetSatisfiedForBuild(t files.TargetMetadata, o buildpack.TargetMetadata) bool {
-	if (o.Arch != "*" && t.Arch != o.Arch) || (o.OS != "*" && t.OS != o.OS) {
+// TargetSatisfiedForBuild treats empty fields as wildcards and returns true if all populated fields match.
+func TargetSatisfiedForBuild(base files.TargetMetadata, module buildpack.TargetMetadata) bool {
+	if !matches(base.OS, module.OS) {
 		return false
 	}
-	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
+	if !matches(base.Arch, module.Arch) {
 		return false
 	}
+	if !matches(base.ArchVariant, module.ArchVariant) {
+		return false
+	}
+	if base.Distro == nil || len(module.Distros) == 0 {
+		return true
+	}
+	foundMatchingDist := false
+	for _, modDist := range module.Distros {
+		if matches(base.Distro.Name, modDist.Name) && matches(base.Distro.Version, modDist.Version) {
+			foundMatchingDist = true
+			break
+		}
+	}
+	return foundMatchingDist
+}
 
-	// if either of the lengths of Distributions are zero, treat it as a wildcard.
-	if t.Distribution != nil && len(o.Distributions) > 0 {
-		// this could be more efficient but the lists are probably short...
-		found := false
-		for _, odist := range o.Distributions {
-			if t.Distribution.Name == odist.Name && t.Distribution.Version == odist.Version {
-				found = true
-				continue
-			}
-		}
-		if !found {
-			return false
-		}
+func matches(target1, target2 string) bool {
+	if target1 == "" || target2 == "" {
+		return true
 	}
-	return true
+	return target1 == target2
 }
 
 // TargetSatisfiedForRebase treats optional fields (ArchVariant and Distribution fields) as wildcards if empty, returns true if all populated fields match
 func TargetSatisfiedForRebase(t files.TargetMetadata, appTargetMetadata files.TargetMetadata) bool {
-	if t.Arch != appTargetMetadata.Arch || t.OS != appTargetMetadata.OS {
+	if t.OS != appTargetMetadata.OS || t.Arch != appTargetMetadata.Arch {
 		return false
 	}
-	if t.ArchVariant != "" && appTargetMetadata.ArchVariant != "" && t.ArchVariant != appTargetMetadata.ArchVariant {
+	if !matches(t.ArchVariant, appTargetMetadata.ArchVariant) {
 		return false
 	}
-
-	if t.Distribution != nil && appTargetMetadata.Distribution != nil {
-		if t.Distribution.Name != appTargetMetadata.Distribution.Name {
+	if t.Distro != nil {
+		if appTargetMetadata.Distro == nil {
 			return false
 		}
-		if t.Distribution.Version != appTargetMetadata.Distribution.Version {
+		if t.Distro.Name != "" && t.Distro.Name != appTargetMetadata.Distro.Name {
+			return false
+		}
+		if t.Distro.Version != "" && t.Distro.Version != appTargetMetadata.Distro.Version {
 			return false
 		}
 	}

@@ -1,16 +1,16 @@
 package files
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/log"
 )
 
-// Analyzed is written by the analyzer as analyzed.toml to record information about:
+// Analyzed is written by the analyzer as analyzed.toml and updated in subsequent phases to record information about:
 // * the previous image (if it exists),
 // * the run image,
 // * the build image (if provided).
@@ -157,17 +157,15 @@ type TargetMetadata struct {
 	Arch        string `json:"arch" toml:"arch"`
 	ArchVariant string `json:"arch-variant,omitempty" toml:"arch-variant,omitempty"`
 
-	Distribution *OSDistribution `json:"distribution,omitempty" toml:"distribution,omitempty"`
+	Distro *OSDistro `json:"distro,omitempty" toml:"distro,omitempty"`
 }
 
 func (t *TargetMetadata) String() string {
-	if t.Distribution != nil {
-		return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s, Distribution: (Name: %s, Version: %s)", t.OS, t.Arch, t.ArchVariant, t.Distribution.Name, t.Distribution.Version)
-	}
-	return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s", t.OS, t.Arch, t.ArchVariant)
+	return encoding.ToJSONMaybe(*t)
 }
 
-type OSDistribution struct {
+// OSDistro is the OS distribution that a base image provides.
+type OSDistro struct {
 	Name    string `json:"name" toml:"name"`
 	Version string `json:"version" toml:"version"`
 }

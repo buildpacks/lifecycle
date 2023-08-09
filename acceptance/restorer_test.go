@@ -20,6 +20,8 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
+const emptyImageSHA = "03cbce912ef1a8a658f73c660ab9c539d67188622f00b15c4f15b89b884f0e10"
+
 var (
 	restoreImage          string
 	restoreRegAuthConfig  string
@@ -239,6 +241,8 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
 				h.AssertEq(t, analyzedMD.RunImage.Image, restoreRegFixtures.ReadOnlyRunImage)
 				h.AssertEq(t, analyzedMD.RunImage.TargetMetadata.OS, "linux")
+				t.Log("does not return the digest for an empty image")
+				h.AssertStringDoesNotContain(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:"+emptyImageSHA)
 				t.Log("writes run image manifest and config to the kaniko cache")
 				ref, err := name.ParseReference(analyzedMD.RunImage.Reference)
 				h.AssertNil(t, err)
@@ -274,6 +278,8 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
 					h.AssertEq(t, analyzedMD.RunImage.Image, restoreRegFixtures.ReadOnlyRunImage)
 					h.AssertEq(t, analyzedMD.RunImage.TargetMetadata.OS, "linux")
+					t.Log("does not return the digest for an empty image")
+					h.AssertStringDoesNotContain(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:"+emptyImageSHA)
 					t.Log("does not write run image manifest and config to the kaniko cache")
 					fis, err := os.ReadDir(filepath.Join(copyDir, "kaniko"))
 					h.AssertNil(t, err)
@@ -284,6 +290,39 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertNil(t, err)
 					h.AssertNil(t, analyzedMD.RunImage.TargetMetadata)
 				}
+			})
+
+			when("-daemon", func() {
+				it("updates run image reference in analyzed.toml to include digest and target data on newer platforms", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not support -daemon flag")
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						"/",
+						restoreImage,
+						h.WithFlags(append(
+							dockerSocketMount,
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "DOCKER_CONFIG=/docker-config",
+							"--network", restoreRegNetwork,
+						)...),
+						h.WithArgs(
+							"-analyzed", "/layers/some-extend-false-analyzed.toml",
+							"-daemon",
+							"-log-level", "debug",
+						),
+					)
+					t.Log("updates run image reference in analyzed.toml to include digest and target data")
+					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
+					h.AssertNil(t, err)
+					h.AssertStringDoesNotContain(t, analyzedMD.RunImage.Reference, "@sha256:") // daemon image ID
+					h.AssertEq(t, analyzedMD.RunImage.Image, restoreRegFixtures.ReadOnlyRunImage)
+					h.AssertEq(t, analyzedMD.RunImage.TargetMetadata.OS, "linux")
+					t.Log("does not write run image manifest and config to the kaniko cache")
+					fis, err := os.ReadDir(filepath.Join(copyDir, "kaniko"))
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(fis), 1) // .gitkeep
+				})
 			})
 		})
 	}
