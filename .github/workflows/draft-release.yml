@@ -133,7 +133,7 @@ jobs:
         run: |
           mkdir tmp
           tar xzvf ${{ env.ARTIFACTS_PATH }}/lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz -C tmp/
-          echo "GO_VERSION=$(go version tmp/lifecycle/lifecycle | cut -d ' ' -f 2 | sed -e "s/^go//") >> $GITHUB_ENV
+          echo "GO_VERSION=$(go version tmp/lifecycle/lifecycle | cut -d ' ' -f 2 | sed -e 's/^go//')" >> $GITHUB_ENV
       - name: Set release body text
         run: |
           cat << EOF > body.txt
