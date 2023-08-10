@@ -185,7 +185,8 @@ else
 endif
 
 ## DARWIN ARM64/AMD64
-include darwin.mk
+include lifecycle.mk
+include launcher.mk
 build-darwin-arm64: build-darwin-arm64-lifecycle build-darwin-arm64-launcher
 build-darwin-arm64-lifecycle:
 	$(eval GOARCH := arm64)
