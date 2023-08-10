@@ -1,4 +1,4 @@
-define build_darwin_lifecycle
+define build_lifecycle
 	@echo "> Building lifecycle for $(TARGET)..."
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
 	@echo "> Creating lifecycle symlinks for $(1)..."
