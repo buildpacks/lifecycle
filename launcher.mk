@@ -1,4 +1,4 @@
-define build_darwin_launcher
+define build_launcher
 	@echo "> Building launcher for $(TARGET)..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
