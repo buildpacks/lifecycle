@@ -46,7 +46,7 @@ echo "Using public key from fork (assumes base-64 encoded COSIGN_PRIVATE_KEY and
 cp $2 cosign.pub
 
 echo "Removing arm tests (these require a self-hosted runner)"
-sed -i '' "/test-linux-arm64:/,+11d" .github/workflows/build.yml
+sed -i '' "/test-linux-arm64:/,+14d" .github/workflows/build.yml
 sed -i '' "/test-linux-arm64/d" .github/workflows/build.yml
 
 if [[ -z $3 ]]; then

@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: '0'
-      - name: Set up go
+      - name: Setup go
         uses: actions/setup-go@v4
         with:
           check-latest: true
@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: '0'
-      - name: Set up go
+      - name: Setup go
         uses: actions/setup-go@v4
         with:
           check-latest: true
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: '0'
-      - name: Set up go
+      - name: Setup go
         uses: actions/setup-go@v4
         with:
           check-latest: true
@@ -115,7 +115,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0 # fetch all history for all branches and tags
-      - name: Set up go
+      - name: Setup go
         uses: actions/setup-go@v4
         with:
           check-latest: true
@@ -252,7 +252,7 @@ jobs:
           path: 'pack'
           ref: 'main'
           fetch-depth: 0 # fetch all history for all branches and tags
-      - name: Set up go
+      - name: Setup go
         uses: actions/setup-go@v4
         with:
           go-version: '1.20.5'
@@ -293,7 +293,7 @@ jobs:
           path: 'pack'
           ref: 'main'
           fetch-depth: 0 # fetch all history for all branches and tags
-      - name: Set up go
+      - name: Setup go
         uses: actions/setup-go@v4
         with:
           go-version: '1.20.5'

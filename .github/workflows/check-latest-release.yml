@@ -1,4 +1,4 @@
-name: Check latest lifecycle release
+name: check-latest-release
 
 on:
   schedule:
@@ -15,6 +15,19 @@ jobs:
         with:
           check-latest: true
           go-version-file: 'go.mod'
+      - name: Get previous release tag
+        id: get-previous-release-tag
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          result-encoding: string
+          script: |
+            return github.rest.repos.getLatestRelease({
+                owner: "buildpacks",
+                repo: "lifecycle",
+            }).then(result => {
+                return result.data.tag_name
+            })
       - name: Read go and release versions
         id: read-versions
         env:
@@ -26,7 +39,7 @@ jobs:
           
           LATEST_GO_VERSION=$(go version | cut -d ' ' -f 3)
           
-          LATEST_RELEASE_VERSION=$(gh release list -L 1 | cut -d $'\t' -f 1 | cut -d ' ' -f 2)
+          LATEST_RELEASE_VERSION=${{ steps.get-previous-release-tag.outputs.result }}
           
           wget https://github.com/buildpacks/lifecycle/releases/download/$LATEST_RELEASE_VERSION/lifecycle-$LATEST_RELEASE_VERSION+linux.x86-64.tgz -O lifecycle.tgz
           tar xzf lifecycle.tgz
