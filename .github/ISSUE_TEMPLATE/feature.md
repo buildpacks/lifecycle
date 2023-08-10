@@ -7,14 +7,27 @@ assignees: ''
 
 ---
 
-### Description
-<!-- A concise description of what problem the feature solves and why solving it matters. -->
+### Summary
+<!-- Please describe the feature and why it matters. -->
 
-### Proposed solution
-<!-- A clear and concise description of what you want to happen. -->
 
-### Describe alternatives you've considered
-<!-- A clear and concise description of any alternative solutions or features you've considered. -->
 
-### Additional context
-<!-- Add any other context or screenshots about the feature request here. -->
+---
+
+### Proposal
+<!-- How do you think the feature should be implemented? -->
+
+
+
+---
+
+### Related
+<!-- If this feature addresses an RFC, please provide the RFC number below. -->
+
+RFC #___
+
+---
+
+### Context
+<!-- Add any other context that may help. -->
+
