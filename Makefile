@@ -192,24 +192,24 @@ build-darwin-arm64-lifecycle:
 	$(eval GOARCH := arm64)
 	$(eval TARGET := darwin-arm64)
 	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
-	$(call build_darwin_lifecycle)
+	$(call build_lifecycle)
 build-darwin-arm64-launcher:
 	$(eval GOARCH := arm64)
 	$(eval TARGET := darwin-arm64)
 	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
-	$(call build_darwin_launcher)
+	$(call build_launcher)
 
 build-darwin-amd64: build-darwin-amd64-lifecycle build-darwin-amd64-launcher
 build-darwin-amd64-lifecycle:
 	$(eval GOARCH := amd64)
 	$(eval TARGET := darwin-amd64)
 	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
-	$(call build_darwin_lifecycle)
+	$(call build_lifecycle)
 build-darwin-amd64-launcher:
 	$(eval GOARCH := amd64)
 	$(eval TARGET := darwin-amd64)
 	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
-	$(call build_darwin_launcher)
+	$(call build_launcher)
 
 generate-sbom: run-syft-windows run-syft-linux-amd64 run-syft-linux-arm64
 
