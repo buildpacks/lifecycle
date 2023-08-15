@@ -2,12 +2,12 @@ module github.com/buildpacks/lifecycle
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/GoogleContainerTools/kaniko v1.13.0
+	github.com/GoogleContainerTools/kaniko v1.14.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230522190001-adf1bafd791a
 	github.com/buildpacks/imgutil v0.0.0-20230626185301-726f02e4225c
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
-	github.com/containerd/containerd v1.7.2
+	github.com/containerd/containerd v1.7.3
 	github.com/docker/docker v24.0.2+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/golang/mock v1.6.0
@@ -19,11 +19,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.3.0
-	golang.org/x/sys v0.10.0
+	golang.org/x/sys v0.11.0
 )
 
 require (
-	cloud.google.com/go/compute v1.20.1 // indirect
+	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
@@ -37,20 +37,20 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.19.0 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.18.29 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.28 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.5 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.35 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.29 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.36 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.20.1 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.18.33 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.32 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.8 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.38 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.32 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.39 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.18.11 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.16.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.29 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.12.13 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.13 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.20.0 // indirect
-	github.com/aws/smithy-go v1.13.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.32 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.13.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.15.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.21.2 // indirect
+	github.com/aws/smithy-go v1.14.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cilium/ebpf v0.10.0 // indirect
@@ -110,16 +110,16 @@ require (
 	github.com/tonistiigi/fsutil v0.0.0-20230407161946-9e7a6df48576 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	go.etcd.io/etcd/raft/v3 v3.5.9 // indirect
-	golang.org/x/crypto v0.11.0 // indirect
+	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/net v0.12.0 // indirect
-	golang.org/x/oauth2 v0.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/oauth2 v0.11.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.9.1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230720185612-659f7aaaa771 // indirect
-	google.golang.org/grpc v1.56.2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230807174057-1744710a1577 // indirect
+	google.golang.org/grpc v1.57.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
 
