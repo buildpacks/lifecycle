@@ -6,6 +6,8 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230906235100-ae4cac8b496c
 	github.com/buildpacks/imgutil v0.0.0-20230918203216-a995227559a3
+	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230522190001-adf1bafd791a
+	github.com/buildpacks/imgutil v0.0.0-20230802154001-5c57feb120b3
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.6
 	github.com/docker/docker v24.0.6+incompatible
