@@ -255,7 +255,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20.5'
+          go-version-file: 'go.mod'
       - uses: actions/download-artifact@v2
         with:
           name: version
@@ -273,7 +273,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          git checkout v0.28.0 # FIXME: let the pack version float again when pack 0.30.0-pre2 is out
+          git checkout v0.30.0
           LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
           LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
           make acceptance
@@ -296,7 +296,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20.5'
+          go-version-file: 'go.mod'
       - name: Add runner IP to daemon insecure-registries and firewall
         shell: powershell
         run: |
@@ -344,7 +344,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          git checkout v0.28.0 # FIXME: let the pack version float again when pack 0.30.0-pre2 is out
+          git checkout v0.30.0
           $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
           $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
           make acceptance
