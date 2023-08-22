@@ -99,6 +99,9 @@ func (e *DefaultBuildExecutor) Build(d BpDescriptor, inputs BuildInputs, logger 
 	if err := d.setupEnv(createdLayers, inputs.Env); err != nil {
 		return BuildOutputs{}, err
 	}
+	for _, envVar := range inputs.Env.List() {
+		logger.Debug(fmt.Sprintf("\t%s", envVar))
+	}
 
 	logger.Debug("Reading output files")
 	return d.readOutputFilesBp(bpLayersDir, planPath, inputs.Plan, createdLayers, logger)
