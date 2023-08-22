@@ -15,7 +15,7 @@ require (
 	github.com/google/go-containerregistry v0.15.2
 	github.com/google/uuid v1.3.1
 	github.com/heroku/color v0.0.6
-	github.com/moby/buildkit v0.11.6
+	github.com/moby/buildkit v0.12.1
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.3.0
@@ -58,10 +58,10 @@ require (
 	github.com/containerd/continuity v0.4.1 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
-	github.com/containerd/typeurl v1.0.2 // indirect
+	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
-	github.com/docker/cli v24.0.2+incompatible // indirect
+	github.com/docker/cli v24.0.4+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
@@ -106,8 +106,7 @@ require (
 	github.com/rootless-containers/rootlesskit v1.1.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
-	github.com/stretchr/testify v1.8.3 // indirect
-	github.com/tonistiigi/fsutil v0.0.0-20230407161946-9e7a6df48576 // indirect
+	github.com/tonistiigi/fsutil v0.0.0-20230629203738-36ef4d8c0dbb // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	go.etcd.io/etcd/raft/v3 v3.5.9 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
