@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
@@ -54,6 +55,7 @@ func (r *restoreCmd) DefineFlags() {
 	cli.FlagLayersDir(&r.LayersDir)
 	cli.FlagSkipLayers(&r.SkipLayers)
 	cli.FlagUID(&r.UID)
+	cli.FlagInsecureRegistries(&r.InsecureRegistries)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -217,8 +219,22 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 	if err := os.MkdirAll(baseCacheDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create cache directory: %w", err)
 	}
+
+	var opts = []remote.ImageOption{
+		remote.FromBaseImage(imageRef),
+	}
+
+	if len(r.InsecureRegistries) > 0 {
+		cmd.DefaultLogger.Infof("Found Insecure Registries: %+q", r.InsecureRegistries)
+		for _, insecureRegistry := range r.InsecureRegistries {
+			if strings.HasPrefix(imageRef, insecureRegistry) {
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+			}
+		}
+	}
+
 	// get remote image
-	remoteImage, err := remote.NewImage(imageRef, r.keychain, remote.FromBaseImage(imageRef))
+	remoteImage, err := remote.NewImage(imageRef, r.keychain, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize remote image: %w", err)
 	}

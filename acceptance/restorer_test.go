@@ -105,6 +105,27 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				h.AssertStringContains(t, output, "Restoring metadata for \"some-buildpack-id:launch-layer\"")
 			})
+
+			when("restores app metadata using an insecure registry", func() {
+				it.Before(func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
+				})
+				it("does an http request ", func() {
+					insecureRegistry := "host.docker.internal"
+
+					_, _, err := h.DockerRunWithError(t,
+						restoreImage,
+						h.WithFlags(append(
+							dockerSocketMount,
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_INSECURE_REGISTRIES="+insecureRegistry,
+							"--env", "CNB_BUILD_IMAGE="+insecureRegistry+"/bar",
+						)...),
+					)
+
+					h.AssertStringContains(t, err.Error(), "http://host.docker.internal")
+				})
+			})
 		})
 
 		when("using cache-dir", func() {
