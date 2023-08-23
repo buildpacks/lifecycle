@@ -57,7 +57,7 @@ func (e *DefaultDetectExecutor) Detect(d Descriptor, inputs DetectInputs, logger
 	}
 }
 
-func detectBp(d BpDescriptor, inputs DetectInputs, logger log.Logger) DetectOutputs {
+func detectBp(d BpDescriptor, inputs DetectInputs, _ log.Logger) DetectOutputs {
 	planDir, planPath, err := processBuildpackPaths()
 	defer os.RemoveAll(planDir)
 	if err != nil {
@@ -78,7 +78,8 @@ func detectBp(d BpDescriptor, inputs DetectInputs, logger log.Logger) DetectOutp
 		result.Code = -1
 	}
 	if result.hasTopLevelVersions() || result.Or.hasTopLevelVersions() {
-		logger.Warnf(`buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, d.Buildpack.ID)
+		result.Err = fmt.Errorf(`buildpack %s has a "version" key which is not supported. "metadata.version" should be used instead`, d.Buildpack.ID)
+		result.Code = -1
 	}
 
 	return result
@@ -115,7 +116,8 @@ func detectExt(d ExtDescriptor, inputs DetectInputs, logger log.Logger) DetectOu
 		result.Code = -1
 	}
 	if result.hasTopLevelVersions() || result.Or.hasTopLevelVersions() {
-		logger.Warnf(`extension %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, d.Extension.ID)
+		result.Err = fmt.Errorf(`extension %s has a "version" key which is not supported. "metadata.version" should be used instead`, d.Extension.ID)
+		result.Code = -1
 	}
 	if result.hasRequires() || result.Or.hasRequires() {
 		result.Err = fmt.Errorf(`extension %s outputs "requires" which is not allowed`, d.Extension.ID)

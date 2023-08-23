@@ -108,13 +108,6 @@ func (b *Builder) Build() (*files.BuildMetadata, error) {
 		b.Logger.Debugf("Finished running build for buildpack %s", bp)
 	}
 
-	if b.PlatformAPI.LessThan("0.4") {
-		b.Logger.Debug("Updating BOM entries")
-		for i := range launchBOM {
-			launchBOM[i].ConvertMetadataToVersion()
-		}
-	}
-
 	if b.PlatformAPI.AtLeast("0.8") {
 		b.Logger.Debug("Copying SBOM files")
 		if err := b.copySBOMFiles(inputs.LayersDir, bomFiles); err != nil {
