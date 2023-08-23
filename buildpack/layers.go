@@ -10,7 +10,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
 )
@@ -67,8 +66,7 @@ func ReadLayersDir(layersDir string, bp GroupElement, logger log.Logger) (Layers
 			// don't treat launch.toml as a layer
 			continue
 		}
-		if name == "build" && api.MustParse(bp.API).AtLeast("0.5") {
-			// if the buildpack API supports build.toml don't treat it as a layer
+		if name == "build" {
 			continue
 		}
 		if _, ok := names[name]; !ok {

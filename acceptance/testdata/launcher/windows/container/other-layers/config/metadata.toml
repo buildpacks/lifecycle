@@ -1,6 +1,6 @@
 [[buildpacks]]
   id = "some-buildpack"
-  api = "0.5"
+  api = "0.9"
 
 [[processes]]
   type = "web"

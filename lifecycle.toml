@@ -10,7 +10,7 @@
 # https://github.com/buildpacks/rfcs/blob/main/text/0011-lifecycle-descriptor.md
 [api]
   platform = "0.3"
-  buildpack = "0.2"
+  buildpack = "0.7"
 
 [lifecycle]
   version = "{{.lifecycle_version}}"

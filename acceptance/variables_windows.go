@@ -11,7 +11,7 @@ const (
 	containerBaseImageFull = "mcr.microsoft.com/windows/nanoserver:1809"
 	dockerfileName         = "Dockerfile.windows"
 	exe                    = ".exe"
-	execDBpDir             = "0.6_buildpack"
+	execDBpDir             = "0.9_buildpack"
 )
 
 var dockerSocketMount = []string{

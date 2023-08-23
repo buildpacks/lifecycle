@@ -73,22 +73,12 @@ func detectBp(d BpDescriptor, inputs DetectInputs, logger log.Logger) DetectOutp
 		return DetectOutputs{Code: -1, Err: err, Output: backupOut}
 	}
 
-	if api.MustParse(d.WithAPI).Equal(api.MustParse("0.2")) {
-		if result.hasInconsistentVersions() || result.Or.hasInconsistentVersions() {
-			result.Err = fmt.Errorf(`buildpack %s has a "version" key that does not match "metadata.version"`, d.Buildpack.ID)
-			result.Code = -1
-		}
+	if result.hasDoublySpecifiedVersions() || result.Or.hasDoublySpecifiedVersions() {
+		result.Err = fmt.Errorf(`buildpack %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`, d.Buildpack.ID)
+		result.Code = -1
 	}
-	if api.MustParse(d.WithAPI).AtLeast("0.3") {
-		if result.hasDoublySpecifiedVersions() || result.Or.hasDoublySpecifiedVersions() {
-			result.Err = fmt.Errorf(`buildpack %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`, d.Buildpack.ID)
-			result.Code = -1
-		}
-	}
-	if api.MustParse(d.WithAPI).AtLeast("0.3") {
-		if result.hasTopLevelVersions() || result.Or.hasTopLevelVersions() {
-			logger.Warnf(`buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, d.Buildpack.ID)
-		}
+	if result.hasTopLevelVersions() || result.Or.hasTopLevelVersions() {
+		logger.Warnf(`buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, d.Buildpack.ID)
 	}
 
 	return result

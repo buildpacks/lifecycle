@@ -91,7 +91,6 @@ func (b *Builder) Build() (*files.BuildMetadata, error) {
 		}
 
 		b.Logger.Debug("Updating buildpack processes")
-		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.PlatformAPI)
 
 		bomFiles = append(bomFiles, br.BOMFiles...)
 		buildBOM = append(buildBOM, br.BuildBOM...)
@@ -226,19 +225,6 @@ func (b *Builder) copySBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) 
 	}
 
 	return nil
-}
-
-// we set default = true for web processes when platformAPI >= 0.6 and buildpackAPI < 0.6
-func updateDefaultProcesses(processes []launch.Process, buildpackAPI *api.Version, platformAPI *api.Version) {
-	if platformAPI.LessThan("0.6") || buildpackAPI.AtLeast("0.6") {
-		return
-	}
-
-	for i := range processes {
-		if processes[i].Type == "web" {
-			processes[i].Default = true
-		}
-	}
 }
 
 type processMap struct {

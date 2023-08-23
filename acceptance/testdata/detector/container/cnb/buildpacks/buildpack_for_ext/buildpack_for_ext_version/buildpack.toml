@@ -1,4 +1,5 @@
-api = "0.3"
+api = "0.10"
+
 [buildpack]
     id = "buildpack_for_ext"
     version = "buildpack_for_ext_version"
