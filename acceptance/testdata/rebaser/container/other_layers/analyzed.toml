@@ -1,0 +1,13 @@
+[metadata]
+  [metadata.config]
+    sha = ""
+  [metadata.launcher]
+    sha = ""
+  [metadata.process-types]
+    sha = ""
+  [metadata.run-image]
+    top-layer = ""
+    reference = ""
+
+[run-image]
+  reference = "192.168.18.12:53689/some-read-only-run-image-asurginomp"

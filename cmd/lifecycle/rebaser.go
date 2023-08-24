@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
@@ -39,6 +40,7 @@ func (r *rebaseCmd) DefineFlags() {
 	cli.FlagUID(&r.UID)
 	cli.FlagUseDaemon(&r.UseDaemon)
 	cli.DeprecatedFlagRunImage(&r.DeprecatedRunImageRef)
+	cli.FlagInsecureRegistries(&r.InsecureRegistries)
 
 	if r.PlatformAPI.AtLeast("0.11") {
 		cli.FlagPreviousImage(&r.PreviousImageRef)
@@ -163,10 +165,24 @@ func (r *rebaseCmd) setAppImage() error {
 		if err != nil {
 			return err
 		}
+
+		var opts = []remote.ImageOption{
+			remote.FromBaseImage(targetImageRef),
+		}
+
+		if len(r.InsecureRegistries) > 0 {
+			cmd.DefaultLogger.Warnf("Found Insecure Registries: %+q", r.InsecureRegistries)
+			for _, insecureRegistry := range r.InsecureRegistries {
+				if strings.HasPrefix(targetImageRef, insecureRegistry) {
+					opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+				}
+			}
+		}
+
 		r.appImage, err = remote.NewImage(
 			targetImageRef,
 			keychain,
-			remote.FromBaseImage(targetImageRef),
+			opts...,
 		)
 	}
 	if err != nil || !r.appImage.Found() {
