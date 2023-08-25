@@ -103,7 +103,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("called with skip layers", func() {
-			it("writes analyzed.toml and does not write buildpack layer metadata", func() {
+			it("writes analyzed.toml and does not restore previous image SBOM", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "Platform API < 0.9 does not accept a -skip-layers flag")
 				output := h.DockerRunAndCopy(t,
 					containerName,
@@ -121,9 +121,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						analyzeDaemonFixtures.AppImage,
 					),
 				)
-
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
-				assertWritesStoreTomlOnly(t, copyDir, output)
+				h.AssertStringDoesNotContain(t, output, "Restoring data for SBOM from previous image")
 			})
 		})
 
@@ -540,10 +539,6 @@ func assertNoRestoreOfAppMetadata(t *testing.T, dir, output string) {
 	for _, filename := range layerFilenames {
 		h.AssertPathDoesNotExist(t, filepath.Join(dir, "layers", "some-buildpack-id", filename))
 	}
-}
-
-func assertWritesStoreTomlOnly(t *testing.T, dir, output string) {
-	h.AssertStringContains(t, output, "Skipping buildpack layer analysis")
 }
 
 func flatPrint(arr []string) string {
