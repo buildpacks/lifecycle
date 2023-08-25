@@ -113,7 +113,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				cmd = exec.Command( //nolint
 					"docker", "run", "--rm",
 					`--entrypoint=launcher`,
-					"--env=CNB_PLATFORM_API=0.4",
+					"--env=CNB_PLATFORM_API=0.7",
 					launchImage, "--",
 					"cmd", "/c", "set",
 				)
