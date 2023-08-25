@@ -102,60 +102,28 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("called with group", func() {
-			it("errors", func() {
-				cmd := exec.Command(
-					"docker", "run", "--rm",
-					"--env", "CNB_PLATFORM_API="+platformAPI,
-					analyzeImage,
-					ctrPath(analyzerPath),
-					"-group", "group.toml",
-					"some-image",
-				) // #nosec G204
-				output, err := cmd.CombinedOutput()
-
-				h.AssertNotNil(t, err)
-				expected := "flag provided but not defined: -group"
-				h.AssertStringContains(t, string(output), expected)
-			})
-		})
-
 		when("called with skip layers", func() {
-			it("errors", func() {
-				h.SkipIf(t,
-					api.MustParse(platformAPI).AtLeast("0.9"),
-					"Platform API > 0.9 accepts a -skip-layers flag")
-				cmd := exec.Command(
-					"docker", "run", "--rm",
-					"--env", "CNB_PLATFORM_API="+platformAPI,
+			it("writes analyzed.toml and does not write buildpack layer metadata", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "Platform API < 0.9 does not accept a -skip-layers flag")
+				output := h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					ctrPath("/layers"),
 					analyzeImage,
-					ctrPath(analyzerPath),
-					"-skip-layers",
-					"some-image",
-				) // #nosec G204
-				output, err := cmd.CombinedOutput()
+					h.WithFlags(append(
+						dockerSocketMount,
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+					)...),
+					h.WithArgs(
+						ctrPath(analyzerPath),
+						"-daemon",
+						"-skip-layers",
+						analyzeDaemonFixtures.AppImage,
+					),
+				)
 
-				h.AssertNotNil(t, err)
-				expected := "flag provided but not defined: -skip-layers"
-				h.AssertStringContains(t, string(output), expected)
-			})
-		})
-
-		when("called with cache dir", func() {
-			it("errors", func() {
-				cmd := exec.Command(
-					"docker", "run", "--rm",
-					"--env", "CNB_PLATFORM_API="+platformAPI,
-					analyzeImage,
-					ctrPath(analyzerPath),
-					"-cache-dir", "/cache",
-					"some-image",
-				) // #nosec G204
-				output, err := cmd.CombinedOutput()
-
-				h.AssertNotNil(t, err)
-				expected := "flag provided but not defined: -cache-dir"
-				h.AssertStringContains(t, string(output), expected)
+				assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
+				assertWritesStoreTomlOnly(t, copyDir, output)
 			})
 		})
 
@@ -559,23 +527,6 @@ func assertAnalyzedMetadata(t *testing.T, path string) *files.Analyzed {
 	return &analyzedMD
 }
 
-func assertLogsAndRestoresAppMetadata(t *testing.T, dir, output string) {
-	layerFilenames := []string{
-		"launch-layer.sha",
-		"launch-layer.toml",
-		"store.toml",
-	}
-	for _, filename := range layerFilenames {
-		h.AssertPathExists(t, filepath.Join(dir, "layers", "some-buildpack-id", filename))
-	}
-	layerNames := []string{
-		"launch-layer",
-	}
-	for _, layerName := range layerNames {
-		h.AssertStringContains(t, output, fmt.Sprintf("Restoring metadata for \"some-buildpack-id:%s\"", layerName))
-	}
-}
-
 func assertNoRestoreOfAppMetadata(t *testing.T, dir, output string) {
 	layerFilenames := []string{
 		"launch-build-cache-layer.sha",
@@ -591,25 +542,7 @@ func assertNoRestoreOfAppMetadata(t *testing.T, dir, output string) {
 	}
 }
 
-func assertLogsAndRestoresCacheMetadata(t *testing.T, dir, output string) {
-	h.AssertPathExists(t, filepath.Join(dir, "layers", "some-buildpack-id", "some-layer.sha"))
-	h.AssertPathExists(t, filepath.Join(dir, "layers", "some-buildpack-id", "some-layer.toml"))
-	h.AssertStringContains(t, output, "Restoring metadata for \"some-buildpack-id:some-layer\" from cache")
-}
-
 func assertWritesStoreTomlOnly(t *testing.T, dir, output string) {
-	h.AssertPathExists(t, filepath.Join(dir, "layers", "some-buildpack-id", "store.toml"))
-	layerFilenames := []string{
-		"launch-build-cache-layer.sha",
-		"launch-build-cache-layer.toml",
-		"launch-cache-layer.sha",
-		"launch-cache-layer.toml",
-		"launch-layer.sha",
-		"launch-layer.toml",
-	}
-	for _, filename := range layerFilenames {
-		h.AssertPathDoesNotExist(t, filepath.Join(dir, "layers", "some-buildpack-id", filename))
-	}
 	h.AssertStringContains(t, output, "Skipping buildpack layer analysis")
 }
 

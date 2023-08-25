@@ -11,6 +11,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/path"
+	"github.com/buildpacks/lifecycle/internal/str"
 	llog "github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -116,6 +117,25 @@ func testResolveAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G
 						})
 					})
 				})
+			})
+		})
+
+		when("provided destination tags are on different registries", func() {
+			it.Before(func() {
+				inputs.RunImageRef = "some-run-image" // satisfy validation
+				inputs.UseDaemon = false              // force this particular validation
+			})
+
+			it("errors", func() {
+				inputs.AdditionalTags = str.Slice{
+					"some-registry.io/some-namespace/some-image:tag",
+					"some-other-registry.io/some-namespace/some-image",
+				}
+				inputs.OutputImageRef = "some-registry.io/some-namespace/some-image"
+				err := platform.ResolveInputs(platform.Analyze, inputs, logger)
+				h.AssertNotNil(t, err)
+				expected := "writing to multiple registries is unsupported"
+				h.AssertStringContains(t, err.Error(), expected)
 			})
 		})
 	}
