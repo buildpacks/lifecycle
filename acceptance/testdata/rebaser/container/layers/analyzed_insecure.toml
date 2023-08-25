@@ -1,2 +1,0 @@
-[run-image]
-  reference = "host.docker.internal/bar"

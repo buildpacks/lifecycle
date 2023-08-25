@@ -1,5 +1,0 @@
-[[order]]
-
-  [[order.group]]
-    id = "simple_buildpack"
-    version = "simple_buildpack_version"

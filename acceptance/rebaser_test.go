@@ -4,12 +4,14 @@
 package acceptance
 
 import (
-	"github.com/buildpacks/lifecycle/api"
-	h "github.com/buildpacks/lifecycle/testhelpers"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 	"path/filepath"
 	"testing"
+
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/lifecycle/api"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 var (
