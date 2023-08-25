@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/apex/log"
@@ -216,7 +215,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), `buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key which is not supported. "metadata.version" should be used instead`)
 				})
 
 				it("errors if there is an alternate plan with both a top level version and a metadata version", func() {
@@ -233,27 +232,23 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), `buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key which is not supported. "metadata.version" should be used instead`)
 				})
 
-				it("warns if the plan has a top level version", func() {
+				it("errors if the plan has a top level version", func() {
 					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
 					detectRun := executor.Detect(descriptor, inputs, logger)
 
-					h.AssertEq(t, detectRun.Code, 0)
+					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
+					if err == nil {
+						t.Fatalf("Expected error")
 					}
-					if s := h.AllLogs(logHandler); !strings.Contains(s,
-						`buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
-					) {
-						t.Fatalf("Expected log to contain warning:\n%s\n", s)
-					}
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key which is not supported. "metadata.version" should be used instead`)
 				})
 
-				it("warns if there is an alternate plan with a top level version", func() {
+				it("errors if there is an alternate plan with a top level version", func() {
 					toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
 					toappfile("\n[[or]]", "detect-plan-A-v1.toml")
 					toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
@@ -261,16 +256,12 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 
 					detectRun := executor.Detect(descriptor, inputs, logger)
 
-					h.AssertEq(t, detectRun.Code, 0)
+					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
+					if err == nil {
+						t.Fatalf("Expected error")
 					}
-					if s := h.AllLogs(logHandler); !strings.Contains(s,
-						`buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
-					) {
-						t.Fatalf("Expected log to contain warning:\n%s\n", s)
-					}
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key which is not supported. "metadata.version" should be used instead`)
 				})
 			})
 

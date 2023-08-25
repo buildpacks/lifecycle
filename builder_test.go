@@ -952,51 +952,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("platform api < 0.4", func() {
-			it.Before(func() {
-				builder.PlatformAPI = api.MustParse("0.3")
-			})
-
-			when("build metadata", func() {
-				when("bom", func() {
-					it("converts metadata.version to top level version", func() {
-						bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
-						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
-						executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).Return(buildpack.BuildOutputs{
-							LaunchBOM: []buildpack.BOMEntry{
-								{
-									Require: buildpack.Require{
-										Name:     "dep1",
-										Metadata: map[string]interface{}{"version": string("v1")},
-									},
-									Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
-								},
-							},
-						}, nil)
-						bpB := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
-						dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
-						executor.EXPECT().Build(*bpB, gomock.Any(), gomock.Any())
-
-						metadata, err := builder.Build()
-						h.AssertNil(t, err)
-
-						if s := cmp.Diff(metadata.BOM, []buildpack.BOMEntry{
-							{
-								Require: buildpack.Require{
-									Name:     "dep1",
-									Version:  "v1",
-									Metadata: map[string]interface{}{"version": string("v1")},
-								},
-								Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
-							},
-						}); s != "" {
-							t.Fatalf("Unexpected:\n%s\n", s)
-						}
-					})
-				})
-			})
-		})
-
 		when("platform api < 0.6", func() {
 			it.Before(func() {
 				builder.PlatformAPI = api.MustParse("0.5")

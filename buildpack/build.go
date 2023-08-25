@@ -64,13 +64,6 @@ type BuildExecutor interface {
 type DefaultBuildExecutor struct{}
 
 func (e *DefaultBuildExecutor) Build(d BpDescriptor, inputs BuildInputs, logger log.Logger) (BuildOutputs, error) {
-	if api.MustParse(d.WithAPI).Equal(api.MustParse("0.2")) {
-		logger.Debug("Updating plan entries")
-		for i := range inputs.Plan.Entries {
-			inputs.Plan.Entries[i].convertMetadataToVersion()
-		}
-	}
-
 	logger.Debug("Creating plan directory")
 	planDir, err := os.MkdirTemp("", launch.EscapeID(d.Buildpack.ID)+"-")
 	if err != nil {

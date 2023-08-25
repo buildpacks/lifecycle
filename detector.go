@@ -145,11 +145,6 @@ func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, files.Pl
 	} else if err == ErrFailedDetection {
 		err = buildpack.NewError(err, buildpack.ErrTypeFailedDetection)
 	}
-	for i := range planEntries {
-		for j := range planEntries[i].Requires {
-			planEntries[i].Requires[j].ConvertVersionToMetadata()
-		}
-	}
 	return buildpack.Group{Group: filter(detected, buildpack.KindBuildpack), GroupExtensions: filter(detected, buildpack.KindExtension)},
 		files.Plan{Entries: planEntries},
 		err
