@@ -12,13 +12,9 @@ type Exiter interface {
 	CodeFor(errType LifecycleExitError) int
 }
 
-func NewExiter(platformAPI string) Exiter {
-	switch platformAPI {
-	case "0.3", "0.4", "0.5":
-		return &LegacyExiter{}
-	default:
-		return &DefaultExiter{}
-	}
+// NewExiter configures a new Exiter according to the provided Platform API version.
+func NewExiter(_ string) Exiter {
+	return &DefaultExiter{}
 }
 
 type DefaultExiter struct{}
@@ -30,17 +26,6 @@ var defaultExitCodes = map[LifecycleExitError]int{
 
 func (e *DefaultExiter) CodeFor(errType LifecycleExitError) int {
 	return codeFor(errType, defaultExitCodes)
-}
-
-type LegacyExiter struct{}
-
-var legacyExitCodes = map[LifecycleExitError]int{
-	// launch phase errors: 700-799
-	LaunchError: 702, // LaunchError indicates generic launch error
-}
-
-func (e *LegacyExiter) CodeFor(errType LifecycleExitError) int {
-	return codeFor(errType, legacyExitCodes)
 }
 
 func codeFor(errType LifecycleExitError, exitCodes map[LifecycleExitError]int) int {

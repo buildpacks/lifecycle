@@ -150,20 +150,6 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		ForceRebase: boolEnv(EnvForceRebase),
 	}
 
-	if platformAPI.LessThan("0.6") {
-		// The default location for order.toml is /cnb/order.toml
-		inputs.OrderPath = envOrDefault(EnvOrderPath, CNBOrderPath)
-	}
-
-	if platformAPI.LessThan("0.5") {
-		inputs.AnalyzedPath = envOrDefault(EnvAnalyzedPath, DefaultAnalyzedFile)
-		inputs.GeneratedDir = envOrDefault(EnvGeneratedDir, DefaultGeneratedDir)
-		inputs.GroupPath = envOrDefault(EnvGroupPath, DefaultGroupFile)
-		inputs.PlanPath = envOrDefault(EnvPlanPath, DefaultPlanFile)
-		inputs.ProjectMetadataPath = envOrDefault(EnvProjectMetadataPath, DefaultProjectMetadataFile)
-		inputs.ReportPath = envOrDefault(EnvReportPath, DefaultReportFile)
-	}
-
 	return inputs
 }
 

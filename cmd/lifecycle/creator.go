@@ -112,106 +112,45 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	// Analyze, Detect
+	// Analyze
 	var (
 		analyzedMD files.Analyzed
 		group      buildpack.Group
 		plan       files.Plan
 	)
-	if c.PlatformAPI.AtLeast("0.7") {
-		cmd.DefaultLogger.Phase("ANALYZING")
-		analyzerFactory := lifecycle.NewAnalyzerFactory(
-			c.PlatformAPI,
-			&cmd.BuildpackAPIVerifier{},
-			NewCacheHandler(c.keychain),
-			lifecycle.NewConfigHandler(),
-			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
-			NewRegistryHandler(c.keychain),
-		)
-		analyzer, err := analyzerFactory.NewAnalyzer(
-			c.AdditionalTags,
-			c.CacheImageRef,
-			c.LaunchCacheDir,
-			c.LayersDir,
-			"",
-			buildpack.Group{},
-			"",
-			c.OutputImageRef,
-			c.PreviousImageRef,
-			c.RunImageRef,
-			c.SkipLayers,
-			cmd.DefaultLogger,
-		)
-		if err != nil {
-			return unwrapErrorFailWithMessage(err, "initialize analyzer")
-		}
-		analyzedMD, err = analyzer.Analyze()
-		if err != nil {
-			return err
-		}
+	cmd.DefaultLogger.Phase("ANALYZING")
+	analyzerFactory := lifecycle.NewAnalyzerFactory(
+		c.PlatformAPI,
+		&cmd.BuildpackAPIVerifier{},
+		NewCacheHandler(c.keychain),
+		lifecycle.NewConfigHandler(),
+		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
+		NewRegistryHandler(c.keychain),
+	)
+	analyzer, err := analyzerFactory.NewAnalyzer(c.AdditionalTags, c.CacheImageRef, c.LaunchCacheDir, c.LayersDir, c.OutputImageRef, c.PreviousImageRef, c.RunImageRef, c.SkipLayers, cmd.DefaultLogger)
+	if err != nil {
+		return unwrapErrorFailWithMessage(err, "initialize analyzer")
+	}
+	analyzedMD, err = analyzer.Analyze()
+	if err != nil {
+		return err
+	}
 
-		cmd.DefaultLogger.Phase("DETECTING")
-		detectorFactory := lifecycle.NewDetectorFactory(
-			c.PlatformAPI,
-			&cmd.BuildpackAPIVerifier{},
-			lifecycle.NewConfigHandler(),
-			dirStore,
-		)
-		detector, err := detectorFactory.NewDetector(analyzedMD, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
-		if err != nil {
-			return unwrapErrorFailWithMessage(err, "initialize detector")
-		}
-		group, plan, err = doDetect(detector, c.Platform)
-		if err != nil {
-			return err // pass through error
-		}
-	} else {
-		cmd.DefaultLogger.Phase("DETECTING")
-		detectorFactory := lifecycle.NewDetectorFactory(
-			c.PlatformAPI,
-			&cmd.BuildpackAPIVerifier{},
-			lifecycle.NewConfigHandler(),
-			dirStore,
-		)
-		detector, err := detectorFactory.NewDetector(files.Analyzed{}, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
-		if err != nil {
-			return unwrapErrorFailWithMessage(err, "initialize detector")
-		}
-		group, plan, err = doDetect(detector, c.Platform)
-		if err != nil {
-			return err // pass through error
-		}
-
-		cmd.DefaultLogger.Phase("ANALYZING")
-		analyzerFactory := lifecycle.NewAnalyzerFactory(
-			c.PlatformAPI,
-			&cmd.BuildpackAPIVerifier{},
-			NewCacheHandler(c.keychain),
-			lifecycle.NewConfigHandler(),
-			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
-			NewRegistryHandler(c.keychain),
-		)
-		analyzer, err := analyzerFactory.NewAnalyzer(
-			c.AdditionalTags,
-			c.CacheImageRef,
-			c.LaunchCacheDir,
-			c.LayersDir,
-			c.CacheDir,
-			group,
-			"",
-			c.OutputImageRef,
-			c.PreviousImageRef,
-			c.RunImageRef,
-			c.SkipLayers,
-			cmd.DefaultLogger,
-		)
-		if err != nil {
-			return unwrapErrorFailWithMessage(err, "initialize analyzer")
-		}
-		analyzedMD, err = analyzer.Analyze()
-		if err != nil {
-			return err
-		}
+	// Detect
+	cmd.DefaultLogger.Phase("DETECTING")
+	detectorFactory := lifecycle.NewDetectorFactory(
+		c.PlatformAPI,
+		&cmd.BuildpackAPIVerifier{},
+		lifecycle.NewConfigHandler(),
+		dirStore,
+	)
+	detector, err := detectorFactory.NewDetector(analyzedMD, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
+	if err != nil {
+		return unwrapErrorFailWithMessage(err, "initialize detector")
+	}
+	group, plan, err = doDetect(detector, c.Platform)
+	if err != nil {
+		return err // pass through error
 	}
 
 	// Restore
