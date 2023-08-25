@@ -117,6 +117,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithArgs(
 						ctrPath(analyzerPath),
 						"-daemon",
+						"-run-image", analyzeRegFixtures.ReadOnlyRunImage,
 						"-skip-layers",
 						analyzeDaemonFixtures.AppImage,
 					),
