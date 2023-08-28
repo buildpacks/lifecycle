@@ -26,12 +26,6 @@ type DirStore interface {
 
 //go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle/image Handler
 
-//go:generate mockgen -package testmock -destination testmock/registry_handler.go github.com/buildpacks/lifecycle RegistryHandler
-type RegistryHandler interface {
-	EnsureReadAccess(imageRefs ...string) error
-	EnsureWriteAccess(imageRefs ...string) error
-}
-
 //go:generate mockgen -package testmock -destination testmock/buildpack_api_verifier.go github.com/buildpacks/lifecycle BuildpackAPIVerifier
 type BuildpackAPIVerifier interface {
 	VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error

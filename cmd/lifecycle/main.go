@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
@@ -110,82 +109,6 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, 
 		}
 	}
 	return cacheStore, nil
-}
-
-type DefaultRegistryHandler struct {
-	keychain         authn.Keychain
-	insecureRegistry []string
-}
-
-func NewRegistryHandler(keychain authn.Keychain, insecureRegistries []string) *DefaultRegistryHandler {
-	return &DefaultRegistryHandler{
-		keychain:         keychain,
-		insecureRegistry: insecureRegistries,
-	}
-}
-
-func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
-	for _, imageRef := range imageRefs {
-		if err := verifyReadAccess(imageRef, rv.keychain, rv.insecureRegistry); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
-	for _, imageRef := range imageRefs {
-		if err := verifyReadWriteAccess(imageRef, rv.keychain, rv.insecureRegistry); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func verifyReadAccess(imageRef string, keychain authn.Keychain, insecureRegistries []string) error {
-	if imageRef == "" {
-		return nil
-	}
-
-	var opts []remote.ImageOption
-	if len(insecureRegistries) > 0 {
-		for _, insecureRegistry := range insecureRegistries {
-			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
-			}
-		}
-	}
-
-	img, _ := remote.NewImage(imageRef, keychain, opts...)
-	canRead, err := img.CheckReadAccess()
-	if !canRead {
-		cmd.DefaultLogger.Debugf("Error checking read access: %s", err)
-		return errors.Errorf("ensure registry read access to %s", imageRef)
-	}
-	return nil
-}
-
-func verifyReadWriteAccess(imageRef string, keychain authn.Keychain, insecureRegistries []string) error {
-	if imageRef == "" {
-		return nil
-	}
-
-	var opts []remote.ImageOption
-	if len(insecureRegistries) > 0 {
-		for _, insecureRegistry := range insecureRegistries {
-			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
-			}
-		}
-	}
-
-	img, _ := remote.NewImage(imageRef, keychain, opts...)
-	canReadWrite, err := img.CheckReadWriteAccess()
-	if !canReadWrite {
-		cmd.DefaultLogger.Debugf("Error checking read/write access: %s", err)
-		return errors.Errorf("ensure registry read/write access to %s", imageRef)
-	}
-	return nil
 }
 
 // helpers

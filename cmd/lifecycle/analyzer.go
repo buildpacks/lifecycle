@@ -101,7 +101,7 @@ func (a *analyzeCmd) Exec() error {
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
 		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout, a.InsecureRegistries),
-		NewRegistryHandler(a.keychain, a.InsecureRegistries),
+		image.NewRegistryHandler(a.keychain, a.InsecureRegistries),
 	)
 	analyzer, err := factory.NewAnalyzer(a.AdditionalTags, a.CacheImageRef, a.LaunchCacheDir, a.LayersDir, a.OutputImageRef, a.PreviousImageRef, a.RunImageRef, a.SkipLayers, cmd.DefaultLogger)
 	if err != nil {

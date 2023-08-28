@@ -1,3 +1,4 @@
+// Package image implements functions for manipulating images
 package image
 
 import (
