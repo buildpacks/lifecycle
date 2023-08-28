@@ -15,9 +15,3 @@ acceptance/testdata/exporter/container/layers/*analyzed.toml
 acceptance/testdata/exporter/container/other_layers/*analyzed.toml
 
 acceptance/testdata/restorer/container/layers/*analyzed.toml
-
-acceptance/testdata/rebaser/container/cnb/run.toml
-acceptance/testdata/rebaser/container/layers/analyzed.toml
-acceptance/testdata/rebaser/container/layers/run-image-extended-analyzed.toml
-acceptance/testdata/rebaser/container/layers/some-analyzed.toml
-acceptance/testdata/rebaser/container/other_layers/analyzed.toml
