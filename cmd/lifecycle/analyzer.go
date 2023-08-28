@@ -50,6 +50,7 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagUID(&a.UID)
 		cli.FlagUseDaemon(&a.UseDaemon)
 	}
+	cli.FlagInsecureRegistries(&a.InsecureRegistries)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -100,7 +101,7 @@ func (a *analyzeCmd) Exec() error {
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
 		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout, a.InsecureRegistries),
-		NewRegistryHandler(a.keychain),
+		NewRegistryHandler(a.keychain, a.InsecureRegistries),
 	)
 	analyzer, err := factory.NewAnalyzer(a.AdditionalTags, a.CacheImageRef, a.LaunchCacheDir, a.LayersDir, a.OutputImageRef, a.PreviousImageRef, a.RunImageRef, a.SkipLayers, cmd.DefaultLogger)
 	if err != nil {

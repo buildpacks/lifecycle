@@ -113,18 +113,20 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, 
 }
 
 type DefaultRegistryHandler struct {
-	keychain authn.Keychain
+	keychain         authn.Keychain
+	insecureRegistry []string
 }
 
-func NewRegistryHandler(keychain authn.Keychain) *DefaultRegistryHandler {
+func NewRegistryHandler(keychain authn.Keychain, insecureRegistries []string) *DefaultRegistryHandler {
 	return &DefaultRegistryHandler{
-		keychain: keychain,
+		keychain:         keychain,
+		insecureRegistry: insecureRegistries,
 	}
 }
 
 func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadAccess(imageRef, rv.keychain); err != nil {
+		if err := verifyReadAccess(imageRef, rv.keychain, rv.insecureRegistry); err != nil {
 			return err
 		}
 	}
@@ -133,18 +135,28 @@ func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 
 func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadWriteAccess(imageRef, rv.keychain); err != nil {
+		if err := verifyReadWriteAccess(imageRef, rv.keychain, rv.insecureRegistry); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func verifyReadAccess(imageRef string, keychain authn.Keychain) error {
+func verifyReadAccess(imageRef string, keychain authn.Keychain, insecureRegistries []string) error {
 	if imageRef == "" {
 		return nil
 	}
-	img, _ := remote.NewImage(imageRef, keychain)
+
+	var opts []remote.ImageOption
+	if len(insecureRegistries) > 0 {
+		for _, insecureRegistry := range insecureRegistries {
+			if strings.HasPrefix(imageRef, insecureRegistry) {
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+			}
+		}
+	}
+
+	img, _ := remote.NewImage(imageRef, keychain, opts...)
 	canRead, err := img.CheckReadAccess()
 	if !canRead {
 		cmd.DefaultLogger.Debugf("Error checking read access: %s", err)
@@ -153,11 +165,21 @@ func verifyReadAccess(imageRef string, keychain authn.Keychain) error {
 	return nil
 }
 
-func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
+func verifyReadWriteAccess(imageRef string, keychain authn.Keychain, insecureRegistries []string) error {
 	if imageRef == "" {
 		return nil
 	}
-	img, _ := remote.NewImage(imageRef, keychain)
+
+	var opts []remote.ImageOption
+	if len(insecureRegistries) > 0 {
+		for _, insecureRegistry := range insecureRegistries {
+			if strings.HasPrefix(imageRef, insecureRegistry) {
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+			}
+		}
+	}
+
+	img, _ := remote.NewImage(imageRef, keychain, opts...)
 	canReadWrite, err := img.CheckReadWriteAccess()
 	if !canReadWrite {
 		cmd.DefaultLogger.Debugf("Error checking read/write access: %s", err)

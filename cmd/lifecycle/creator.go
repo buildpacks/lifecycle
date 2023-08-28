@@ -126,7 +126,7 @@ func (c *createCmd) Exec() error {
 		NewCacheHandler(c.keychain),
 		lifecycle.NewConfigHandler(),
 		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistries),
-		NewRegistryHandler(c.keychain),
+		NewRegistryHandler(c.keychain, c.InsecureRegistries),
 	)
 	analyzer, err := analyzerFactory.NewAnalyzer(c.AdditionalTags, c.CacheImageRef, c.LaunchCacheDir, c.LayersDir, c.OutputImageRef, c.PreviousImageRef, c.RunImageRef, c.SkipLayers, cmd.DefaultLogger)
 	if err != nil {
