@@ -52,6 +52,19 @@ func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
 	return nil
 }
 
+// GetInsecureRegistryOptions returns a list of WithRegistrySetting imageOptions matching the specified imageRef prefix
+func (rv *DefaultRegistryHandler) GetInsecureRegistryOptions(imageRef string) []remote.ImageOption {
+	var opts []remote.ImageOption
+	if len(rv.insecureRegistry) > 0 {
+		for _, insecureRegistry := range rv.insecureRegistry {
+			if strings.HasPrefix(imageRef, insecureRegistry) {
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+			}
+		}
+	}
+	return opts
+}
+
 func verifyReadAccess(imageRef string, keychain authn.Keychain, insecureRegistries []string) error {
 	if imageRef == "" {
 		return nil
