@@ -1,20 +1,20 @@
 package image
 
 import (
-	h "github.com/buildpacks/lifecycle/testhelpers"
-	testmockauth "github.com/buildpacks/lifecycle/testmock/auth"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"testing"
+
+	h "github.com/buildpacks/lifecycle/testhelpers"
+	testmockauth "github.com/buildpacks/lifecycle/testmock/auth"
 )
 
 func TestRegistryHandler(t *testing.T) {
 	spec.Run(t, "RegistryHandler", testRegistryHandler, spec.Parallel(), spec.Report(report.Terminal{}))
 }
-
 func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
-
 	when("insecure registry", func() {
 		var (
 			mockController *gomock.Controller
