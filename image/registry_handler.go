@@ -35,7 +35,7 @@ func NewRegistryHandler(keychain authn.Keychain, insecureRegistries []string) *D
 // EnsureReadAccess ensures that we can read from the registry
 func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadAccess(imageRef, rv.keychain, rv.insecureRegistry); err != nil {
+		if err := verifyReadAccess(imageRef, rv.keychain, rv.GetInsecureRegistryOptions(imageRef)); err != nil {
 			return err
 		}
 	}
@@ -45,7 +45,7 @@ func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 // EnsureWriteAccess ensures that we can write to the registry
 func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadWriteAccess(imageRef, rv.keychain, rv.insecureRegistry); err != nil {
+		if err := verifyReadWriteAccess(imageRef, rv.keychain, rv.GetInsecureRegistryOptions(imageRef)); err != nil {
 			return err
 		}
 	}
@@ -65,18 +65,9 @@ func (rv *DefaultRegistryHandler) GetInsecureRegistryOptions(imageRef string) []
 	return opts
 }
 
-func verifyReadAccess(imageRef string, keychain authn.Keychain, insecureRegistries []string) error {
+func verifyReadAccess(imageRef string, keychain authn.Keychain, opts []remote.ImageOption) error {
 	if imageRef == "" {
 		return nil
-	}
-
-	var opts []remote.ImageOption
-	if len(insecureRegistries) > 0 {
-		for _, insecureRegistry := range insecureRegistries {
-			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
-			}
-		}
 	}
 
 	img, _ := remote.NewImage(imageRef, keychain, opts...)
@@ -88,18 +79,9 @@ func verifyReadAccess(imageRef string, keychain authn.Keychain, insecureRegistri
 	return nil
 }
 
-func verifyReadWriteAccess(imageRef string, keychain authn.Keychain, insecureRegistries []string) error {
+func verifyReadWriteAccess(imageRef string, keychain authn.Keychain, opts []remote.ImageOption) error {
 	if imageRef == "" {
 		return nil
-	}
-
-	var opts []remote.ImageOption
-	if len(insecureRegistries) > 0 {
-		for _, insecureRegistry := range insecureRegistries {
-			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
-			}
-		}
 	}
 
 	img, _ := remote.NewImage(imageRef, keychain, opts...)

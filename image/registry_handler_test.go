@@ -4,11 +4,13 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+
+	testmockauth "github.com/buildpacks/lifecycle/testmock/auth"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	h "github.com/buildpacks/lifecycle/testhelpers"
-	testmockauth "github.com/buildpacks/lifecycle/testmock/auth"
 )
 
 func TestRegistryHandler(t *testing.T) {
