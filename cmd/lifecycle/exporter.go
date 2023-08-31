@@ -357,14 +357,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		opts = append(opts, remote.WithHistory())
 	}
 
-	if len(e.InsecureRegistries) > 0 {
-		cmd.DefaultLogger.Infof("Found Insecure Registries: %+q", e.InsecureRegistries)
-		for _, insecureRegistry := range e.InsecureRegistries {
-			if strings.HasPrefix(e.RunImageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
-			}
-		}
-	}
+	opts = append(opts, e.getInsecureRegistryOptions(e.RunImageRef)...)
 
 	if analyzedMD.PreviousImageRef() != "" {
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImageRef())
@@ -530,4 +523,17 @@ func (e *exportCmd) hasExtendedLayers() bool {
 		return false
 	}
 	return true
+}
+
+func (e *exportCmd) getInsecureRegistryOptions(imageRef string) []remote.ImageOption {
+	var opts []remote.ImageOption
+	if len(e.InsecureRegistries) > 0 {
+		cmd.DefaultLogger.Warnf("Found Insecure Registries: %+q", e.InsecureRegistries)
+		for _, insecureRegistry := range e.InsecureRegistries {
+			if strings.HasPrefix(imageRef, insecureRegistry) {
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+			}
+		}
+	}
+	return opts
 }

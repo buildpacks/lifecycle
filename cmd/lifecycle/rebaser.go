@@ -170,14 +170,7 @@ func (r *rebaseCmd) setAppImage() error {
 			remote.FromBaseImage(targetImageRef),
 		}
 
-		if len(r.InsecureRegistries) > 0 {
-			cmd.DefaultLogger.Warnf("Found Insecure Registries: %+q", r.InsecureRegistries)
-			for _, insecureRegistry := range r.InsecureRegistries {
-				if strings.HasPrefix(targetImageRef, insecureRegistry) {
-					opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
-				}
-			}
-		}
+		opts = append(opts, r.getInsecureRegistryOptions(targetImageRef)...)
 
 		r.appImage, err = remote.NewImage(
 			targetImageRef,
@@ -216,4 +209,17 @@ func (r *rebaseCmd) setAppImage() error {
 	}
 
 	return nil
+}
+
+func (r *rebaseCmd) getInsecureRegistryOptions(imageRef string) []remote.ImageOption {
+	var opts []remote.ImageOption
+	if len(r.InsecureRegistries) > 0 {
+		cmd.DefaultLogger.Warnf("Found Insecure Registries: %+q", r.InsecureRegistries)
+		for _, insecureRegistry := range r.InsecureRegistries {
+			if strings.HasPrefix(imageRef, insecureRegistry) {
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+			}
+		}
+	}
+	return opts
 }
