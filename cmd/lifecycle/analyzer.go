@@ -34,6 +34,7 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagLayoutDir(&a.LayoutDir)
 		cli.FlagUseLayout(&a.UseLayout)
 		cli.FlagRunPath(&a.RunPath)
+		cli.FlagInsecureRegistries(&a.InsecureRegistries)
 		fallthrough
 	case a.PlatformAPI.AtLeast("0.9"):
 		cli.FlagLaunchCacheDir(&a.LaunchCacheDir)
@@ -50,7 +51,6 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagUID(&a.UID)
 		cli.FlagUseDaemon(&a.UseDaemon)
 	}
-	cli.FlagInsecureRegistries(&a.InsecureRegistries)
 }
 
 // Args validates arguments and flags, and fills in default values.

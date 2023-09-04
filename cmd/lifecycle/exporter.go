@@ -55,6 +55,7 @@ func (e *exportCmd) DefineFlags() {
 		cli.FlagLayoutDir(&e.LayoutDir)
 		cli.FlagRunPath(&e.RunPath)
 		cli.FlagUseLayout(&e.UseLayout)
+		cli.FlagInsecureRegistries(&e.InsecureRegistries)
 	} else {
 		cli.FlagStackPath(&e.StackPath)
 	}
@@ -76,7 +77,6 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagRunImage(&e.RunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
 	cli.FlagUID(&e.UID)
 	cli.FlagUseDaemon(&e.UseDaemon)
-	cli.FlagInsecureRegistries(&e.InsecureRegistries)
 
 	cli.DeprecatedFlagRunImage(&e.DeprecatedRunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
 }

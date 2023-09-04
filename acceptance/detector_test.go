@@ -36,9 +36,6 @@ func TestDetector(t *testing.T) {
 	info, err := h.DockerCli(t).Info(context.TODO())
 	h.AssertNil(t, err)
 
-	// These variables are clones of the variables in analyzer_test.go.
-	// You can find the same variables there without `builder` prefix.
-	// These lines are added for supporting windows tests.
 	detectorDaemonOS = info.OSType
 	detectorDaemonArch = info.Architecture
 	if detectorDaemonArch == "x86_64" {

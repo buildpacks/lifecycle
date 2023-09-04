@@ -37,6 +37,9 @@ func TestRebaser(t *testing.T) {
 func testRebaser(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		when("called with insecure registry flag", func() {
+			it.Before(func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
+			})
 			it("should do an http request", func() {
 				insecureRegistry := "host.docker.internal"
 				rebaserOutputImageName := insecureRegistry + "/bar"

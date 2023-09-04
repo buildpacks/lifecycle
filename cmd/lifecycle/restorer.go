@@ -43,6 +43,7 @@ func (r *restoreCmd) DefineFlags() {
 		cli.FlagGeneratedDir(&r.GeneratedDir)
 		cli.FlagUseLayout(&r.UseLayout)
 		cli.FlagLayoutDir(&r.LayoutDir)
+		cli.FlagInsecureRegistries(&r.InsecureRegistries)
 	}
 	if r.PlatformAPI.AtLeast("0.10") {
 		cli.FlagBuildImage(&r.BuildImageRef)
@@ -55,7 +56,6 @@ func (r *restoreCmd) DefineFlags() {
 	cli.FlagLayersDir(&r.LayersDir)
 	cli.FlagSkipLayers(&r.SkipLayers)
 	cli.FlagUID(&r.UID)
-	cli.FlagInsecureRegistries(&r.InsecureRegistries)
 }
 
 // Args validates arguments and flags, and fills in default values.

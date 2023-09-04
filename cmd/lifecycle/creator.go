@@ -34,6 +34,7 @@ func (c *createCmd) DefineFlags() {
 		cli.FlagLayoutDir(&c.LayoutDir)
 		cli.FlagUseLayout(&c.UseLayout)
 		cli.FlagRunPath(&c.RunPath)
+		cli.FlagInsecureRegistries(&c.InsecureRegistries)
 	}
 	if c.PlatformAPI.AtLeast("0.11") {
 		cli.FlagBuildConfigDir(&c.BuildConfigDir)
@@ -59,7 +60,6 @@ func (c *createCmd) DefineFlags() {
 	cli.FlagTags(&c.AdditionalTags)
 	cli.FlagUID(&c.UID)
 	cli.FlagUseDaemon(&c.UseDaemon)
-	cli.FlagInsecureRegistries(&c.InsecureRegistries)
 }
 
 // Args validates arguments and flags, and fills in default values.
