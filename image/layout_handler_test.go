@@ -102,6 +102,18 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNotNil(t, err)
 				})
 			})
+
+			when("image reference is a layout path", func() {
+				it.Before(func() {
+					imageRef = filepath.Join(layoutDir, "index.docker.io", "cnbs", "sample-stack-run", "jammy")
+				})
+
+				it("it returns the same path value", func() {
+					image, err := imageHandler.InitImage(imageRef)
+					h.AssertNil(t, err)
+					h.AssertEq(t, image.Name(), imageRef)
+				})
+			})
 		})
 	})
 }
