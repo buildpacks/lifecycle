@@ -40,6 +40,8 @@ func (r *restoreCmd) DefineFlags() {
 	if r.PlatformAPI.AtLeast("0.12") {
 		cli.FlagUseDaemon(&r.UseDaemon)
 		cli.FlagGeneratedDir(&r.GeneratedDir)
+		cli.FlagUseLayout(&r.UseLayout)
+		cli.FlagLayoutDir(&r.LayoutDir)
 	}
 	if r.PlatformAPI.AtLeast("0.10") {
 		cli.FlagBuildImage(&r.BuildImageRef)
