@@ -54,11 +54,13 @@ jobs:
 
           crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} ${{ env.LIFECYCLE_VERSION }}-linux-x86-64
           crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} ${{ env.LIFECYCLE_VERSION }}-linux-arm64
+          crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-s390x@${{ env.LINUX_S390X_SHA }} ${{ env.LIFECYCLE_VERSION }}-linux-s390x
           crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows@${{ env.WINDOWS_AMD64_SHA }} ${{ env.LIFECYCLE_VERSION }}-windows
 
           docker manifest create buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }} \
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} \
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} \
+            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-s390x@${{ env.LINUX_S390X_SHA }} \
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows@${{ env.WINDOWS_AMD64_SHA }}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }})
@@ -89,11 +91,13 @@ jobs:
 
           crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} latest-linux-x86-64
           crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} latest-linux-arm64
+          crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-s390x@${{ env.LINUX_S390X_SHA }} latest-linux-s390x
           crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows@${{ env.WINDOWS_AMD64_SHA }} latest-windows
 
           docker manifest create buildpacksio/lifecycle:latest \
             buildpacksio/lifecycle:latest-linux-x86-64@${{ env.LINUX_AMD64_SHA }} \
             buildpacksio/lifecycle:latest-linux-arm64@${{ env.LINUX_ARM64_SHA }} \
+            buildpacksio/lifecycle:latest-linux-s390x@${{ env.LINUX_S390X_SHA }} \
             buildpacksio/lifecycle:latest-windows@${{ env.WINDOWS_AMD64_SHA }}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:latest)
