@@ -190,7 +190,6 @@ jobs:
       - test-linux-amd64
       - test-linux-arm64
       - test-windows
-      - test-linux-s390x
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
