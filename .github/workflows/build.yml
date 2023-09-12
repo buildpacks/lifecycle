@@ -188,7 +188,6 @@ jobs:
   build-and-publish:
     needs:
       - test-linux-amd64
-      - test-linux-arm64
       - test-windows
     runs-on: ubuntu-latest
     permissions:
@@ -288,25 +287,25 @@ jobs:
           DOCKER_CLI_EXPERIMENTAL=enabled
           LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)
 
-          LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64 | awk '{print $NF}')
+          LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64 | awk '{print $NF}')
           echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
 
-          LINUX_ARM64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64 | awk '{print $NF}')
+          LINUX_ARM64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64 | awk '{print $NF}')
           echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
 
-          LINUX_S390X_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.s390x.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x -arch s390x | awk '{print $NF}')
+          LINUX_S390X_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.s390x.tgz -tag index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x -arch s390x | awk '{print $NF}')
           echo "LINUX_S390X_SHA: $LINUX_S90X_SHA"
 
-          WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
+          WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
-          docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x@${LINUX_S390X_SHA} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
+          docker manifest create index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG} \
+              index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
+              index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
+              index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x@${LINUX_S390X_SHA} \
+              index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
 
-          MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
+          MANIFEST_SHA=$(docker manifest push index.docker.io/dilipgb6594/lifecycle:${LIFECYCLE_IMAGE_TAG})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
 
           cosign sign -r -y \
