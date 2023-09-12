@@ -49,6 +49,10 @@ echo "Removing arm tests (these require a self-hosted runner)"
 sed -i '' "/test-linux-arm64:/,+14d" .github/workflows/build.yml
 sed -i '' "/test-linux-arm64/d" .github/workflows/build.yml
 
+echo "Removing s390x tests (these require a VM in IBM Cloud)"
+sed -i '' "/test-linux-s390x:/,+79d" .github/workflows/build.yml
+sed -i '' "/test-linux-s390x/d" .github/workflows/build.yml
+
 if [[ -z $3 ]]; then
   echo "Removing all tests to make things faster"
   sed -i '' "s/make test/echo test/g" .github/workflows/*.yml
