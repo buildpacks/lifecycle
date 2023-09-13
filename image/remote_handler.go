@@ -1,10 +1,6 @@
 package image
 
 import (
-	"strings"
-
-	"github.com/buildpacks/lifecycle/cmd"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -26,7 +22,7 @@ func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
 		remote.FromBaseImage(imageRef),
 	}
 
-	options = append(options, h.getInsecureRegistryOptions(imageRef)...)
+	options = append(options, GetInsecureOptions(h.insecureRegistries, imageRef)...)
 
 	return remote.NewImage(
 		imageRef,
@@ -37,16 +33,4 @@ func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
 
 func (h *RemoteHandler) Kind() string {
 	return RemoteKind
-}
-func (h *RemoteHandler) getInsecureRegistryOptions(imageRef string) []remote.ImageOption {
-	var opts []remote.ImageOption
-	if len(h.insecureRegistries) > 0 {
-		cmd.DefaultLogger.Warnf("Found Insecure Registries: %+q", h.insecureRegistries)
-		for _, insecureRegistry := range h.insecureRegistries {
-			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
-			}
-		}
-	}
-	return opts
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
@@ -220,11 +219,8 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 		return nil, fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
-	var opts = []remote.ImageOption{
-		remote.FromBaseImage(imageRef),
-	}
-
-	opts = append(opts, r.getInsecureRegistryOptions(imageRef)...)
+	var opts []remote.ImageOption
+	opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries, imageRef), remote.FromBaseImage(imageRef))...)
 
 	// get remote image
 	remoteImage, err := remote.NewImage(imageRef, r.keychain, opts...)
@@ -280,17 +276,4 @@ func (r *restoreCmd) restore(layerMetadata files.LayersMetadata, group buildpack
 		return cmd.FailErrCode(err, r.CodeFor(platform.RestoreError), "restore")
 	}
 	return nil
-}
-
-func (r *restoreCmd) getInsecureRegistryOptions(imageRef string) []remote.ImageOption {
-	var opts []remote.ImageOption
-	if len(r.InsecureRegistries) > 0 {
-		cmd.DefaultLogger.Warnf("Found Insecure Registries: %+q", r.InsecureRegistries)
-		for _, insecureRegistry := range r.InsecureRegistries {
-			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
-			}
-		}
-	}
-	return opts
 }

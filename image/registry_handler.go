@@ -35,7 +35,7 @@ func NewRegistryHandler(keychain authn.Keychain, insecureRegistries []string) *D
 // EnsureReadAccess ensures that we can read from the registry
 func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadAccess(imageRef, rv.keychain, rv.GetInsecureOptions(imageRef)); err != nil {
+		if err := verifyReadAccess(imageRef, rv.keychain, GetInsecureOptions(rv.insecureRegistry, imageRef)); err != nil {
 			return err
 		}
 	}
@@ -45,7 +45,7 @@ func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 // EnsureWriteAccess ensures that we can write to the registry
 func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadWriteAccess(imageRef, rv.keychain, rv.GetInsecureOptions(imageRef)); err != nil {
+		if err := verifyReadWriteAccess(imageRef, rv.keychain, GetInsecureOptions(rv.insecureRegistry, imageRef)); err != nil {
 			return err
 		}
 	}
@@ -53,10 +53,15 @@ func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
 }
 
 // GetInsecureOptions returns a list of WithRegistrySetting imageOptions matching the specified imageRef prefix
-func (rv *DefaultRegistryHandler) GetInsecureOptions(imageRef string) []remote.ImageOption {
+/*
+TODO: This is a temporary solution in order to get insecure registries in other components too
+TODO: Ideally we should fix the `imgutil.options` struct visibility in order to mock and test the `remote.WithRegistrySetting`
+TODO: function correctly and use the RegistryHandler everywhere it is needed.
+*/
+func GetInsecureOptions(insecureRegistries []string, imageRef string) []remote.ImageOption {
 	var opts []remote.ImageOption
-	if len(rv.insecureRegistry) > 0 {
-		for _, insecureRegistry := range rv.insecureRegistry {
+	if len(insecureRegistries) > 0 {
+		for _, insecureRegistry := range insecureRegistries {
 			if strings.HasPrefix(imageRef, insecureRegistry) {
 				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
 			}

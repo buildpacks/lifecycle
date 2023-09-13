@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -342,6 +341,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(e.RunImageRef),
 	}
+
 	if e.supportsRunImageExtension() {
 		extendedConfig, err := e.getExtendedConfig(analyzedMD.RunImage)
 		if err != nil {
@@ -357,7 +357,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		opts = append(opts, remote.WithHistory())
 	}
 
-	opts = append(opts, e.getInsecureOptions(e.RunImageRef)...)
+	opts = append(opts, image.GetInsecureOptions(e.InsecureRegistries, e.RunImageRef)...)
 
 	if analyzedMD.PreviousImageRef() != "" {
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImageRef())
@@ -523,17 +523,4 @@ func (e *exportCmd) hasExtendedLayers() bool {
 		return false
 	}
 	return true
-}
-
-func (e *exportCmd) getInsecureOptions(imageRef string) []remote.ImageOption {
-	var opts []remote.ImageOption
-	if len(e.InsecureRegistries) > 0 {
-		cmd.DefaultLogger.Warnf("Found Insecure Registries: %+q", e.InsecureRegistries)
-		for _, insecureRegistry := range e.InsecureRegistries {
-			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
-			}
-		}
-	}
-	return opts
 }
