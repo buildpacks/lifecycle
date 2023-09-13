@@ -46,15 +46,13 @@ func (r *restoreCmd) DefineFlags() {
 	if r.PlatformAPI.AtLeast("0.10") {
 		cli.FlagBuildImage(&r.BuildImageRef)
 	}
-	if r.PlatformAPI.AtLeast("0.7") {
-		cli.FlagAnalyzedPath(&r.AnalyzedPath)
-		cli.FlagSkipLayers(&r.SkipLayers)
-	}
+	cli.FlagAnalyzedPath(&r.AnalyzedPath)
 	cli.FlagCacheDir(&r.CacheDir)
 	cli.FlagCacheImage(&r.CacheImageRef)
 	cli.FlagGID(&r.GID)
 	cli.FlagGroupPath(&r.GroupPath)
 	cli.FlagLayersDir(&r.LayersDir)
+	cli.FlagSkipLayers(&r.SkipLayers)
 	cli.FlagUID(&r.UID)
 }
 
@@ -158,12 +156,7 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	var appMeta files.LayersMetadata
-	if r.restoresLayerMetadata() {
-		appMeta = analyzedMD.LayersMetadata
-	}
-
-	return r.restore(appMeta, group, cacheStore)
+	return r.restore(analyzedMD.LayersMetadata, group, cacheStore)
 }
 
 func updateAnalyzedMD(analyzedMD *files.Analyzed, remoteRunImage imgutil.Image) error {
@@ -258,10 +251,6 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 		return nil, fmt.Errorf("failed to save sparse image: %w", err)
 	}
 	return remoteImage, nil
-}
-
-func (r *restoreCmd) restoresLayerMetadata() bool {
-	return r.PlatformAPI.AtLeast("0.7")
 }
 
 func (r *restoreCmd) restore(layerMetadata files.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {

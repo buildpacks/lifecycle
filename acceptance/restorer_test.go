@@ -80,28 +80,6 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("called with -analyzed (on older platforms)", func() {
-			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -analyzed flag")
-				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restoreImage, "-analyzed some-file-location")
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				expected := "flag provided but not defined: -analyzed"
-				h.AssertStringContains(t, string(output), expected)
-			})
-		})
-
-		when("called with -skip-layers (on older platforms)", func() {
-			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -skip-layers flag")
-				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restoreImage, "-skip-layers true")
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				expected := "flag provided but not defined: -skip-layers"
-				h.AssertStringContains(t, string(output), expected)
-			})
-		})
-
 		when("called without any cache flag", func() {
 			it("outputs it will not restore cache layer data", func() {
 				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restoreImage)
@@ -114,7 +92,6 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("analyzed.toml exists with app metadata", func() {
 			it("restores app metadata", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not restore app metadata")
 				output := h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -252,7 +229,6 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("target data", func() {
 			it("updates run image reference in analyzed.toml to include digest and target data on newer platforms", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not support -analyzed flag")
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,

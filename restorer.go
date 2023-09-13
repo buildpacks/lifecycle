@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
@@ -19,8 +20,8 @@ type Restorer struct {
 	Logger    log.Logger
 
 	Buildpacks            []buildpack.GroupElement
-	LayerMetadataRestorer layer.MetadataRestorer // Platform API >= 0.7
-	LayersMetadata        files.LayersMetadata   // Platform API >= 0.7
+	LayerMetadataRestorer layer.MetadataRestorer
+	LayersMetadata        files.LayersMetadata
 	PlatformAPI           *api.Version
 	SBOMRestorer          layer.SBOMRestorer
 }
@@ -34,13 +35,10 @@ func (r *Restorer) Restore(cache Cache) error {
 		return err
 	}
 
-	useShaFiles := !r.restoresLayerMetadata()
-	layerSHAStore := layer.NewSHAStore(useShaFiles)
-	if r.restoresLayerMetadata() {
-		r.Logger.Debug("Restoring Layer Metadata")
-		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
-			return err
-		}
+	layerSHAStore := layer.NewSHAStore()
+	r.Logger.Debug("Restoring Layer Metadata")
+	if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
+		return err
 	}
 
 	var g errgroup.Group
@@ -113,10 +111,6 @@ func (r *Restorer) Restore(cache Cache) error {
 	return nil
 }
 
-func (r *Restorer) restoresLayerMetadata() bool {
-	return r.PlatformAPI.AtLeast("0.7")
-}
-
 func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {
 	// Sanity check to prevent panic.
 	if cache == nil {
@@ -130,4 +124,23 @@ func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {
 	defer rc.Close()
 
 	return layers.Extract(rc, "")
+}
+
+func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (platform.CacheMetadata, error) {
+	// Create empty cache metadata in case a usable cache is not provided.
+	var cacheMeta platform.CacheMetadata
+	if fromCache != nil {
+		var err error
+		if !fromCache.Exists() {
+			logger.Info("Layer cache not found")
+		}
+		cacheMeta, err = fromCache.RetrieveMetadata()
+		if err != nil {
+			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
+		}
+	} else {
+		logger.Debug("Usable cache not provided, using empty cache metadata")
+	}
+
+	return cacheMeta, nil
 }

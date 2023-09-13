@@ -25,9 +25,6 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 	ops := []LifecycleInputsOperation{UpdatePlaceholderPaths, ResolveAbsoluteDirPaths}
 	switch phase {
 	case Analyze:
-		if i.PlatformAPI.LessThan("0.7") {
-			ops = append(ops, CheckCache)
-		}
 		ops = append(ops,
 			FillAnalyzeImages,
 			ValidateOutputImageProvided,
@@ -101,9 +98,6 @@ func FillAnalyzeImages(i *LifecycleInputs, logger log.Logger) error {
 	if i.PreviousImageRef == "" {
 		i.PreviousImageRef = i.OutputImageRef
 	}
-	if i.PlatformAPI.LessThan("0.7") {
-		return nil
-	}
 	if i.PlatformAPI.LessThan("0.12") {
 		return fillRunImageFromStackTOMLIfNeeded(i, logger)
 	}
@@ -128,36 +122,21 @@ func FillCreateImages(i *LifecycleInputs, logger log.Logger) error {
 }
 
 func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
-	supportsRunImageFlag := i.PlatformAPI.LessThan("0.7")
-	if supportsRunImageFlag {
-		switch {
-		case i.DeprecatedRunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
-			return errors.New(ErrSupplyOnlyOneRunImage)
-		case i.RunImageRef != "":
-			return nil
-		case i.DeprecatedRunImageRef != "":
-			i.RunImageRef = i.DeprecatedRunImageRef
-			return nil
-		default:
-			return fillRunImageFromStackTOMLIfNeeded(i, logger)
+	switch {
+	case i.RunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
+		return errors.New(ErrRunImageUnsupported)
+	case i.DeprecatedRunImageRef != "":
+		return errors.New(ErrImageUnsupported)
+	default:
+		analyzedMD, err := files.ReadAnalyzed(i.AnalyzedPath, logger)
+		if err != nil {
+			return err
 		}
-	} else {
-		switch {
-		case i.RunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
-			return errors.New(ErrRunImageUnsupported)
-		case i.DeprecatedRunImageRef != "":
-			return errors.New(ErrImageUnsupported)
-		default:
-			analyzedMD, err := files.ReadAnalyzed(i.AnalyzedPath, logger)
-			if err != nil {
-				return err
-			}
-			if analyzedMD.RunImage.Reference == "" {
-				return errors.New("run image not found in analyzed metadata")
-			}
-			i.RunImageRef = analyzedMD.RunImage.Reference
-			return nil
+		if analyzedMD.RunImage.Reference == "" {
+			return errors.New("run image not found in analyzed metadata")
 		}
+		i.RunImageRef = analyzedMD.RunImage.Reference
+		return nil
 	}
 }
 

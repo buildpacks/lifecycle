@@ -186,45 +186,6 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, inputs.ProjectMetadataPath, filepath.Join("<layers>", "project-metadata.toml"))
 			h.AssertEq(t, inputs.ReportPath, filepath.Join("<layers>", "report.toml"))
 		})
-
-		when("Platform API = 0.5", func() {
-			platformAPI = api.MustParse("0.5")
-
-			it("expects and writes files in the layers directory", func() {
-				inputs = platform.NewLifecycleInputs(platformAPI)
-
-				h.AssertEq(t, inputs.AnalyzedPath, filepath.Join("<layers>", "analyzed.toml"))
-				h.AssertEq(t, inputs.GroupPath, filepath.Join("<layers>", "group.toml"))
-				h.AssertEq(t, inputs.PlanPath, filepath.Join("<layers>", "plan.toml"))
-				h.AssertEq(t, inputs.ProjectMetadataPath, filepath.Join("<layers>", "project-metadata.toml"))
-				h.AssertEq(t, inputs.ReportPath, filepath.Join("<layers>", "report.toml"))
-			})
-
-			it("expects order.toml in the /cnb directory", func() {
-				inputs = platform.NewLifecycleInputs(platformAPI)
-
-				h.AssertEq(t, inputs.OrderPath, platform.CNBOrderPath)
-			})
-		})
-
-		when("Platform API < 0.5", func() {
-			platformAPI = api.MustParse("0.4")
-
-			it("expects and writes files in the working directory", func() {
-				inputs = platform.NewLifecycleInputs(platformAPI)
-
-				h.AssertEq(t, inputs.AnalyzedPath, "analyzed.toml")
-				h.AssertEq(t, inputs.GroupPath, "group.toml")
-				h.AssertEq(t, inputs.PlanPath, "plan.toml")
-				h.AssertEq(t, inputs.ProjectMetadataPath, "project-metadata.toml")
-				h.AssertEq(t, inputs.ReportPath, "report.toml")
-			})
-
-			it("expects order.toml in the /cnb directory", func() {
-				inputs = platform.NewLifecycleInputs(platformAPI)
-				h.AssertEq(t, inputs.OrderPath, platform.CNBOrderPath)
-			})
-		})
 	})
 
 	when("#UpdatePlaceholderPaths", func() {

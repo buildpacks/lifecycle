@@ -83,7 +83,6 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 
 		when("Platform API 0.7 to 0.11", func() {
 			it.Before(func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "")
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.12"), "")
 			})
 
@@ -120,9 +119,8 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 			})
 		})
 
-		when("Platform API >= 0.7", func() {
+		when("using a registry", func() {
 			it.Before(func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "")
 				inputs.UseDaemon = false
 			})
 
@@ -137,35 +135,6 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 					h.AssertNotNil(t, err)
 					expected := "writing to multiple registries is unsupported"
 					h.AssertStringContains(t, err.Error(), expected)
-				})
-			})
-		})
-
-		when("Platform API < 0.7", func() {
-			it.Before(func() {
-				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "")
-			})
-
-			when("cache image tag and cache directory are both blank", func() {
-				it("warns", func() {
-					inputs.CacheImageRef = ""
-					inputs.CacheDir = ""
-					err := platform.ResolveInputs(platform.Create, inputs, logger)
-					h.AssertNil(t, err)
-					expected := "No cached data will be used, no cache specified."
-					h.AssertLogEntry(t, logHandler, expected)
-				})
-			})
-
-			when("run image", func() {
-				when("not provided", func() {
-					it("does not warn", func() {
-						inputs.StackPath = "not-exist-stack.toml"
-						err := platform.ResolveInputs(platform.Create, inputs, logger)
-						h.AssertNil(t, err)
-						h.AssertNoLogEntry(t, logHandler, `no stack metadata found at path ''`)
-						h.AssertNoLogEntry(t, logHandler, `Previous image with name "" not found`)
-					})
 				})
 			})
 		})
