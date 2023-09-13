@@ -44,7 +44,7 @@ func (h *RemoteHandler) getInsecureRegistryOptions(imageRef string) []remote.Ima
 		cmd.DefaultLogger.Warnf("Found Insecure Registries: %+q", h.insecureRegistries)
 		for _, insecureRegistry := range h.insecureRegistries {
 			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
 			}
 		}
 	}

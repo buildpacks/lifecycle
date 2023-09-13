@@ -217,7 +217,7 @@ func (r *rebaseCmd) getInsecureRegistryOptions(imageRef string) []remote.ImageOp
 		cmd.DefaultLogger.Warnf("Found Insecure Registries: %+q", r.InsecureRegistries)
 		for _, insecureRegistry := range r.InsecureRegistries {
 			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
 			}
 		}
 	}

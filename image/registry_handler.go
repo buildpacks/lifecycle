@@ -35,7 +35,7 @@ func NewRegistryHandler(keychain authn.Keychain, insecureRegistries []string) *D
 // EnsureReadAccess ensures that we can read from the registry
 func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadAccess(imageRef, rv.keychain, rv.GetInsecureRegistryOptions(imageRef)); err != nil {
+		if err := verifyReadAccess(imageRef, rv.keychain, rv.GetInsecureOptions(imageRef)); err != nil {
 			return err
 		}
 	}
@@ -45,20 +45,20 @@ func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 // EnsureWriteAccess ensures that we can write to the registry
 func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadWriteAccess(imageRef, rv.keychain, rv.GetInsecureRegistryOptions(imageRef)); err != nil {
+		if err := verifyReadWriteAccess(imageRef, rv.keychain, rv.GetInsecureOptions(imageRef)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// GetInsecureRegistryOptions returns a list of WithRegistrySetting imageOptions matching the specified imageRef prefix
-func (rv *DefaultRegistryHandler) GetInsecureRegistryOptions(imageRef string) []remote.ImageOption {
+// GetInsecureOptions returns a list of WithRegistrySetting imageOptions matching the specified imageRef prefix
+func (rv *DefaultRegistryHandler) GetInsecureOptions(imageRef string) []remote.ImageOption {
 	var opts []remote.ImageOption
 	if len(rv.insecureRegistry) > 0 {
 		for _, insecureRegistry := range rv.insecureRegistry {
 			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true, true))
+				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
 			}
 		}
 	}

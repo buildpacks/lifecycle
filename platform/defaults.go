@@ -56,7 +56,7 @@ const (
 // via a credential helper, or via the `CNB_REGISTRY_AUTH` environment variable. See [auth.DefaultKeychain] for further information.
 const EnvUseDaemon = "CNB_USE_DAEMON"
 
-// EnvInsecureRegistries configures the lifecycle to export the application to a remote "insecure" registry
+// EnvInsecureRegistries configures the lifecycle to export the application to a remote "insecure" registry.
 const EnvInsecureRegistries = "CNB_INSECURE_REGISTRIES"
 
 // ## Provided to handle inputs and outputs in OCI layout format

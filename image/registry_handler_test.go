@@ -31,7 +31,7 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 		it("returns WithRegistrySetting options for the domains specified", func() {
 			registryHandler := NewRegistryHandler(mockKeychain, []string{"host.docker.internal"})
 
-			registryOptions := registryHandler.GetInsecureRegistryOptions("host.docker.internal/bar")
+			registryOptions := registryHandler.GetInsecureOptions("host.docker.internal/bar")
 
 			h.AssertEq(t, len(registryOptions), 1)
 		})
@@ -39,7 +39,7 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 		it("returns WithRegistrySetting options only for the domains specified", func() {
 			registryHandler := NewRegistryHandler(mockKeychain, []string{"host.docker.internal", "this.is.just.a.try"})
 
-			registryOptions := registryHandler.GetInsecureRegistryOptions("host.docker.internal/bar")
+			registryOptions := registryHandler.GetInsecureOptions("host.docker.internal/bar")
 
 			h.AssertEq(t, len(registryOptions), 1)
 		})
@@ -47,7 +47,7 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 		it("returns empty options if any domain hasn't been specified and the imageRef is empty", func() {
 			registryHandler := NewRegistryHandler(mockKeychain, nil)
 
-			options := registryHandler.GetInsecureRegistryOptions("")
+			options := registryHandler.GetInsecureOptions("")
 
 			h.AssertEq(t, len(options), 0)
 		})
@@ -55,7 +55,7 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 		it("returns empty options if an empty list of insecure registries has been passed but the imageRef has been passed anyway", func() {
 			registryHandler := NewRegistryHandler(mockKeychain, []string{})
 
-			options := registryHandler.GetInsecureRegistryOptions("host.docker.container")
+			options := registryHandler.GetInsecureOptions("host.docker.container")
 
 			h.AssertEq(t, len(options), 0)
 		})
