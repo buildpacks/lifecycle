@@ -112,10 +112,13 @@ func (r *rebaseCmd) Exec() error {
 			local.FromBaseImage(r.RunImageRef),
 		)
 	} else {
+		var opts []remote.ImageOption
+		opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries, r.RunImageRef), remote.FromBaseImage(r.RunImageRef))...)
+
 		newBaseImage, err = remote.NewImage(
 			r.RunImageRef,
 			r.keychain,
-			remote.FromBaseImage(r.RunImageRef),
+			opts...,
 		)
 	}
 	if err != nil || !newBaseImage.Found() {
