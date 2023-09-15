@@ -7,7 +7,7 @@ jobs:
   draft-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install jq
         run: |
           mkdir -p deps/bin
@@ -24,7 +24,8 @@ jobs:
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
       - name: Determine download urls for linux-x86-64, linux-arm64, and windows
         id: artifact-urls
-        uses: actions/github-script@v3.0.0
+        # FIXME: this script should be updated to work with actions/github-script@v6
+        uses: actions/github-script@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

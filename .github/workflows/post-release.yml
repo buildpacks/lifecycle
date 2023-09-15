@@ -9,7 +9,7 @@ jobs:
   retag-lifecycle-images:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup go
         uses: actions/setup-go@v4
         with:
@@ -19,9 +19,7 @@ jobs:
         run: |
           go install github.com/google/go-containerregistry/cmd/crane@latest
       - name: Install cosign
-        uses: sigstore/cosign-installer@main
-        with:
-          cosign-release: 'v1.2.0'
+        uses: sigstore/cosign-installer@v3
       - uses: azure/docker-login@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}

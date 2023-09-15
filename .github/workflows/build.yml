@@ -14,7 +14,7 @@ jobs:
   test-linux-amd64:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: '0'
       - name: Setup go
@@ -42,7 +42,7 @@ jobs:
   test-linux-arm64:
     runs-on: linux-arm64
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: '0'
       - name: Setup go
@@ -62,7 +62,7 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
           git config --global core.symlinks true
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: '0'
       - name: Setup go
@@ -99,7 +99,7 @@ jobs:
         run: |
           make test
       - name: Prepare Codecov
-        uses: crazy-max/ghaction-chocolatey@v2
+        uses: crazy-max/ghaction-chocolatey@v3
         with:
           args: install codecov -y
       - name: Run Codecov
@@ -112,7 +112,7 @@ jobs:
       - test-windows
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # fetch all history for all branches and tags
       - name: Setup go
@@ -121,20 +121,18 @@ jobs:
           check-latest: true
           go-version-file: 'go.mod'
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v1.0.0
-        with:
-          cosign-release: 'v1.0.0'
+        uses: sigstore/cosign-installer@v3
       - name: Set version
         run: |
           echo "LIFECYCLE_VERSION=$(go run tools/version/main.go)" | tee -a $GITHUB_ENV version.txt
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: version
           path: version.txt
       - name: Set tag
         run: |
           echo "LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)" >> tag.txt
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: tag
           path: tag.txt
@@ -143,43 +141,43 @@ jobs:
           make clean
           make build
           make package
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-linux-x86-64
           path: out/lifecycle-v*+linux.x86-64.tgz
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-linux-x86-64-sha256
           path: out/lifecycle-v*+linux.x86-64.tgz.sha256
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-linux-arm64
           path: out/lifecycle-v*+linux.arm64.tgz
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-linux-arm64-sha256
           path: out/lifecycle-v*+linux.arm64.tgz.sha256
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-windows-x86-64-sha256
           path: out/lifecycle-v*+windows.x86-64.tgz.sha256
       - name: Generate SBOM JSON
-        uses: CycloneDX/gh-gomod-generate-sbom@v1
+        uses: CycloneDX/gh-gomod-generate-sbom@v2
         with:
           args: mod -licenses -json -output lifecycle-v${{ env.LIFECYCLE_VERSION }}-bom.cdx.json
           version: ^v1
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-bom-cdx
           path: lifecycle-v*-bom.cdx.json
       - name: Calculate SBOM sha
         run: |
           shasum -a 256 lifecycle-v${{ env.LIFECYCLE_VERSION }}-bom.cdx.json > lifecycle-v${{ env.LIFECYCLE_VERSION }}-bom.cdx.json.sha256
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-bom-cdx-sha256
           path: lifecycle-v*-bom.cdx.json.sha256
@@ -188,7 +186,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: tag
       - name: Set env
@@ -197,14 +195,14 @@ jobs:
       - name: Rename cosign public key
         run: |
           cp cosign.pub lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-cosign-public-key
           path: lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub
       - name: Calculate cosign sha
         run: |
           shasum -a 256 lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub > lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub.sha256
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-cosign-public-key-sha256
           path: lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub.sha256
@@ -231,11 +229,11 @@ jobs:
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
 
-          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
-            -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
+          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r --tlog-upload=false \
+            --key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${LIFECYCLE_IMAGE_TAG} \
             buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}@${MANIFEST_SHA}
-          cosign verify -key cosign.pub -a tag=${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
+          cosign verify --insecure-ignore-tlog=true --key cosign.pub -a tag=${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
       - name: Scan image
         if: github.event_name == 'push'
         uses: anchore/scan-action@v3
@@ -246,7 +244,7 @@ jobs:
     needs: build-and-publish
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           repository: 'buildpacks/pack'
           path: 'pack'
@@ -256,17 +254,17 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version-file: 'pack/go.mod'
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: version
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: tag
       - name: Set env
         run: |
           cat version.txt >> $GITHUB_ENV
           cat tag.txt >> $GITHUB_ENV
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: lifecycle-linux-x86-64
           path: pack
@@ -287,7 +285,7 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
           git config --global core.symlinks true
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           repository: 'buildpacks/pack'
           path: 'pack'
@@ -327,17 +325,17 @@ jobs:
           ${IPAddress} host.docker.internal
           ${IPAddress} gateway.docker.internal
           " | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Encoding utf8
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: version
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: tag
       - name: Set env
         run: |
           cat version.txt >> $env:GITHUB_ENV
           cat tag.txt >> $env:GITHUB_ENV
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: lifecycle-windows-x86-64
           path: pack
