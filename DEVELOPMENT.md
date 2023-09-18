@@ -47,20 +47,18 @@
 
 The lifecycle release process involves chaining a series of GitHub actions together such that:
 * The "build" workflow creates the artifacts
-  * .tgz files containing the lifecycle binaries, shasums for the .tgz files, a cosign public key, an SBOM, etc.
+  * .tgz files containing the lifecycle binaries, shasums for the .tgz files, an SBOM, etc.
   * OCI images containing the lifecycle binaries, tagged with their commit sha (for more information, see RELEASE.md)
 * The "draft-release" workflow finds the artifacts and downloads them, creating the draft release
 * The "post-release" workflow re-tags the OCI images that were created during the "build" workflow with the release version
 
 It can be rather cumbersome to test changes to these workflows, as they are heavily intertwined. Thus we recommend forking the buildpacks/lifecycle repository in GitHub and running through the entire release process end-to-end.
 For the fork, it is necessary to add the following secrets:
-* COSIGN_PASSWORD (see [cosign](https://github.com/sigstore/cosign#generate-a-keypair))
-* COSIGN_PRIVATE_KEY
 * DOCKER_PASSWORD (if not using ghcr.io)
 * DOCKER_USERNAME (if not using ghcr.io)
 
 The tools/test-fork.sh script can be used to update the source code to reflect the state of the fork. 
-It can be invoked like so: `./tools/test-fork.sh <registry repo name> <path to cosign public key>`
+It can be invoked like so: `./tools/test-fork.sh <registry repo name>`
 
 ## Tasks
 

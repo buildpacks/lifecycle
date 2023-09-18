@@ -6,6 +6,8 @@ on:
 jobs:
   draft-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Install jq
@@ -80,8 +82,8 @@ jobs:
                 if (urlList.length === 0) {
                   throw "no artifacts found"
                 }
-                if (urlList.length != 10) {
-                  throw "there should be exactly ten artifacts"
+                if (urlList.length != 8) {
+                  throw "there should be exactly 8 artifacts"
                 }
                 return urlList.join(",")
               })
