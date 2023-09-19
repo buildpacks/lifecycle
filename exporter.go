@@ -155,15 +155,13 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 		return files.Report{}, err
 	}
 
-	if err := e.setEnv(opts, buildMD.ToLaunchMD()); err != nil {
+	if err := e.setEnv(opts); err != nil {
 		return files.Report{}, err
 	}
 
-	if e.PlatformAPI.AtLeast("0.6") {
-		e.Logger.Debugf("Setting WORKDIR: '%s'", opts.AppDir)
-		if err := e.setWorkingDir(opts); err != nil {
-			return files.Report{}, errors.Wrap(err, "setting workdir")
-		}
+	e.Logger.Debugf("Setting WORKDIR: '%s'", opts.AppDir)
+	if err := e.setWorkingDir(opts); err != nil {
+		return files.Report{}, errors.Wrap(err, "setting workdir")
 	}
 
 	entrypoint, err := e.entrypoint(buildMD.ToLaunchMD(), opts.DefaultProcessType, buildMD.BuildpackDefaultProcessType)
@@ -188,11 +186,6 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	if err != nil {
 		return files.Report{}, err
 	}
-	if !e.supportsManifestSize() {
-		// unset manifest size in report.toml for old platform API versions
-		report.Image.ManifestSize = 0
-	}
-
 	return report, nil
 }
 
@@ -562,7 +555,7 @@ func (e *Exporter) setLabels(opts ExportOptions, meta files.LayersMetadata, buil
 	return nil
 }
 
-func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
+func (e *Exporter) setEnv(opts ExportOptions) error {
 	e.Logger.Debugf("Setting %s=%s", platform.EnvLayersDir, opts.LayersDir)
 	if err := opts.WorkingImage.SetEnv(platform.EnvLayersDir, opts.LayersDir); err != nil {
 		return errors.Wrapf(err, "set app image env %s", platform.EnvLayersDir)
@@ -583,24 +576,14 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		return errors.Wrapf(err, "set app image env %s", platform.EnvAppDir)
 	}
 
-	if e.supportsMulticallLauncher() {
-		path, err := opts.WorkingImage.Env("PATH")
-		if err != nil {
-			return errors.Wrap(err, "failed to get PATH from app image")
-		}
-		path = strings.Join([]string{launch.ProcessDir, launch.LifecycleDir, path}, string(os.PathListSeparator))
-		e.Logger.Debugf("Prepending %s and %s to PATH", launch.ProcessDir, launch.LifecycleDir)
-		if err := opts.WorkingImage.SetEnv("PATH", path); err != nil {
-			return errors.Wrap(err, "set app image env PATH")
-		}
-	} else if opts.DefaultProcessType != "" {
-		if _, ok := launchMD.FindProcessType(opts.DefaultProcessType); !ok {
-			return processTypeError(launchMD, opts.DefaultProcessType)
-		}
-		e.Logger.Debugf("Setting %s=%s", platform.EnvProcessType, opts.DefaultProcessType)
-		if err := opts.WorkingImage.SetEnv(platform.EnvProcessType, opts.DefaultProcessType); err != nil {
-			return errors.Wrapf(err, "set app image env %s", platform.EnvProcessType)
-		}
+	path, err := opts.WorkingImage.Env("PATH")
+	if err != nil {
+		return errors.Wrap(err, "failed to get PATH from app image")
+	}
+	path = strings.Join([]string{launch.ProcessDir, launch.LifecycleDir, path}, string(os.PathListSeparator))
+	e.Logger.Debugf("Prepending %s and %s to PATH", launch.ProcessDir, launch.LifecycleDir)
+	if err := opts.WorkingImage.SetEnv("PATH", path); err != nil {
+		return errors.Wrap(err, "set app image env PATH")
 	}
 	return nil
 }
@@ -610,23 +593,9 @@ func (e *Exporter) setWorkingDir(opts ExportOptions) error {
 }
 
 func (e *Exporter) entrypoint(launchMD launch.Metadata, userDefaultProcessType, buildpackDefaultProcessType string) (string, error) {
-	if !e.supportsMulticallLauncher() {
-		return launch.LauncherPath, nil
-	}
-
-	if userDefaultProcessType == "" && e.PlatformAPI.LessThan("0.6") && len(launchMD.Processes) == 1 {
-		// if there is only one process, we set it to the default for platform API < 0.6
-		e.Logger.Infof("Setting default process type '%s'", launchMD.Processes[0].Type)
-		return launch.ProcessPath(launchMD.Processes[0].Type), nil
-	}
-
 	if userDefaultProcessType != "" {
 		defaultProcess, ok := launchMD.FindProcessType(userDefaultProcessType)
 		if !ok {
-			if e.PlatformAPI.LessThan("0.6") {
-				e.Logger.Warn(processTypeWarning(launchMD, userDefaultProcessType))
-				return launch.LauncherPath, nil
-			}
 			return "", fmt.Errorf("tried to set %s to default but it doesn't exist", userDefaultProcessType)
 		}
 		e.Logger.Infof("Setting default process type '%s'", defaultProcess.Type)
@@ -641,42 +610,20 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, userDefaultProcessType, 
 }
 
 func (e *Exporter) launcherConfig(opts ExportOptions, buildMD *files.BuildMetadata, meta *files.LayersMetadata) error {
-	if e.supportsMulticallLauncher() {
-		launchMD := launch.Metadata{
-			Processes: buildMD.Processes,
+	launchMD := launch.Metadata{
+		Processes: buildMD.Processes,
+	}
+	if len(buildMD.Processes) > 0 {
+		processTypesLayer, err := e.LayerFactory.ProcessTypesLayer(launchMD)
+		if err != nil {
+			return errors.Wrapf(err, "creating layer '%s'", processTypesLayer.ID)
 		}
-		if len(buildMD.Processes) > 0 {
-			processTypesLayer, err := e.LayerFactory.ProcessTypesLayer(launchMD)
-			if err != nil {
-				return errors.Wrapf(err, "creating layer '%s'", processTypesLayer.ID)
-			}
-			meta.ProcessTypes.SHA, err = e.addOrReuseBuildpackLayer(opts.WorkingImage, processTypesLayer, opts.OrigMetadata.ProcessTypes.SHA, layers.ProcessTypesLayerName)
-			if err != nil {
-				return errors.Wrapf(err, "exporting layer '%s'", processTypesLayer.ID)
-			}
+		meta.ProcessTypes.SHA, err = e.addOrReuseBuildpackLayer(opts.WorkingImage, processTypesLayer, opts.OrigMetadata.ProcessTypes.SHA, layers.ProcessTypesLayerName)
+		if err != nil {
+			return errors.Wrapf(err, "exporting layer '%s'", processTypesLayer.ID)
 		}
 	}
 	return nil
-}
-
-func (e *Exporter) supportsMulticallLauncher() bool {
-	return e.PlatformAPI.AtLeast("0.4")
-}
-
-func (e *Exporter) supportsManifestSize() bool {
-	return e.PlatformAPI.AtLeast("0.6")
-}
-
-func processTypeError(launchMD launch.Metadata, defaultProcessType string) error {
-	return fmt.Errorf(processTypeWarning(launchMD, defaultProcessType))
-}
-
-func processTypeWarning(launchMD launch.Metadata, defaultProcessType string) string {
-	var typeList []string
-	for _, p := range launchMD.Processes {
-		typeList = append(typeList, p.Type)
-	}
-	return fmt.Sprintf("default process type '%s' not present in list %+v", defaultProcessType, typeList)
 }
 
 func (e *Exporter) addOrReuseBuildpackLayer(image imgutil.Image, layer layers.Layer, previousSHA, createdBy string) (string, error) {
@@ -713,7 +660,7 @@ func (e *Exporter) addOrReuseExtensionLayer(image imgutil.Image, layer layers.La
 }
 
 func (e *Exporter) makeBuildReport(layersDir string) (files.BuildReport, error) {
-	if e.PlatformAPI.LessThan("0.5") || e.PlatformAPI.AtLeast("0.9") {
+	if e.PlatformAPI.AtLeast("0.9") {
 		return files.BuildReport{}, nil
 	}
 	var out []buildpack.BOMEntry

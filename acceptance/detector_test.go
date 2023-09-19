@@ -399,28 +399,4 @@ fail: fail_detect_buildpack@some_version
 			h.AssertEq(t, analyzed.RunImage.Image, "some-run-image-from-extension")
 		})
 	})
-
-	when("platform api < 0.6", func() {
-		when("no buildpack group passed detection", func() {
-			it("errors and exits with the expected code", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_ORDER_PATH=/cnb/orders/empty_order.toml",
-					"--env", "CNB_PLATFORM_API=0.5",
-					detectImage,
-				)
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				failErr, ok := err.(*exec.ExitError)
-				if !ok {
-					t.Fatalf("expected an error of type exec.ExitError")
-				}
-				h.AssertEq(t, failErr.ExitCode(), 100) // platform code for failed detect
-				expected := "No buildpack groups passed detection."
-				h.AssertStringContains(t, string(output), expected)
-			})
-		})
-	})
 }

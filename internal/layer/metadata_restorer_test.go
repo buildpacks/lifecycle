@@ -33,7 +33,6 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		cacheMetadata         platform.CacheMetadata
 		buildpacks            []buildpack.GroupElement
 		skipLayers            bool
-		useShaFiles           bool
 		logger                log.Logger
 	)
 
@@ -42,10 +41,9 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		layerDir, err = os.MkdirTemp("", "lifecycle-layer-dir")
 		h.AssertNil(t, err)
-		useShaFiles = true // notice - the default for platform API >= 0.7 is false (it's set to false in some of the tests)
 		logger = log.Logger{Handler: &discard.Handler{}}
 		layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger)
-		layerSHAStore = layer.NewSHAStore(useShaFiles)
+		layerSHAStore = layer.NewSHAStore()
 	})
 
 	it.After(func() {
@@ -165,42 +163,6 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			when("restoring sha files is not needed", func() {
-				it.Before(func() {
-					useShaFiles = false
-					layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger)
-					layerSHAStore = layer.NewSHAStore(useShaFiles)
-				})
-
-				it("does not restore sha files", func() {
-					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
-					h.AssertNil(t, err)
-
-					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack/launch.sha", "launch-sha"))
-					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack/launch-build-cache.sha", "launch-build-cache-sha"))
-					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack/launch-cache.sha", "launch-cache-sha"))
-					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "no.cache.buildpack/some-layer.sha", "some-layer-sha"))
-					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache-not-in-app.sha"))
-				})
-			})
-
-			it("restores app and cache layer sha files, prefers app sha", func() {
-				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
-				h.AssertNil(t, err)
-
-				for _, data := range []struct{ name, want string }{
-					{"metadata.buildpack/launch.sha", "launch-sha"},
-					{"metadata.buildpack/launch-build-cache.sha", "launch-build-cache-sha"},
-					{"metadata.buildpack/launch-cache.sha", "launch-cache-sha"},
-					{"no.cache.buildpack/some-layer.sha", "some-layer-sha"},
-					// Cache-image-only layers.
-					{"metadata.buildpack/cache.sha", "cache-sha"},
-				} {
-					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
-					h.AssertStringContains(t, string(got), data.want)
-				}
-			})
-
 			it("does not overwrite metadata from app image", func() {
 				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
@@ -211,22 +173,6 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				} {
 					got := h.MustReadFile(t, filepath.Join(layerDir, name))
 					avoid := "[metadata]\n  cache-only-key = \"cache-only-value\""
-					if strings.Contains(string(got), avoid) {
-						t.Errorf("Expected %q to not contain %q, got %q", name, avoid, got)
-					}
-				}
-			})
-
-			it("does not overwrite sha from app image", func() {
-				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
-				h.AssertNil(t, err)
-
-				for _, name := range []string{
-					"metadata.buildpack/launch-build-cache.sha",
-					"metadata.buildpack/launch-cache.sha",
-				} {
-					got := h.MustReadFile(t, filepath.Join(layerDir, name))
-					avoid := "old-sha"
 					if strings.Contains(string(got), avoid) {
 						t.Errorf("Expected %q to not contain %q, got %q", name, avoid, got)
 					}
