@@ -12,18 +12,24 @@ Supported tags are semver-versioned manifest lists - e.g., `0.12.0` or `0.12.0-r
 # About this image
 
 Images are built in [GitHub actions](https://github.com/buildpacks/lifecycle/actions) and signed with [`cosign`](https://github.com/sigstore/cosign). To verify:
-* Locate the public key `lifecycle-v<tag>-cosign.pub` on the [releases page](https://github.com/buildpacks/lifecycle/releases)
 * Run:
 ```
-cosign verify -key lifecycle-v<tag>-cosign.pub buildpacksio/lifecycle:<tag>
+cosign version # must be at least 2.0.0
+cosign verify \
+  --certificate-identity-regexp "https://github.com/buildpacks/lifecycle/.github/workflows/post-release.yml" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  buildpacksio/lifecycle:<tag>
 ```
 
 A CycloneDX SBOM is "attached" to the image and signed with [`cosign`](https://github.com/sigstore/cosign). To verify:
-* Locate the public key `lifecycle-v<tag>-cosign.pub` on the [releases page](https://github.com/buildpacks/lifecycle/releases)
 * Run:
 ```
-cosign version # must be at least 1.2.0
-cosign verify -key cosign.pub -a tag=<tag> -attachment sbom buildpacksio/lifecycle:<tag>
+cosign version # must be at least 2.0.0
+cosign verify \
+  --certificate-identity-regexp "https://github.com/buildpacks/lifecycle/.github/workflows/post-release.yml" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  -a tag=<tag> -attachment sbom \
+  buildpacksio/lifecycle:<tag>
 cosign download sbom buildpacksio/lifecycle:<tag>
 ```
 

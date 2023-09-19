@@ -111,6 +111,8 @@ jobs:
       - test-linux-arm64
       - test-windows
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -192,20 +194,6 @@ jobs:
       - name: Set env
         run: |
           cat tag.txt >> $GITHUB_ENV
-      - name: Rename cosign public key
-        run: |
-          cp cosign.pub lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub
-      - uses: actions/upload-artifact@v3
-        with:
-          name: lifecycle-cosign-public-key
-          path: lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub
-      - name: Calculate cosign sha
-        run: |
-          shasum -a 256 lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub > lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub.sha256
-      - uses: actions/upload-artifact@v3
-        with:
-          name: lifecycle-cosign-public-key-sha256
-          path: lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub.sha256
       - name: Publish images
         if: github.event_name == 'push'
         run: |
@@ -229,11 +217,14 @@ jobs:
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
 
-          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r --tlog-upload=false \
-            --key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
+          cosign sign -r -y \
             -a tag=${LIFECYCLE_IMAGE_TAG} \
             buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}@${MANIFEST_SHA}
-          cosign verify --insecure-ignore-tlog=true --key cosign.pub -a tag=${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
+          cosign verify \
+            --certificate-identity-regexp "https://github.com/${{ github.repository_owner }}/lifecycle/.github/workflows/build.yml" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            -a tag=${LIFECYCLE_IMAGE_TAG} \
+            buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
       - name: Scan image
         if: github.event_name == 'push'
         uses: anchore/scan-action@v3
