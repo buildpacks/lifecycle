@@ -1,8 +1,6 @@
 package image
 
 import (
-	"strings"
-
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -35,7 +33,7 @@ func NewRegistryHandler(keychain authn.Keychain, insecureRegistries []string) *D
 // EnsureReadAccess ensures that we can read from the registry
 func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadAccess(imageRef, rv.keychain, GetInsecureOptions(rv.insecureRegistry, imageRef)); err != nil {
+		if err := verifyReadAccess(imageRef, rv.keychain, GetInsecureOptions(rv.insecureRegistry)); err != nil {
 			return err
 		}
 	}
@@ -45,7 +43,7 @@ func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
 // EnsureWriteAccess ensures that we can write to the registry
 func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
 	for _, imageRef := range imageRefs {
-		if err := verifyReadWriteAccess(imageRef, rv.keychain, GetInsecureOptions(rv.insecureRegistry, imageRef)); err != nil {
+		if err := verifyReadWriteAccess(imageRef, rv.keychain, GetInsecureOptions(rv.insecureRegistry)); err != nil {
 			return err
 		}
 	}
@@ -58,13 +56,11 @@ TODO: This is a temporary solution in order to get insecure registries in other 
 TODO: Ideally we should fix the `imgutil.options` struct visibility in order to mock and test the `remote.WithRegistrySetting`
 TODO: function correctly and use the RegistryHandler everywhere it is needed.
 */
-func GetInsecureOptions(insecureRegistries []string, imageRef string) []remote.ImageOption {
+func GetInsecureOptions(insecureRegistries []string) []remote.ImageOption {
 	var opts []remote.ImageOption
 	if len(insecureRegistries) > 0 {
 		for _, insecureRegistry := range insecureRegistries {
-			if strings.HasPrefix(imageRef, insecureRegistry) {
-				opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
-			}
+			opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
 		}
 	}
 	return opts

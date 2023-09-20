@@ -220,7 +220,7 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 	}
 
 	var opts []remote.ImageOption
-	opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries, imageRef), remote.FromBaseImage(imageRef))...)
+	opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(imageRef))...)
 
 	// get remote image
 	remoteImage, err := remote.NewImage(imageRef, r.keychain, opts...)

@@ -357,7 +357,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		opts = append(opts, remote.WithHistory())
 	}
 
-	opts = append(opts, image.GetInsecureOptions(e.InsecureRegistries, e.RunImageRef)...)
+	opts = append(opts, image.GetInsecureOptions(e.InsecureRegistries)...)
 
 	if analyzedMD.PreviousImageRef() != "" {
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImageRef())

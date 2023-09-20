@@ -22,7 +22,7 @@ func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
 		remote.FromBaseImage(imageRef),
 	}
 
-	options = append(options, GetInsecureOptions(h.insecureRegistries, imageRef)...)
+	options = append(options, GetInsecureOptions(h.insecureRegistries)...)
 
 	return remote.NewImage(
 		imageRef,
