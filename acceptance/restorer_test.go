@@ -249,6 +249,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("target data", func() {
 			it("updates run image reference in analyzed.toml to include digest and target data on newer platforms", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.10"), "")
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -278,10 +279,14 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(fis), 1) // .gitkeep
 				} else {
-					t.Log("doesn't update analyzed.toml")
+					t.Log("updates run image reference in analyzed.toml to include digest only")
 					analyzedMD, err := phase.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
 					h.AssertNil(t, err)
+					h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
+					h.AssertEq(t, analyzedMD.RunImage.Image, restoreRegFixtures.ReadOnlyRunImage)
 					h.AssertNil(t, analyzedMD.RunImage.TargetMetadata)
+					t.Log("does not return the digest for an empty image")
+					h.AssertStringDoesNotContain(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:"+emptyImageSHA)
 				}
 			})
 

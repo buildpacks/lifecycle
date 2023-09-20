@@ -7,3 +7,8 @@
   id = "cacher_buildpack"
   version = "cacher_v1"
   api = "0.10"
+
+[[group-extensions]]
+    id = "some-extension-id"
+    version = "v1"
+    api = "0.10"
