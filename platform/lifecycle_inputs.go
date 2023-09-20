@@ -240,7 +240,7 @@ func envOrDefault(key string, defaultVal string) string {
 func sliceEnv(k string) str.Slice {
 	envVal := os.Getenv(k)
 	if envVal != "" {
-		return strings.Split(strings.ReplaceAll(envVal, " ", ""), ",")
+		return strings.Split(envVal, ",")
 	}
 	return str.Slice(nil)
 }
