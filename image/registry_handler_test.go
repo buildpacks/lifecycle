@@ -14,10 +14,16 @@ func TestRegistryHandler(t *testing.T) {
 }
 func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 	when("insecure registry", func() {
-		it("returns WithRegistrySetting options for the domains specified", func() {
+		it("returns WithRegistrySetting options for the domain specified", func() {
 			registryOptions := GetInsecureOptions([]string{"host.docker.internal"})
 
 			h.AssertEq(t, len(registryOptions), 1)
+		})
+
+		it("returns multiple WithRegistrySetting options for the domains specified", func() {
+			registryOptions := GetInsecureOptions([]string{"host.docker.internal", "another.docker.internal"})
+
+			h.AssertEq(t, len(registryOptions), 2)
 		})
 
 		it("returns empty options if any domain hasn't been specified", func() {

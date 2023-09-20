@@ -58,10 +58,8 @@ TODO: function correctly and use the RegistryHandler everywhere it is needed.
 */
 func GetInsecureOptions(insecureRegistries []string) []remote.ImageOption {
 	var opts []remote.ImageOption
-	if len(insecureRegistries) > 0 {
-		for _, insecureRegistry := range insecureRegistries {
-			opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
-		}
+	for _, insecureRegistry := range insecureRegistries {
+		opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
 	}
 	return opts
 }
