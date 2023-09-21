@@ -108,6 +108,11 @@ func FlagPlanPath(planPath *string) {
 	flagSet.StringVar(planPath, "plan", *planPath, "path to plan.toml")
 }
 
+// FlagParallelExport parses `parallel` flag
+func FlagParallelExport(parallelExport *bool) {
+	flagSet.BoolVar(parallelExport, "parallel", *parallelExport, "export app image and cache image in parallel")
+}
+
 func FlagPlatformDir(platformDir *string) {
 	flagSet.StringVar(platformDir, "platform", *platformDir, "path to platform directory")
 }

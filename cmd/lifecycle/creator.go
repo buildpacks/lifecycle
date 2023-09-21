@@ -48,6 +48,7 @@ func (c *createCmd) DefineFlags() {
 	cli.FlagLauncherPath(&c.LauncherPath)
 	cli.FlagLayersDir(&c.LayersDir)
 	cli.FlagOrderPath(&c.OrderPath)
+	cli.FlagParallelExport(&c.ParallelExport)
 	cli.FlagPlatformDir(&c.PlatformDir)
 	cli.FlagPreviousImage(&c.PreviousImageRef)
 	cli.FlagProcessType(&c.DefaultProcessType)
@@ -73,6 +74,11 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	if c.UseLayout {
 		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
 			return err
+		}
+	}
+	if c.ParallelExport {
+		if c.CacheImageRef == "" {
+			cmd.DefaultLogger.Warn("parallel export has been enabled, but it has not taken effect because cache image (-cache-image) has not been specified.")
 		}
 	}
 	return nil

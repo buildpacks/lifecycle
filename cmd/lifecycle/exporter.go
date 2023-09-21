@@ -70,6 +70,7 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagLaunchCacheDir(&e.LaunchCacheDir)
 	cli.FlagLauncherPath(&e.LauncherPath)
 	cli.FlagLayersDir(&e.LayersDir)
+	cli.FlagParallelExport(&e.ParallelExport)
 	cli.FlagProcessType(&e.DefaultProcessType)
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
 	cli.FlagReportPath(&e.ReportPath)
@@ -228,6 +229,11 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 			WorkingImage:       appImage,
 		})
 	}()
+
+	// waiting here if parallel export is not enabled
+	if !e.ParallelExport {
+		exportWaitGroup.Wait()
+	}
 
 	exportWaitGroup.Add(1)
 	go func() {

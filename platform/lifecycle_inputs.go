@@ -54,6 +54,7 @@ type LifecycleInputs struct {
 	UID                   int
 	GID                   int
 	ForceRebase           bool
+	ParallelExport        bool
 	SkipLayers            bool
 	UseDaemon             bool
 	UseLayout             bool
@@ -129,6 +130,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		KanikoDir:      "/kaniko",
 		LaunchCacheDir: os.Getenv(EnvLaunchCacheDir),
 		SkipLayers:     skipLayers,
+		ParallelExport: boolEnv(EnvParallelExport),
 
 		// Images used by the lifecycle during the build
 
@@ -147,6 +149,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		ProjectMetadataPath: envOrDefault(EnvProjectMetadataPath, filepath.Join(PlaceholderLayers, DefaultProjectMetadataFile)),
 
 		// Configuration options for rebasing
+
 		ForceRebase: boolEnv(EnvForceRebase),
 	}
 

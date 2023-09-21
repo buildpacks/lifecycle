@@ -186,6 +186,9 @@ const (
 
 	// EnvKanikoCacheTTL is the amount of time to persist layers cached by kaniko during the `extend` phase.
 	EnvKanikoCacheTTL = "CNB_KANIKO_CACHE_TTL"
+
+	// EnvParallelExport is a flag used to instruct the lifecycle to export of application image and cache image in parallel, if true.
+	EnvParallelExport = "CNB_PARALLEL_EXPORT"
 )
 
 // DefaultKanikoCacheTTL is the default kaniko cache TTL (2 weeks).
