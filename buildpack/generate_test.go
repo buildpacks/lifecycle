@@ -18,9 +18,9 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/lifecycle/testmock"
 	llog "github.com/buildpacks/lifecycle/log"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-	"github.com/buildpacks/lifecycle/testmock"
 )
 
 func TestGenerate(t *testing.T) {

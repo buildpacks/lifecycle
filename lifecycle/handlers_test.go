@@ -8,8 +8,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/lifecycle"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

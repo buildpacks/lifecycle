@@ -9,7 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	lifecycle "github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/lifecycle"
 )
 
 // MockCacheHandler is a mock of CacheHandler interface.

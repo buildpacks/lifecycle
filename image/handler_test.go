@@ -9,8 +9,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	testmockauth "github.com/buildpacks/lifecycle/lifecycle/testmock/auth"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-	testmockauth "github.com/buildpacks/lifecycle/testmock/auth"
 )
 
 //go:generate mockgen -package testmockauth -destination ../testmock/auth/mock_keychain.go github.com/google/go-containerregistry/pkg/authn Keychain

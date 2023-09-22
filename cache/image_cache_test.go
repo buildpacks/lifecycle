@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	cacheMock "github.com/buildpacks/lifecycle/testmock/cache"
-
 	"github.com/golang/mock/gomock"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -19,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	testmockcache "github.com/buildpacks/lifecycle/lifecycle/testmock/cache"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -48,8 +47,8 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 		fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
 		mockController := gomock.NewController(t)
-		fakeImageDeleter := cacheMock.NewMockImageDeleter(mockController)
-		fakeImageComparer := cacheMock.NewMockImageComparer(mockController)
+		fakeImageDeleter := testmockcache.NewMockImageDeleter(mockController)
+		fakeImageComparer := testmockcache.NewMockImageComparer(mockController)
 		fakeImageComparer.EXPECT().ImagesEq(gomock.Any(), gomock.Any()).AnyTimes().Return(false, nil)
 		fakeImageDeleter.EXPECT().DeleteOrigImageIfDifferentFromNewImage(gomock.Any(), gomock.Any()).AnyTimes()
 		testLogger = cmd.DefaultLogger

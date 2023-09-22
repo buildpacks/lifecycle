@@ -17,16 +17,16 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/lifecycle"
+	"github.com/buildpacks/lifecycle/lifecycle/testmock"
 	llog "github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-	"github.com/buildpacks/lifecycle/testmock"
 )
 
 func TestBuilder(t *testing.T) {

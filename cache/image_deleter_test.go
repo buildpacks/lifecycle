@@ -12,9 +12,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/cmd"
+	cacheMock "github.com/buildpacks/lifecycle/lifecycle/testmock/cache"
 	"github.com/buildpacks/lifecycle/log"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-	cacheMock "github.com/buildpacks/lifecycle/testmock/cache"
 )
 
 func TestImageDeleter(t *testing.T) {
