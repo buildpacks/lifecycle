@@ -4,6 +4,7 @@
 package acceptance
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -22,17 +23,29 @@ import (
 )
 
 var (
-	detectDockerContext = filepath.Join("testdata", "detector")
-	detectorBinaryDir   = filepath.Join("testdata", "detector", "container", "cnb", "lifecycle")
-	detectImage         = "lifecycle/acceptance/detector"
-	userID              = "1234"
+	detectDockerContext                  = filepath.Join("testdata", "detector")
+	detectorBinaryDir                    = filepath.Join("testdata", "detector", "container", "cnb", "lifecycle")
+	detectImage                          = "lifecycle/acceptance/detector"
+	userID                               = "1234"
+	detectorDaemonOS, detectorDaemonArch string
 )
 
 func TestDetector(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Detector acceptance tests are not yet supported on Windows")
-	h.SkipIf(t, runtime.GOARCH != "amd64", "Detector acceptance tests are not yet supported on non-amd64")
 
-	h.MakeAndCopyLifecycle(t, "linux", "amd64", detectorBinaryDir)
+	info, err := h.DockerCli(t).Info(context.TODO())
+	h.AssertNil(t, err)
+
+	detectorDaemonOS = info.OSType
+	detectorDaemonArch = info.Architecture
+	if detectorDaemonArch == "x86_64" {
+		detectorDaemonArch = "amd64"
+	}
+	if detectorDaemonArch == "aarch64" {
+		detectorDaemonArch = "arm64"
+	}
+
+	h.MakeAndCopyLifecycle(t, detectorDaemonOS, detectorDaemonArch, detectorBinaryDir)
 	h.DockerBuild(t,
 		detectImage,
 		detectDockerContext,

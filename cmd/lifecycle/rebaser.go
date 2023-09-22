@@ -47,6 +47,10 @@ func (r *rebaseCmd) DefineFlags() {
 	if r.PlatformAPI.AtLeast("0.12") {
 		cli.FlagForceRebase(&r.ForceRebase)
 	}
+
+	if r.PlatformAPI.AtLeast("0.13") {
+		cli.FlagInsecureRegistries(&r.InsecureRegistries)
+	}
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -111,10 +115,13 @@ func (r *rebaseCmd) Exec() error {
 			local.FromBaseImage(r.RunImageRef),
 		)
 	} else {
+		var opts []remote.ImageOption
+		opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(r.RunImageRef))...)
+
 		newBaseImage, err = remote.NewImage(
 			r.RunImageRef,
 			r.keychain,
-			remote.FromBaseImage(r.RunImageRef),
+			opts...,
 		)
 	}
 	if err != nil || !newBaseImage.Found() {
@@ -163,10 +170,17 @@ func (r *rebaseCmd) setAppImage() error {
 		if err != nil {
 			return err
 		}
+
+		var opts = []remote.ImageOption{
+			remote.FromBaseImage(targetImageRef),
+		}
+
+		opts = append(opts, image.GetInsecureOptions(r.InsecureRegistries)...)
+
 		r.appImage, err = remote.NewImage(
 			targetImageRef,
 			keychain,
-			remote.FromBaseImage(targetImageRef),
+			opts...,
 		)
 	}
 	if err != nil || !r.appImage.Found() {

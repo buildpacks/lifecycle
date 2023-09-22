@@ -20,7 +20,7 @@ type AnalyzerFactory struct {
 	cacheHandler    CacheHandler
 	configHandler   ConfigHandler
 	imageHandler    image.Handler
-	registryHandler RegistryHandler
+	registryHandler image.RegistryHandler
 }
 
 func NewAnalyzerFactory(
@@ -29,7 +29,7 @@ func NewAnalyzerFactory(
 	cacheHandler CacheHandler,
 	configHandler ConfigHandler,
 	imageHandler image.Handler,
-	registryHandler RegistryHandler,
+	registryHandler image.RegistryHandler,
 ) *AnalyzerFactory {
 	return &AnalyzerFactory{
 		platformAPI:     platformAPI,

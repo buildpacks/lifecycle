@@ -43,9 +43,15 @@ func (r *restoreCmd) DefineFlags() {
 		cli.FlagUseLayout(&r.UseLayout)
 		cli.FlagLayoutDir(&r.LayoutDir)
 	}
+
+	if r.PlatformAPI.AtLeast("0.13") {
+		cli.FlagInsecureRegistries(&r.InsecureRegistries)
+	}
+
 	if r.PlatformAPI.AtLeast("0.10") {
 		cli.FlagBuildImage(&r.BuildImageRef)
 	}
+
 	cli.FlagAnalyzedPath(&r.AnalyzedPath)
 	cli.FlagCacheDir(&r.CacheDir)
 	cli.FlagCacheImage(&r.CacheImageRef)
@@ -127,7 +133,7 @@ func (r *restoreCmd) Exec() error {
 			}
 		} else if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
-			h := image.NewHandler(r.docker, r.keychain, r.LayoutDir, r.UseLayout)
+			h := image.NewHandler(r.docker, r.keychain, r.LayoutDir, r.UseLayout, r.InsecureRegistries)
 			runImage, err = h.InitImage(runImageName)
 			if err != nil || !runImage.Found() {
 				return cmd.FailErr(err, fmt.Sprintf("pull run image %s", runImageName))
@@ -217,8 +223,12 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 	if err := os.MkdirAll(baseCacheDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create cache directory: %w", err)
 	}
+
+	var opts []remote.ImageOption
+	opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(imageRef))...)
+
 	// get remote image
-	remoteImage, err := remote.NewImage(imageRef, r.keychain, remote.FromBaseImage(imageRef))
+	remoteImage, err := remote.NewImage(imageRef, r.keychain, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize remote image: %w", err)
 	}

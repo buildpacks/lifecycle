@@ -35,6 +35,11 @@ func (c *createCmd) DefineFlags() {
 		cli.FlagUseLayout(&c.UseLayout)
 		cli.FlagRunPath(&c.RunPath)
 	}
+
+	if c.PlatformAPI.AtLeast("0.13") {
+		cli.FlagInsecureRegistries(&c.InsecureRegistries)
+	}
+
 	if c.PlatformAPI.AtLeast("0.11") {
 		cli.FlagBuildConfigDir(&c.BuildConfigDir)
 		cli.FlagLauncherSBOMDir(&c.LauncherSBOMDir)
@@ -124,8 +129,8 @@ func (c *createCmd) Exec() error {
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(c.keychain),
 		lifecycle.NewConfigHandler(),
-		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
-		NewRegistryHandler(c.keychain),
+		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistries),
+		image.NewRegistryHandler(c.keychain, c.InsecureRegistries),
 	)
 	analyzer, err := analyzerFactory.NewAnalyzer(c.AdditionalTags, c.CacheImageRef, c.LaunchCacheDir, c.LayersDir, c.OutputImageRef, c.PreviousImageRef, c.RunImageRef, c.SkipLayers, cmd.DefaultLogger)
 	if err != nil {

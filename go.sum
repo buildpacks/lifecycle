@@ -122,8 +122,8 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
-github.com/buildpacks/imgutil v0.0.0-20230918203216-a995227559a3 h1:p4spj0vuCHFopXMPm/7IgC0nXe2fBjJxOmpM5C1mUvE=
-github.com/buildpacks/imgutil v0.0.0-20230918203216-a995227559a3/go.mod h1:Ade+4Q1OovFw6Zdzd+/UVaqWptZSlpnZ8n/vlkgS7M8=
+github.com/buildpacks/imgutil v0.0.0-20230919143643-4ec9360d5f02 h1:Ac/FoFzAhz34zIDvrC3ivShQgoywg/HrA+Kkcb13Mr4=
+github.com/buildpacks/imgutil v0.0.0-20230919143643-4ec9360d5f02/go.mod h1:Ade+4Q1OovFw6Zdzd+/UVaqWptZSlpnZ8n/vlkgS7M8=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=

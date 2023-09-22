@@ -57,6 +57,11 @@ func (e *exportCmd) DefineFlags() {
 	} else {
 		cli.FlagStackPath(&e.StackPath)
 	}
+
+	if e.PlatformAPI.AtLeast("0.13") {
+		cli.FlagInsecureRegistries(&e.InsecureRegistries)
+	}
+
 	if e.PlatformAPI.AtLeast("0.11") {
 		cli.FlagLauncherSBOMDir(&e.LauncherSBOMDir)
 	}
@@ -340,6 +345,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(e.RunImageRef),
 	}
+
 	if e.supportsRunImageExtension() {
 		extendedConfig, err := e.getExtendedConfig(analyzedMD.RunImage)
 		if err != nil {
@@ -354,6 +360,8 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	if e.supportsHistory() {
 		opts = append(opts, remote.WithHistory())
 	}
+
+	opts = append(opts, image.GetInsecureOptions(e.InsecureRegistries)...)
 
 	if analyzedMD.PreviousImageRef() != "" {
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImageRef())

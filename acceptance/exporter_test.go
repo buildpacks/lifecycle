@@ -246,6 +246,33 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					})
 				})
 
+				when("app using insecure registry", func() {
+					it.Before(func() {
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
+					})
+
+					it("does an http request", func() {
+						var exportFlags []string
+						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+						exportedImageName = exportTest.RegRepoName("some-insecure-exported-image-" + h.RandString(10))
+						exportArgs = append(exportArgs, exportedImageName)
+						insecureRegistry := "host.docker.internal/bar"
+						insecureAnalyzed := "/layers/analyzed_insecure.toml"
+
+						_, _, err := h.DockerRunWithError(t,
+							exportImage,
+							h.WithFlags(
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_INSECURE_REGISTRIES="+insecureRegistry,
+								"--env", "CNB_ANALYZED_PATH="+insecureAnalyzed,
+								"--network", exportRegNetwork,
+							),
+							h.WithArgs(exportArgs...),
+						)
+						h.AssertStringContains(t, err.Error(), "http://host.docker.internal")
+					})
+				})
+
 				when("SOURCE_DATE_EPOCH is set", func() {
 					it("Image CreatedAt is set to SOURCE_DATE_EPOCH", func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "SOURCE_DATE_EPOCH support added in 0.9")

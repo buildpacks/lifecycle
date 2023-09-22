@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
@@ -110,60 +109,6 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, 
 		}
 	}
 	return cacheStore, nil
-}
-
-type DefaultRegistryHandler struct {
-	keychain authn.Keychain
-}
-
-func NewRegistryHandler(keychain authn.Keychain) *DefaultRegistryHandler {
-	return &DefaultRegistryHandler{
-		keychain: keychain,
-	}
-}
-
-func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
-	for _, imageRef := range imageRefs {
-		if err := verifyReadAccess(imageRef, rv.keychain); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
-	for _, imageRef := range imageRefs {
-		if err := verifyReadWriteAccess(imageRef, rv.keychain); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func verifyReadAccess(imageRef string, keychain authn.Keychain) error {
-	if imageRef == "" {
-		return nil
-	}
-	img, _ := remote.NewImage(imageRef, keychain)
-	canRead, err := img.CheckReadAccess()
-	if !canRead {
-		cmd.DefaultLogger.Debugf("Error checking read access: %s", err)
-		return errors.Errorf("ensure registry read access to %s", imageRef)
-	}
-	return nil
-}
-
-func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
-	if imageRef == "" {
-		return nil
-	}
-	img, _ := remote.NewImage(imageRef, keychain)
-	canReadWrite, err := img.CheckReadWriteAccess()
-	if !canReadWrite {
-		cmd.DefaultLogger.Debugf("Error checking read/write access: %s", err)
-		return errors.Errorf("ensure registry read/write access to %s", imageRef)
-	}
-	return nil
 }
 
 // helpers
