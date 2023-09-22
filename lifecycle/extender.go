@@ -39,6 +39,8 @@ type Extender struct {
 	Extensions        []buildpack.GroupElement // extensions are ordered from group.toml
 }
 
+// DockerfileApplier TODO
+//
 //go:generate mockgen -package testmock -destination testmock/dockerfile_applier.go github.com/buildpacks/lifecycle/lifecycle DockerfileApplier
 type DockerfileApplier interface {
 	ImageFor(reference string) (v1.Image, error)

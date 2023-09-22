@@ -12,11 +12,15 @@ import (
 
 var Config = &DefaultConfigHandler{}
 
+// CacheHandler TODO
+//
 //go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle/lifecycle CacheHandler
 type CacheHandler interface {
 	InitCache(imageRef, dir string, deletionEnabled bool) (Cache, error)
 }
 
+// DirStore TODO
+//
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle/lifecycle DirStore
 type DirStore interface {
 	Lookup(kind, id, version string) (buildpack.Descriptor, error)
@@ -24,13 +28,18 @@ type DirStore interface {
 	LookupExt(id, version string) (*buildpack.ExtDescriptor, error)
 }
 
+// TODO: figure out where this goes
 //go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle/image Handler
 
+// BuildpackAPIVerifier TODO
+//
 //go:generate mockgen -package testmock -destination testmock/buildpack_api_verifier.go github.com/buildpacks/lifecycle/lifecycle BuildpackAPIVerifier
 type BuildpackAPIVerifier interface {
 	VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error
 }
 
+// ConfigHandler TODO
+//
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle/lifecycle ConfigHandler
 type ConfigHandler interface {
 	ReadAnalyzed(path string, logger log.Logger) (files.Analyzed, error)

@@ -5,6 +5,8 @@ const (
 	KindExtension = "Extension"
 )
 
+// Descriptor TODO
+//
 //go:generate mockgen -package testmock -destination ../lifecycle/testmock/component_descriptor.go github.com/buildpacks/lifecycle/buildpack Descriptor
 type Descriptor interface {
 	API() string

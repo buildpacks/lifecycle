@@ -28,6 +28,8 @@ var (
 	ErrBuildpack       = errors.New("buildpack(s) failed with err")
 )
 
+// DetectResolver TODO
+//
 //go:generate mockgen -package testmock -destination testmock/detect_resolver.go github.com/buildpacks/lifecycle/lifecycle DetectResolver
 type DetectResolver interface {
 	Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []files.BuildPlanEntry, error)

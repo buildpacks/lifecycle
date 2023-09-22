@@ -20,6 +20,8 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 )
 
+// SBOMRestorer TODO
+//
 //go:generate mockgen -package testmock -destination ../../lifecycle/testmock/sbom_restorer.go github.com/buildpacks/lifecycle/internal/layer SBOMRestorer
 type SBOMRestorer interface {
 	RestoreFromPrevious(image imgutil.Image, layerDigest string) error

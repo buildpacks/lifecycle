@@ -39,6 +39,8 @@ type DetectOutputs struct {
 	Err    error  `toml:"-"`
 }
 
+// DetectExecutor TODO
+//
 //go:generate mockgen -package testmock -destination ../lifecycle/testmock/detect_executor.go github.com/buildpacks/lifecycle/buildpack DetectExecutor
 type DetectExecutor interface {
 	Detect(d Descriptor, inputs DetectInputs, logger log.Logger) DetectOutputs

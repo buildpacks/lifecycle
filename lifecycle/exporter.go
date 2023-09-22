@@ -47,6 +47,8 @@ type Exporter struct {
 	PlatformAPI  *api.Version
 }
 
+// LayerFactory TODO
+//
 //go:generate mockgen -package testmock -destination testmock/layer_factory.go github.com/buildpacks/lifecycle/lifecycle LayerFactory
 type LayerFactory interface {
 	DirLayer(id string, dir string, createdBy string) (layers.Layer, error)
