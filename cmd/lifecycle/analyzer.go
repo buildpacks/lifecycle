@@ -30,11 +30,13 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagStackPath(&a.StackPath)
 	}
 	switch {
+	case a.PlatformAPI.AtLeast("0.13"):
+		cli.FlagInsecureRegistries(&a.InsecureRegistries)
+		fallthrough
 	case a.PlatformAPI.AtLeast("0.12"):
 		cli.FlagLayoutDir(&a.LayoutDir)
 		cli.FlagUseLayout(&a.UseLayout)
 		cli.FlagRunPath(&a.RunPath)
-		cli.FlagInsecureRegistries(&a.InsecureRegistries)
 		fallthrough
 	case a.PlatformAPI.AtLeast("0.9"):
 		cli.FlagLaunchCacheDir(&a.LaunchCacheDir)

@@ -46,6 +46,9 @@ func (r *rebaseCmd) DefineFlags() {
 
 	if r.PlatformAPI.AtLeast("0.12") {
 		cli.FlagForceRebase(&r.ForceRebase)
+	}
+
+	if r.PlatformAPI.AtLeast("0.13") {
 		cli.FlagInsecureRegistries(&r.InsecureRegistries)
 	}
 }

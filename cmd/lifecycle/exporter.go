@@ -54,10 +54,14 @@ func (e *exportCmd) DefineFlags() {
 		cli.FlagLayoutDir(&e.LayoutDir)
 		cli.FlagRunPath(&e.RunPath)
 		cli.FlagUseLayout(&e.UseLayout)
-		cli.FlagInsecureRegistries(&e.InsecureRegistries)
 	} else {
 		cli.FlagStackPath(&e.StackPath)
 	}
+
+	if e.PlatformAPI.AtLeast("0.13") {
+		cli.FlagInsecureRegistries(&e.InsecureRegistries)
+	}
+
 	if e.PlatformAPI.AtLeast("0.11") {
 		cli.FlagLauncherSBOMDir(&e.LauncherSBOMDir)
 	}
