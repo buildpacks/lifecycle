@@ -12,12 +12,12 @@ import (
 
 var Config = &DefaultConfigHandler{}
 
-//go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle CacheHandler
+//go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle/lifecycle CacheHandler
 type CacheHandler interface {
 	InitCache(imageRef, dir string, deletionEnabled bool) (Cache, error)
 }
 
-//go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle DirStore
+//go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle/lifecycle DirStore
 type DirStore interface {
 	Lookup(kind, id, version string) (buildpack.Descriptor, error)
 	LookupBp(id, version string) (*buildpack.BpDescriptor, error)
@@ -26,12 +26,12 @@ type DirStore interface {
 
 //go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle/image Handler
 
-//go:generate mockgen -package testmock -destination testmock/buildpack_api_verifier.go github.com/buildpacks/lifecycle BuildpackAPIVerifier
+//go:generate mockgen -package testmock -destination testmock/buildpack_api_verifier.go github.com/buildpacks/lifecycle/lifecycle BuildpackAPIVerifier
 type BuildpackAPIVerifier interface {
 	VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error
 }
 
-//go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
+//go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle/lifecycle ConfigHandler
 type ConfigHandler interface {
 	ReadAnalyzed(path string, logger log.Logger) (files.Analyzed, error)
 	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)

@@ -8,6 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+
+	buildpack "github.com/buildpacks/lifecycle/buildpack"
 )
 
 // MockDescriptor is a mock of Descriptor interface.
@@ -59,4 +61,18 @@ func (m *MockDescriptor) Homepage() string {
 func (mr *MockDescriptorMockRecorder) Homepage() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Homepage", reflect.TypeOf((*MockDescriptor)(nil).Homepage))
+}
+
+// TargetsList mocks base method.
+func (m *MockDescriptor) TargetsList() []buildpack.TargetMetadata {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TargetsList")
+	ret0, _ := ret[0].([]buildpack.TargetMetadata)
+	return ret0
+}
+
+// TargetsList indicates an expected call of TargetsList.
+func (mr *MockDescriptorMockRecorder) TargetsList() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetsList", reflect.TypeOf((*MockDescriptor)(nil).TargetsList))
 }

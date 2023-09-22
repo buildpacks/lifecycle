@@ -20,7 +20,7 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 )
 
-//go:generate mockgen -package testmock -destination ../../testmock/sbom_restorer.go github.com/buildpacks/lifecycle/internal/layer SBOMRestorer
+//go:generate mockgen -package testmock -destination ../../lifecycle/testmock/sbom_restorer.go github.com/buildpacks/lifecycle/internal/layer SBOMRestorer
 type SBOMRestorer interface {
 	RestoreFromPrevious(image imgutil.Image, layerDigest string) error
 	RestoreFromCache(cache Cache, layerDigest string) error

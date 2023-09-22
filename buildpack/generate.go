@@ -34,7 +34,7 @@ type GenerateOutputs struct {
 	MetRequires []string
 }
 
-//go:generate mockgen -package testmock -destination ../testmock/generate_executor.go github.com/buildpacks/lifecycle/buildpack GenerateExecutor
+//go:generate mockgen -package testmock -destination ../lifecycle/testmock/generate_executor.go github.com/buildpacks/lifecycle/buildpack GenerateExecutor
 type GenerateExecutor interface {
 	Generate(d ExtDescriptor, inputs GenerateInputs, logger log.Logger) (GenerateOutputs, error)
 }

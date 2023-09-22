@@ -56,7 +56,7 @@ type BuildOutputs struct {
 	Slices      []layers.Slice
 }
 
-//go:generate mockgen -package testmock -destination ../testmock/build_executor.go github.com/buildpacks/lifecycle/buildpack BuildExecutor
+//go:generate mockgen -package testmock -destination ../lifecycle/testmock/build_executor.go github.com/buildpacks/lifecycle/buildpack BuildExecutor
 type BuildExecutor interface {
 	Build(d BpDescriptor, inputs BuildInputs, logger log.Logger) (BuildOutputs, error)
 }

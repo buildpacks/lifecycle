@@ -12,7 +12,7 @@ import (
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	layer "github.com/buildpacks/lifecycle/internal/layer"
 	platform "github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/files"
+	files "github.com/buildpacks/lifecycle/platform/files"
 )
 
 // MockMetadataRestorer is a mock of MetadataRestorer interface.

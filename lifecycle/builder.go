@@ -25,7 +25,7 @@ type Platform interface {
 	API() *api.Version
 }
 
-//go:generate mockgen -package testmock -destination testmock/build_env.go github.com/buildpacks/lifecycle BuildEnv
+//go:generate mockgen -package testmock -destination testmock/build_env.go github.com/buildpacks/lifecycle/lifecycle BuildEnv
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
