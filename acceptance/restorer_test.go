@@ -16,7 +16,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/lifecycle"
+	"github.com/buildpacks/lifecycle/phase"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -198,7 +198,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithArgs("-build-image", restoreRegFixtures.SomeCacheImage), // some-cache-image simulates a builder image in a registry
 				)
 				t.Log("records builder image digest in analyzed.toml")
-				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "analyzed.toml"), cmd.DefaultLogger)
+				analyzedMD, err := phase.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "analyzed.toml"), cmd.DefaultLogger)
 				h.AssertNil(t, err)
 				h.AssertStringContains(t, analyzedMD.BuildImage.Reference, restoreRegFixtures.SomeCacheImage+"@sha256:")
 				t.Log("writes builder manifest and config to the kaniko cache")
@@ -230,7 +230,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					),
 				)
 				t.Log("updates run image reference in analyzed.toml to include digest and target data")
-				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-true-analyzed.toml"), cmd.DefaultLogger)
+				analyzedMD, err := phase.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-true-analyzed.toml"), cmd.DefaultLogger)
 				h.AssertNil(t, err)
 				h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
 				h.AssertEq(t, analyzedMD.RunImage.Image, restoreRegFixtures.ReadOnlyRunImage)
@@ -266,7 +266,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				)
 				if api.MustParse(platformAPI).AtLeast("0.12") {
 					t.Log("updates run image reference in analyzed.toml to include digest and target data")
-					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
+					analyzedMD, err := phase.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
 					h.AssertNil(t, err)
 					h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
 					h.AssertEq(t, analyzedMD.RunImage.Image, restoreRegFixtures.ReadOnlyRunImage)
@@ -279,7 +279,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertEq(t, len(fis), 1) // .gitkeep
 				} else {
 					t.Log("doesn't update analyzed.toml")
-					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
+					analyzedMD, err := phase.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
 					h.AssertNil(t, err)
 					h.AssertNil(t, analyzedMD.RunImage.TargetMetadata)
 				}
@@ -306,7 +306,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						),
 					)
 					t.Log("updates run image reference in analyzed.toml to include digest and target data")
-					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
+					analyzedMD, err := phase.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
 					h.AssertNil(t, err)
 					h.AssertStringDoesNotContain(t, analyzedMD.RunImage.Reference, "@sha256:") // daemon image ID
 					h.AssertEq(t, analyzedMD.RunImage.Image, restoreRegFixtures.ReadOnlyRunImage)

@@ -36,7 +36,7 @@ type GenerateOutputs struct {
 
 // GenerateExecutor TODO
 //
-//go:generate mockgen -package testmock -destination ../lifecycle/testmock/generate_executor.go github.com/buildpacks/lifecycle/buildpack GenerateExecutor
+//go:generate mockgen -package testmock -destination ../phase/testmock/generate_executor.go github.com/buildpacks/lifecycle/buildpack GenerateExecutor
 type GenerateExecutor interface {
 	Generate(d ExtDescriptor, inputs GenerateInputs, logger log.Logger) (GenerateOutputs, error)
 }

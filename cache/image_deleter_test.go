@@ -12,8 +12,8 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/cmd"
-	cacheMock "github.com/buildpacks/lifecycle/lifecycle/testmock/cache"
 	"github.com/buildpacks/lifecycle/log"
+	cacheMock "github.com/buildpacks/lifecycle/phase/testmock/cache"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

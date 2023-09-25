@@ -28,7 +28,7 @@ import (
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/lifecycle"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
@@ -131,7 +131,7 @@ func (e *exportCmd) Privileges() error {
 }
 
 func (e *exportCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(e.GroupPath)
+	group, err := phase.ReadGroup(e.GroupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
@@ -160,7 +160,7 @@ func (e *exportCmd) registryImages() []string {
 	return registryImages
 }
 
-func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD files.Analyzed) error {
+func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyzedMD files.Analyzed) error {
 	artifactsDir, err := os.MkdirTemp("", "lifecycle.exporter.layer")
 
 	if err != nil {
@@ -177,7 +177,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		cmd.DefaultLogger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", e.ProjectMetadataPath)
 	}
 
-	exporter := &lifecycle.Exporter{
+	exporter := &phase.Exporter{
 		Buildpacks: group.Group,
 		LayerFactory: &layers.Factory{
 			ArtifactsDir: artifactsDir,
@@ -210,7 +210,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		return err
 	}
 
-	report, err := exporter.Export(lifecycle.ExportOptions{
+	report, err := exporter.Export(phase.ExportOptions{
 		AdditionalNames:    e.AdditionalTags,
 		AppDir:             e.AppDir,
 		DefaultProcessType: e.DefaultProcessType,
@@ -451,8 +451,8 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	return appImage, runImageID.String(), nil
 }
 
-func launcherConfig(launcherPath, launcherSBOMDir string) lifecycle.LauncherConfig {
-	return lifecycle.LauncherConfig{
+func launcherConfig(launcherPath, launcherSBOMDir string) phase.LauncherConfig {
+	return phase.LauncherConfig{
 		Path:    launcherPath,
 		SBOMDir: launcherSBOMDir,
 		Metadata: files.LauncherMetadata{

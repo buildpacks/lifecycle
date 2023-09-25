@@ -9,11 +9,11 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	testmockauth "github.com/buildpacks/lifecycle/lifecycle/testmock/auth"
+	testmockauth "github.com/buildpacks/lifecycle/phase/testmock/auth"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-//go:generate mockgen -package testmockauth -destination ../lifecycle/testmock/auth/mock_keychain.go github.com/google/go-containerregistry/pkg/authn Keychain
+//go:generate mockgen -package testmockauth -destination ../phase/testmock/auth/mock_keychain.go github.com/google/go-containerregistry/pkg/authn Keychain
 
 func TestHandler(t *testing.T) {
 	spec.Run(t, "ImageHandler", testHandler, spec.Sequential(), spec.Report(report.Terminal{}))

@@ -18,8 +18,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/lifecycle/testmock"
 	llog "github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/phase/testmock"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

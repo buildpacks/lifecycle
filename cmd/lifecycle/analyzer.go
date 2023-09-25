@@ -11,7 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
-	"github.com/buildpacks/lifecycle/lifecycle"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -96,11 +96,11 @@ func (a *analyzeCmd) Privileges() error {
 
 // Exec executes the command.
 func (a *analyzeCmd) Exec() error {
-	factory := lifecycle.NewAnalyzerFactory(
+	factory := phase.NewAnalyzerFactory(
 		a.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
-		lifecycle.NewConfigHandler(),
+		phase.NewConfigHandler(),
 		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout, a.InsecureRegistries),
 		image.NewRegistryHandler(a.keychain, a.InsecureRegistries),
 	)

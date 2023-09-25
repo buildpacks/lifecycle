@@ -58,7 +58,7 @@ type BuildOutputs struct {
 
 // BuildExecutor TODO
 //
-//go:generate mockgen -package testmock -destination ../lifecycle/testmock/build_executor.go github.com/buildpacks/lifecycle/buildpack BuildExecutor
+//go:generate mockgen -package testmock -destination ../phase/testmock/build_executor.go github.com/buildpacks/lifecycle/buildpack BuildExecutor
 type BuildExecutor interface {
 	Build(d BpDescriptor, inputs BuildInputs, logger log.Logger) (BuildOutputs, error)
 }

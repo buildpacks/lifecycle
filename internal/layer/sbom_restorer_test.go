@@ -19,7 +19,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/lifecycle"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -149,7 +149,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			artifactsDir string
 			cacheDir     string
 			layerDigest  string
-			testCache    lifecycle.Cache
+			testCache    phase.Cache
 		)
 
 		it.Before(func() {

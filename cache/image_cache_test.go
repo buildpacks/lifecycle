@@ -17,8 +17,8 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	testmockcache "github.com/buildpacks/lifecycle/lifecycle/testmock/cache"
 	"github.com/buildpacks/lifecycle/log"
+	testmockcache "github.com/buildpacks/lifecycle/phase/testmock/cache"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
