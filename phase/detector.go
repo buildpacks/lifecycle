@@ -28,7 +28,10 @@ var (
 	ErrBuildpack       = errors.New("buildpack(s) failed with err")
 )
 
-// DetectResolver TODO
+// DetectResolver given a group of buildpacks (and optional image extensions)
+// processes the outputs of each `./bin/detect` to determine if the group is viable -
+// that is, whether all non-optional buildpacks passed detection and a valid Build Plan can be resolved
+// from each "requires" and "provides" expressed by each group element.
 //
 //go:generate mockgen -package testmock -destination testmock/detect_resolver.go github.com/buildpacks/lifecycle/phase DetectResolver
 type DetectResolver interface {

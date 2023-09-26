@@ -39,7 +39,8 @@ type Extender struct {
 	Extensions        []buildpack.GroupElement // extensions are ordered from group.toml
 }
 
-// DockerfileApplier TODO
+// DockerfileApplier given a base image and a `build.Dockerfile` or `run.Dockerfile` will apply it to the base image
+// and return a new image, or an error if encountered.
 //
 //go:generate mockgen -package testmock -destination testmock/dockerfile_applier.go github.com/buildpacks/lifecycle/phase DockerfileApplier
 type DockerfileApplier interface {

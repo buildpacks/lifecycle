@@ -47,7 +47,8 @@ type Exporter struct {
 	PlatformAPI  *api.Version
 }
 
-// LayerFactory TODO
+// LayerFactory given a directory on the local filesystem will return a `layers.Layer`
+// that can be used to construct an OCI image.
 //
 //go:generate mockgen -package testmock -destination testmock/layer_factory.go github.com/buildpacks/lifecycle/phase LayerFactory
 type LayerFactory interface {

@@ -12,14 +12,16 @@ import (
 
 var Config = &DefaultConfigHandler{}
 
-// CacheHandler TODO
+// CacheHandler wraps initialization of a cache image or cache volume.
 //
 //go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle/phase CacheHandler
 type CacheHandler interface {
 	InitCache(imageRef, dir string, deletionEnabled bool) (Cache, error)
 }
 
-// DirStore TODO
+// DirStore is a repository of buildpacks and/or image extensions.
+// Each element should be present on disk according to the format outlined in the Buildpack Interface Specification,
+// namely: `/cnb/<buildpacks|extensions>/<id>/<version>/<root directory>`.
 //
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle/phase DirStore
 type DirStore interface {
@@ -28,17 +30,14 @@ type DirStore interface {
 	LookupExt(id, version string) (*buildpack.ExtDescriptor, error)
 }
 
-// TODO: figure out where this goes
-//go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle/image Handler
-
-// BuildpackAPIVerifier TODO
+// BuildpackAPIVerifier verifies a requested Buildpack API version.
 //
 //go:generate mockgen -package testmock -destination testmock/buildpack_api_verifier.go github.com/buildpacks/lifecycle/phase BuildpackAPIVerifier
 type BuildpackAPIVerifier interface {
-	VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error
+	VerifyBuildpackAPI(kind, name, requestedVersion string, logger log.Logger) error
 }
 
-// ConfigHandler TODO
+// ConfigHandler reads configuration files for the lifecycle.
 //
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle/phase ConfigHandler
 type ConfigHandler interface {

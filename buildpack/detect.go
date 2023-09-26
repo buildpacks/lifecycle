@@ -39,7 +39,10 @@ type DetectOutputs struct {
 	Err    error  `toml:"-"`
 }
 
-// DetectExecutor TODO
+// DetectExecutor executes a single buildpack or image extension's `./bin/detect` binary,
+// providing inputs as defined in the Buildpack Interface Specification,
+// and processing outputs for the platform.
+// For image extensions (where `./bin/detect` is optional), pre-populated outputs are processed here.
 //
 //go:generate mockgen -package testmock -destination ../phase/testmock/detect_executor.go github.com/buildpacks/lifecycle/buildpack DetectExecutor
 type DetectExecutor interface {

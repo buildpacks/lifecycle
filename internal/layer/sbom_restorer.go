@@ -20,7 +20,10 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 )
 
-// SBOMRestorer TODO
+// SBOMRestorer handles the restoration of SBOM layer data.
+// Given a previous image or cache, it will extract the SBOM layer to the local filesystem.
+// Given a group of buildpacks and a `<layers>/sbom/<cache|launch>` directory,
+// it will copy the relevant SBOM files to `<layers>/<buildpack-id>/ so that they can be used in the current build.
 //
 //go:generate mockgen -package testmock -destination ../../phase/testmock/sbom_restorer.go github.com/buildpacks/lifecycle/internal/layer SBOMRestorer
 type SBOMRestorer interface {

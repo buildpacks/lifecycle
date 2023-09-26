@@ -5,7 +5,8 @@ const (
 	KindExtension = "Extension"
 )
 
-// Descriptor TODO
+// Descriptor exposes information contained in a buildpack.toml or extension.toml
+// that is generic to buildpacks and/or image extensions.
 //
 //go:generate mockgen -package testmock -destination ../lifecycle/testmock/component_descriptor.go github.com/buildpacks/lifecycle/buildpack Descriptor
 type Descriptor interface {

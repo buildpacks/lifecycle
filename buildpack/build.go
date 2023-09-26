@@ -56,7 +56,9 @@ type BuildOutputs struct {
 	Slices      []layers.Slice
 }
 
-// BuildExecutor TODO
+// BuildExecutor executes a single buildpack's `./bin/build` binary,
+// providing inputs as defined in the Buildpack Interface Specification,
+// and processing outputs for the platform.
 //
 //go:generate mockgen -package testmock -destination ../phase/testmock/build_executor.go github.com/buildpacks/lifecycle/buildpack BuildExecutor
 type BuildExecutor interface {

@@ -25,7 +25,7 @@ type Platform interface {
 	API() *api.Version
 }
 
-// BuildEnv TODO
+// BuildEnv encapsulates modifications that the lifecycle can make to buildpacks' build environment.
 //
 //go:generate mockgen -package testmock -destination testmock/build_env.go github.com/buildpacks/lifecycle/phase BuildEnv
 type BuildEnv interface {
