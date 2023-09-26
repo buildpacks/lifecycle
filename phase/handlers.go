@@ -20,7 +20,7 @@ type CacheHandler interface {
 }
 
 // DirStore is a repository of buildpacks and/or image extensions.
-// Each element should be present on disk according to the format outlined in the Buildpack Interface Specification,
+// Each element should be present on disk according to the format outlined in the Platform Interface Specification,
 // namely: `/cnb/<buildpacks|extensions>/<id>/<version>/<root directory>`.
 //
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle/phase DirStore
