@@ -84,6 +84,21 @@ func (mr *MockConfigHandlerMockRecorder) ReadOrder(arg0 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadOrder", reflect.TypeOf((*MockConfigHandler)(nil).ReadOrder), arg0)
 }
 
+// ReadPlan mocks base method.
+func (m *MockConfigHandler) ReadPlan(arg0 string) (files.Plan, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadPlan", arg0)
+	ret0, _ := ret[0].(files.Plan)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadPlan indicates an expected call of ReadPlan.
+func (mr *MockConfigHandlerMockRecorder) ReadPlan(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadPlan", reflect.TypeOf((*MockConfigHandler)(nil).ReadPlan), arg0)
+}
+
 // ReadRun mocks base method.
 func (m *MockConfigHandler) ReadRun(arg0 string, arg1 log.Logger) (files.Run, error) {
 	m.ctrl.T.Helper()

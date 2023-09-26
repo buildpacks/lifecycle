@@ -20,6 +20,7 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/phase/testmock"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -37,7 +38,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		dirStore      *testmock.MockDirStore
 		logger        log.LoggerHandlerWithLevel
 
-		detectorFactory *phase.DetectorFactory
+		detectorFactory *phase.HermeticFactory
 	)
 
 	it.Before(func() {
@@ -48,7 +49,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		dirStore = testmock.NewMockDirStore(mockController)
 		logger = log.NewDefaultLogger(io.Discard)
 
-		detectorFactory = phase.NewDetectorFactory(
+		detectorFactory = phase.NewHermeticFactory(
 			api.Platform.Latest(),
 			apiVerifier,
 			configHandler,
@@ -61,6 +62,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#NewDetector", func() {
+		it.Before(func() {
+			configHandler.EXPECT().ReadAnalyzed("some-analyzed-path", gomock.Any()).Return(files.Analyzed{}, nil).AnyTimes()
+		})
+
 		it("configures the detector", func() {
 			order := buildpack.Order{
 				buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
@@ -71,9 +76,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpA1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
 			dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 			apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
-			amd := files.Analyzed{}
 
-			detector, err := detectorFactory.NewDetector(amd, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
+			detector, err := detectorFactory.NewDetector(platform.LifecycleInputs{
+				AnalyzedPath:   "some-analyzed-path",
+				AppDir:         "some-app-dir",
+				BuildConfigDir: "some-build-config-dir",
+				OrderPath:      "some-order-path",
+				PlatformDir:    "some-platform-dir",
+			}, logger)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -133,8 +143,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				dirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
 				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "some-other-api-version", logger)
 
-				amd := files.Analyzed{}
-				detector, err := detectorFactory.NewDetector(amd, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
+				detector, err := detectorFactory.NewDetector(platform.LifecycleInputs{
+					AnalyzedPath:   "some-analyzed-path",
+					AppDir:         "some-app-dir",
+					BuildConfigDir: "some-build-config-dir",
+					OrderPath:      "some-order-path",
+					PlatformDir:    "some-platform-dir",
+				}, logger)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -157,17 +172,16 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			configHandler.EXPECT().ReadOrder(gomock.Any()).Return(buildpack.Order{}, buildpack.Order{}, nil)
-			amd := files.Analyzed{}
+			configHandler.EXPECT().ReadAnalyzed("some-analyzed-path", gomock.Any()).Return(files.Analyzed{}, nil).AnyTimes()
+			configHandler.EXPECT().ReadOrder("some-order-path").Return(buildpack.Order{}, buildpack.Order{}, nil)
 			var err error
-			detector, err = detectorFactory.NewDetector(
-				amd,
-				"some-app-dir",
-				"some-build-config-dir",
-				"some-order-path",
-				"some-platform-dir",
-				logger,
-			)
+			detector, err = detectorFactory.NewDetector(platform.LifecycleInputs{
+				AnalyzedPath:   "some-analyzed-path",
+				AppDir:         "some-app-dir",
+				BuildConfigDir: "some-build-config-dir",
+				OrderPath:      "some-order-path",
+				PlatformDir:    "some-platform-dir",
+			}, logger)
 			h.AssertNil(t, err)
 			// override factory-provided services
 			executor = testmock.NewMockDetectExecutor(mockController)

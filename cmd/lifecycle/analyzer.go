@@ -10,7 +10,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -96,15 +95,15 @@ func (a *analyzeCmd) Privileges() error {
 
 // Exec executes the command.
 func (a *analyzeCmd) Exec() error {
-	factory := phase.NewAnalyzerFactory(
+	factory := phase.NewConnectedFactory(
 		a.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
-		phase.NewConfigHandler(),
+		phase.Config,
 		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout, a.InsecureRegistries),
 		image.NewRegistryHandler(a.keychain, a.InsecureRegistries),
 	)
-	analyzer, err := factory.NewAnalyzer(a.AdditionalTags, a.CacheImageRef, a.LaunchCacheDir, a.LayersDir, a.OutputImageRef, a.PreviousImageRef, a.RunImageRef, a.SkipLayers, cmd.DefaultLogger)
+	analyzer, err := factory.NewAnalyzer(*a.LifecycleInputs, cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize analyzer")
 	}
@@ -112,10 +111,5 @@ func (a *analyzeCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErrCode(err, a.CodeFor(platform.AnalyzeError), "analyze")
 	}
-	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata is: ")
-	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
-	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
-		return cmd.FailErr(err, "write analyzed")
-	}
-	return nil
+	return phase.Config.WriteAnalyzed(a.AnalyzedPath, &analyzedMD, cmd.DefaultLogger)
 }

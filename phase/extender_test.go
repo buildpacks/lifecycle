@@ -25,6 +25,7 @@ import (
 	llog "github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/phase/testmock"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -40,7 +41,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#NewExtender", func() {
 		var (
 			mockController    *gomock.Controller
-			extenderFactory   *phase.ExtenderFactory
+			extenderFactory   *phase.HermeticFactory
 			fakeAPIVerifier   *testmock.MockBuildpackAPIVerifier
 			fakeConfigHandler *testmock.MockConfigHandler
 			fakeDirStore      *testmock.MockDirStore
@@ -56,10 +57,10 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 		createExtender := func() {
 			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path", logger).Return(
 				analyzedMD, nil,
-			)
+			).AnyTimes()
 			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return(
 				[]buildpack.GroupElement{}, []buildpack.GroupElement{{ID: "A", Version: "v1", API: "0.9"}}, nil,
-			)
+			).AnyTimes()
 			fakeDirStore.EXPECT().LookupExt("A", "v1").Return(&buildpack.ExtDescriptor{
 				WithAPI: "0.9",
 				Extension: buildpack.ExtInfo{
@@ -69,23 +70,21 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}, nil).AnyTimes()
-			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger)
-
+			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger).AnyTimes()
 			fakeDockerfileApplier := testmock.NewMockDockerfileApplier(mockController)
+
 			var err error
-			extender, err = extenderFactory.NewExtender(
-				"some-analyzed-path",
-				"some-app-dir",
-				"some-extended-dir",
-				"some-generated-dir",
-				"some-group-path",
-				"some-layers-dir",
-				"some-platform-dir",
-				7*(24*time.Hour),
-				fakeDockerfileApplier,
-				kind,
-				logger,
-			)
+			extender, err = extenderFactory.NewExtender(platform.LifecycleInputs{
+				AnalyzedPath:   "some-analyzed-path",
+				AppDir:         "some-app-dir",
+				ExtendedDir:    "some-extended-dir",
+				GeneratedDir:   "some-generated-dir",
+				GroupPath:      "some-group-path",
+				LayersDir:      "some-layers-dir",
+				PlatformDir:    "some-platform-dir",
+				KanikoCacheTTL: 7 * (24 * time.Hour),
+				ExtendKind:     kind,
+			}, fakeDockerfileApplier, logger)
 			h.AssertNil(t, err)
 		}
 
@@ -94,7 +93,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeAPIVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
 			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
 			fakeDirStore = testmock.NewMockDirStore(mockController)
-			extenderFactory = phase.NewExtenderFactory(fakeAPIVerifier, fakeConfigHandler)
+			extenderFactory = phase.NewHermeticFactory(api.Platform.Latest(), fakeAPIVerifier, fakeConfigHandler, nil)
 
 			logger = &log.Logger{Handler: &discard.Handler{}}
 		})

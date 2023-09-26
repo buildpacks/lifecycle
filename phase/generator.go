@@ -33,88 +33,39 @@ type Generator struct {
 	RunMetadata    files.Run
 }
 
-type GeneratorFactory struct {
-	apiVerifier   BuildpackAPIVerifier
-	configHandler ConfigHandler
-	dirStore      DirStore
-}
-
-func NewGeneratorFactory(
-	apiVerifier BuildpackAPIVerifier,
-	configHandler ConfigHandler,
-	dirStore DirStore,
-) *GeneratorFactory {
-	return &GeneratorFactory{
-		apiVerifier:   apiVerifier,
-		configHandler: configHandler,
-		dirStore:      dirStore,
-	}
-}
-
-func (f *GeneratorFactory) NewGenerator(
-	analyzedPath string,
-	appDir string,
-	buildConfigDir string,
-	extensions []buildpack.GroupElement,
-	generatedDir string,
-	plan files.Plan,
-	platformAPI *api.Version,
-	platformDir string,
-	runPath string,
-	stdout, stderr io.Writer,
-	logger log.Logger,
-) (*Generator, error) {
+// NewGenerator constructs a new Generator by initializing services and reading the provided analyzed, group, plan, and run files.
+func (f *HermeticFactory) NewGenerator(inputs platform.LifecycleInputs, stdout, stderr io.Writer, logger log.Logger) (*Generator, error) {
 	generator := &Generator{
-		AppDir:         appDir,
-		BuildConfigDir: buildConfigDir,
-		GeneratedDir:   generatedDir,
-		PlatformAPI:    platformAPI,
-		PlatformDir:    platformDir,
+		AppDir:         inputs.AppDir,
+		BuildConfigDir: inputs.BuildConfigDir,
+		GeneratedDir:   inputs.GeneratedDir,
+		PlatformAPI:    inputs.PlatformAPI,
+		PlatformDir:    inputs.PlatformDir,
 		DirStore:       f.dirStore,
 		Executor:       &buildpack.DefaultGenerateExecutor{},
 		Logger:         logger,
-		Plan:           plan,
 		Out:            stdout,
 		Err:            stderr,
 	}
-	if err := f.setExtensions(generator, extensions, logger); err != nil {
+	var err error
+	if generator.Extensions, err = f.getExtensions(inputs.GroupPath, logger); err != nil {
 		return nil, err
 	}
-	if err := f.setAnalyzedMD(generator, analyzedPath, logger); err != nil {
+	if generator.Plan, err = f.configHandler.ReadPlan(inputs.PlanPath); err != nil {
 		return nil, err
 	}
-	if err := f.setRunMD(generator, runPath, logger); err != nil {
+	if generator.RunMetadata, err = f.configHandler.ReadRun(inputs.RunPath, logger); err != nil {
+		return nil, err
+	}
+	if generator.AnalyzedMD, err = f.configHandler.ReadAnalyzed(inputs.AnalyzedPath, logger); err != nil {
 		return nil, err
 	}
 	return generator, nil
 }
 
-func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buildpack.GroupElement, logger log.Logger) error {
-	generator.Extensions = extensions
-	for _, el := range generator.Extensions {
-		if err := f.apiVerifier.VerifyBuildpackAPI(buildpack.KindExtension, el.String(), el.API, logger); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (f *GeneratorFactory) setAnalyzedMD(generator *Generator, analyzedPath string, logger log.Logger) error {
-	var err error
-	generator.AnalyzedMD, err = f.configHandler.ReadAnalyzed(analyzedPath, logger)
-	return err
-}
-
-func (f *GeneratorFactory) setRunMD(generator *Generator, runPath string, logger log.Logger) error {
-	var err error
-	generator.RunMetadata, err = f.configHandler.ReadRun(runPath, logger)
-	return err
-}
-
 type GenerateResult struct {
 	AnalyzedMD files.Analyzed
 	Plan       files.Plan
-	UsePlan    bool
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
@@ -185,7 +136,6 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	return GenerateResult{
 		AnalyzedMD: finalAnalyzedMD,
 		Plan:       filteredPlan,
-		UsePlan:    true,
 	}, nil
 }
 

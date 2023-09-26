@@ -29,15 +29,15 @@ import (
 
 func TestAnalyzer(t *testing.T) {
 	spec.Run(t, "unit-new-analyzer/", testAnalyzerFactory, spec.Parallel(), spec.Report(report.Terminal{}))
-	for _, api := range api.Platform.Supported {
-		spec.Run(t, "unit-analyzer/"+api.String(), testAnalyzer(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
+	for _, platformAPI := range api.Platform.Supported {
+		spec.Run(t, "unit-analyzer/"+platformAPI.String(), testAnalyzer(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }
 
 func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#NewAnalyzer", func() {
 		var (
-			analyzerFactory     *phase.AnalyzerFactory
+			analyzerFactory     *phase.ConnectedFactory
 			fakeAPIVerifier     *testmock.MockBuildpackAPIVerifier
 			fakeCacheHandler    *testmock.MockCacheHandler
 			fakeConfigHandler   *testmock.MockConfigHandler
@@ -63,12 +63,12 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it.After(func() {
 			mockController.Finish()
-			os.RemoveAll(tempDir)
+			_ = os.RemoveAll(tempDir)
 		})
 
 		when("platform api >= 0.8", func() {
 			it.Before(func() {
-				analyzerFactory = phase.NewAnalyzerFactory(
+				analyzerFactory = phase.NewConnectedFactory(
 					api.Platform.Latest(),
 					fakeAPIVerifier,
 					fakeCacheHandler,
@@ -98,7 +98,16 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					t.Log("processes run image")
 					fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
 
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+					analyzer, err := analyzerFactory.NewAnalyzer(platform.LifecycleInputs{
+						AdditionalTags:   []string{"some-additional-tag"},
+						CacheImageRef:    "some-cache-image-ref",
+						LaunchCacheDir:   "some-launch-cache-dir",
+						LayersDir:        "some-layers-dir",
+						OutputImageRef:   "some-output-image-ref",
+						PreviousImageRef: "some-previous-image-ref",
+						RunImageRef:      "some-run-image-ref",
+						SkipLayers:       false,
+					}, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -131,7 +140,16 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
 
-				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				analyzer, err := analyzerFactory.NewAnalyzer(platform.LifecycleInputs{
+					AdditionalTags:   []string{"some-additional-tag"},
+					CacheImageRef:    "some-cache-image-ref",
+					LaunchCacheDir:   "some-launch-cache-dir",
+					LayersDir:        "some-layers-dir",
+					OutputImageRef:   "some-output-image-ref",
+					PreviousImageRef: "some-previous-image-ref",
+					RunImageRef:      "some-run-image-ref",
+					SkipLayers:       false,
+				}, logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -165,7 +183,16 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
 					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+					analyzer, err := analyzerFactory.NewAnalyzer(platform.LifecycleInputs{
+						AdditionalTags:   []string{"some-additional-tag"},
+						CacheImageRef:    "some-cache-image-ref",
+						LaunchCacheDir:   launchCacheDir,
+						LayersDir:        "some-layers-dir",
+						OutputImageRef:   "some-output-image-ref",
+						PreviousImageRef: "some-previous-image-ref",
+						RunImageRef:      "some-run-image-ref",
+						SkipLayers:       false,
+					}, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -186,7 +213,16 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", true, logger)
+					analyzer, err := analyzerFactory.NewAnalyzer(platform.LifecycleInputs{
+						AdditionalTags:   []string{"some-additional-tag"},
+						CacheImageRef:    "some-cache-image-ref",
+						LaunchCacheDir:   "some-launch-cache-dir",
+						LayersDir:        "some-layers-dir",
+						OutputImageRef:   "some-output-image-ref",
+						PreviousImageRef: "some-previous-image-ref",
+						RunImageRef:      "some-run-image-ref",
+						SkipLayers:       true,
+					}, logger)
 					h.AssertNil(t, err)
 
 					_, ok := analyzer.SBOMRestorer.(*layer.NopSBOMRestorer)
@@ -197,7 +233,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api = 0.7", func() {
 			it.Before(func() {
-				analyzerFactory = phase.NewAnalyzerFactory(
+				analyzerFactory = phase.NewConnectedFactory(
 					api.MustParse("0.7"),
 					fakeAPIVerifier,
 					fakeCacheHandler,
@@ -222,7 +258,16 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
 
-				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				analyzer, err := analyzerFactory.NewAnalyzer(platform.LifecycleInputs{
+					AdditionalTags:   []string{"some-additional-tag"},
+					CacheImageRef:    "some-cache-image-ref",
+					LaunchCacheDir:   "some-launch-cache-dir",
+					LayersDir:        "some-layers-dir",
+					OutputImageRef:   "some-output-image-ref",
+					PreviousImageRef: "some-previous-image-ref",
+					RunImageRef:      "some-run-image-ref",
+					SkipLayers:       true,
+				}, logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -253,7 +298,16 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
 					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+					analyzer, err := analyzerFactory.NewAnalyzer(platform.LifecycleInputs{
+						AdditionalTags:   []string{"some-additional-tag"},
+						CacheImageRef:    "some-cache-image-ref",
+						LaunchCacheDir:   launchCacheDir,
+						LayersDir:        "some-layers-dir",
+						OutputImageRef:   "some-output-image-ref",
+						PreviousImageRef: "some-previous-image-ref",
+						RunImageRef:      "some-run-image-ref",
+						SkipLayers:       true,
+					}, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -266,14 +320,14 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
-			cacheDir     string
-			layersDir    string
-			tmpDir       string
-			analyzer     *phase.Analyzer
-			image        *fakes.Image
-			mockCtrl     *gomock.Controller
-			sbomRestorer *testmock.MockSBOMRestorer
-			testCache    phase.Cache
+			cacheDir      string
+			layersDir     string
+			tmpDir        string
+			analyzer      *phase.Analyzer
+			previousImage *fakes.Image
+			mockCtrl      *gomock.Controller
+			sbomRestorer  *testmock.MockSBOMRestorer
+			testCache     phase.Cache
 		)
 
 		it.Before(func() {
@@ -291,7 +345,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 			testCache, err = cache.NewVolumeCache(cacheDir)
 			h.AssertNil(t, err)
 
-			image = fakes.NewImage("image-repo-name", "", local.IDIdentifier{
+			previousImage = fakes.NewImage("image-repo-name", "", local.IDIdentifier{
 				ImageID: "s0m3D1g3sT",
 			})
 
@@ -303,7 +357,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 			h.AssertNil(t, err)
 			analyzer = &phase.Analyzer{
-				PreviousImage: image,
+				PreviousImage: previousImage,
 				Logger:        &discardLogger,
 				SBOMRestorer:  sbomRestorer,
 				PlatformAPI:   api.MustParse(platformAPI),
@@ -319,7 +373,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 			h.AssertNil(t, os.RemoveAll(layersDir))
 			h.AssertNil(t, os.RemoveAll(cacheDir))
-			h.AssertNil(t, image.Cleanup())
+			h.AssertNil(t, previousImage.Cleanup())
 			mockCtrl.Finish()
 		})
 
@@ -338,7 +392,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 			when("previous image exists", func() {
 				it.Before(func() {
 					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "app_metadata.json"))
-					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
+					h.AssertNil(t, previousImage.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
 					h.AssertNil(t, json.Unmarshal(metadata, &expectedAppMetadata))
 				})
 
@@ -369,7 +423,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 			when("previous image not found", func() {
 				it.Before(func() {
-					h.AssertNil(t, image.Delete())
+					h.AssertNil(t, previousImage.Delete())
 				})
 
 				it("returns a nil image in the analyzed metadata", func() {
@@ -383,7 +437,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 			when("previous image does not have metadata label", func() {
 				it.Before(func() {
-					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
+					h.AssertNil(t, previousImage.SetLabel("io.buildpacks.lifecycle.metadata", ""))
 				})
 
 				it("returns empty analyzed metadata", func() {
@@ -395,7 +449,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 			when("previous image has incompatible metadata", func() {
 				it.Before(func() {
-					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
+					h.AssertNil(t, previousImage.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
 				})
 
 				it("returns empty analyzed metadata", func() {
@@ -408,12 +462,12 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 			when("previous image has an SBOM layer digest in the analyzed metadata", func() {
 				it.Before(func() {
 					metadata := fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, "some-digest")
-					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", metadata))
+					h.AssertNil(t, previousImage.SetLabel("io.buildpacks.lifecycle.metadata", metadata))
 					h.AssertNil(t, json.Unmarshal([]byte(metadata), &expectedAppMetadata))
 				})
 
 				it("calls the SBOM restorer with the SBOM layer digest", func() {
-					sbomRestorer.EXPECT().RestoreFromPrevious(image, "some-digest")
+					sbomRestorer.EXPECT().RestoreFromPrevious(previousImage, "some-digest")
 					_, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 				})
@@ -421,7 +475,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 			when("run image is provided", func() {
 				it.Before(func() {
-					analyzer.RunImage = image
+					analyzer.RunImage = previousImage
 				})
 
 				it("returns the run image digest in the analyzed metadata", func() {
@@ -431,13 +485,13 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					h.AssertEq(t, md.RunImage.Reference, "s0m3D1g3sT")
 				})
 				it("populates target metadata from the run image", func() {
-					h.AssertNil(t, image.SetLabel("io.buildpacks.base.id", "id software"))
-					h.AssertNil(t, image.SetOS("windows"))
-					h.AssertNil(t, image.SetOSVersion("95"))
-					h.AssertNil(t, image.SetArchitecture("Pentium"))
-					h.AssertNil(t, image.SetVariant("MMX"))
-					h.AssertNil(t, image.SetLabel("io.buildpacks.distro.name", "moobuntu"))
-					h.AssertNil(t, image.SetLabel("io.buildpacks.distro.version", "Helpful Holstein"))
+					h.AssertNil(t, previousImage.SetLabel("io.buildpacks.base.id", "id software"))
+					h.AssertNil(t, previousImage.SetOS("windows"))
+					h.AssertNil(t, previousImage.SetOSVersion("95"))
+					h.AssertNil(t, previousImage.SetArchitecture("Pentium"))
+					h.AssertNil(t, previousImage.SetVariant("MMX"))
+					h.AssertNil(t, previousImage.SetLabel("io.buildpacks.distro.name", "moobuntu"))
+					h.AssertNil(t, previousImage.SetLabel("io.buildpacks.distro.version", "Helpful Holstein"))
 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
