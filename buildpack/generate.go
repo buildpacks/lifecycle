@@ -34,7 +34,12 @@ type GenerateOutputs struct {
 	MetRequires []string
 }
 
-//go:generate mockgen -package testmock -destination ../testmock/generate_executor.go github.com/buildpacks/lifecycle/buildpack GenerateExecutor
+// GenerateExecutor executes a single image extension's `./bin/generate` binary,
+// providing inputs as defined in the Buildpack Interface Specification,
+// and processing outputs for the platform.
+// Pre-populated outputs for image extensions that are missing `./bin/generate` are processed here.
+//
+//go:generate mockgen -package testmock -destination ../phase/testmock/generate_executor.go github.com/buildpacks/lifecycle/buildpack GenerateExecutor
 type GenerateExecutor interface {
 	Generate(d ExtDescriptor, inputs GenerateInputs, logger log.Logger) (GenerateOutputs, error)
 }

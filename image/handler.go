@@ -7,6 +7,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 )
 
+// Handler wraps initialization of an [imgutil] image.
+//
+// [imgutil]: github.com/buildpacks/imgutil
+//
+//go:generate mockgen -package testmock -destination ../phase/testmock/image_handler.go github.com/buildpacks/lifecycle/image Handler
 type Handler interface {
 	InitImage(imageRef string) (imgutil.Image, error)
 	Kind() string

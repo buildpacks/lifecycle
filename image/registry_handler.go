@@ -10,7 +10,7 @@ import (
 
 // RegistryHandler takes care of the registry settings and checks
 //
-//go:generate mockgen -package testmock -destination testmock/registry_handler.go github.com/buildpacks/lifecycle RegistryHandler
+//go:generate mockgen -package testmock -destination ../phase/testmock/registry_handler.go github.com/buildpacks/lifecycle/image RegistryHandler
 type RegistryHandler interface {
 	EnsureReadAccess(imageRefs ...string) error
 	EnsureWriteAccess(imageRefs ...string) error

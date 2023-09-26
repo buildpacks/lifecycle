@@ -3,11 +3,11 @@ package main
 import (
 	"errors"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
@@ -60,10 +60,10 @@ func (d *detectCmd) Privileges() error {
 
 func (d *detectCmd) Exec() error {
 	dirStore := platform.NewDirStore(d.BuildpacksDir, d.ExtensionsDir)
-	detectorFactory := lifecycle.NewDetectorFactory(
+	detectorFactory := phase.NewDetectorFactory(
 		d.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
-		lifecycle.NewConfigHandler(),
+		phase.NewConfigHandler(),
 		dirStore,
 	)
 	amd, err := files.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
@@ -91,12 +91,12 @@ func (d *detectCmd) Exec() error {
 		return err // pass through error
 	}
 	if group.HasExtensions() {
-		generatorFactory := lifecycle.NewGeneratorFactory(
+		generatorFactory := phase.NewGeneratorFactory(
 			&cmd.BuildpackAPIVerifier{},
-			lifecycle.Config,
+			phase.Config,
 			dirStore,
 		)
-		var generator *lifecycle.Generator
+		var generator *phase.Generator
 		generator, err = generatorFactory.NewGenerator(
 			d.AnalyzedPath,
 			d.AppDir,
@@ -113,7 +113,7 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize generator")
 		}
-		var result lifecycle.GenerateResult
+		var result phase.GenerateResult
 		result, err = generator.Generate()
 		if err != nil {
 			return d.unwrapGenerateFail(err)
@@ -147,7 +147,7 @@ func (d *detectCmd) unwrapGenerateFail(err error) error {
 	return cmd.FailErrCode(err, d.CodeFor(platform.GenerateError), "build")
 }
 
-func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Group, files.Plan, error) {
+func doDetect(detector *phase.Detector, p *platform.Platform) (buildpack.Group, files.Plan, error) {
 	group, plan, err := detector.Detect()
 	if err != nil {
 		switch err := err.(type) {

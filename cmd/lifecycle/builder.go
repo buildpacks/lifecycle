@@ -5,12 +5,12 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
@@ -74,7 +74,7 @@ func (b *buildCmd) Exec() error {
 }
 
 func (b *buildCmd) build(group buildpack.Group, plan files.Plan, analyzedMD files.Analyzed) error {
-	builder := &lifecycle.Builder{
+	builder := &phase.Builder{
 		AppDir:         b.AppDir,
 		BuildConfigDir: b.BuildConfigDir,
 		LayersDir:      b.LayersDir,
@@ -109,7 +109,7 @@ func (b *buildCmd) unwrapBuildFail(err error) error {
 }
 
 func (b *buildCmd) readData() (buildpack.Group, files.Plan, error) {
-	group, err := lifecycle.ReadGroup(b.GroupPath)
+	group, err := phase.ReadGroup(b.GroupPath)
 	if err != nil {
 		return buildpack.Group{}, files.Plan{}, cmd.FailErr(err, "read buildpack group")
 	}

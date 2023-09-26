@@ -7,7 +7,7 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 )
 
-//go:generate mockgen -package testmockcache -destination ../testmock/cache/image_deleter.go github.com/buildpacks/lifecycle/cache ImageDeleter
+//go:generate mockgen -package testmockcache -destination ../phase/testmock/cache/image_deleter.go github.com/buildpacks/lifecycle/cache ImageDeleter
 
 // ImageDeleter defines the methods available to delete and compare cached images
 type ImageDeleter interface {

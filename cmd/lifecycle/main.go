@@ -8,11 +8,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -91,9 +91,9 @@ func NewCacheHandler(keychain authn.Keychain) *DefaultCacheHandler {
 }
 
 // InitCache is a factory used to create either a NewImageCache or a NewVolumeCache
-func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, deletionEnabled bool) (lifecycle.Cache, error) {
+func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, deletionEnabled bool) (phase.Cache, error) {
 	var (
-		cacheStore lifecycle.Cache
+		cacheStore phase.Cache
 		err        error
 	)
 	if cacheImageRef != "" {
@@ -113,9 +113,9 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, 
 
 // helpers
 
-func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain, deletionEnabled bool) (lifecycle.Cache, error) {
+func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain, deletionEnabled bool) (phase.Cache, error) {
 	var (
-		cacheStore lifecycle.Cache
+		cacheStore phase.Cache
 		err        error
 	)
 	if cacheImageTag != "" {

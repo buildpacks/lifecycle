@@ -5,19 +5,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/platform/files"
-
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -124,11 +123,11 @@ func (c *createCmd) Exec() error {
 		plan       files.Plan
 	)
 	cmd.DefaultLogger.Phase("ANALYZING")
-	analyzerFactory := lifecycle.NewAnalyzerFactory(
+	analyzerFactory := phase.NewAnalyzerFactory(
 		c.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(c.keychain),
-		lifecycle.NewConfigHandler(),
+		phase.NewConfigHandler(),
 		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistries),
 		image.NewRegistryHandler(c.keychain, c.InsecureRegistries),
 	)
@@ -143,10 +142,10 @@ func (c *createCmd) Exec() error {
 
 	// Detect
 	cmd.DefaultLogger.Phase("DETECTING")
-	detectorFactory := lifecycle.NewDetectorFactory(
+	detectorFactory := phase.NewDetectorFactory(
 		c.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
-		lifecycle.NewConfigHandler(),
+		phase.NewConfigHandler(),
 		dirStore,
 	)
 	detector, err := detectorFactory.NewDetector(analyzedMD, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)

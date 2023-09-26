@@ -14,7 +14,12 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
-//go:generate mockgen -package testmock -destination ../../testmock/metadata_restorer.go github.com/buildpacks/lifecycle/internal/layer MetadataRestorer
+// MetadataRestorer given a group of buildpacks and metadata from the previous image and cache,
+// will create `<layers>/<buildpack-id>/<layer>.toml` files containing `metadata` that the buildpack previously wrote.
+// Note that layer `types` information is not persisted, as the buildpack must opt in to layer re-use
+// by editing the provided `<layer>.toml` to configure the desired layer type.
+//
+//go:generate mockgen -package testmock -destination ../../phase/testmock/metadata_restorer.go github.com/buildpacks/lifecycle/internal/layer MetadataRestorer
 type MetadataRestorer interface {
 	Restore(buildpacks []buildpack.GroupElement, appMeta files.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore SHAStore) error
 }

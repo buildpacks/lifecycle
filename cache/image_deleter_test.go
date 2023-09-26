@@ -13,8 +13,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/log"
+	cacheMock "github.com/buildpacks/lifecycle/phase/testmock/cache"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-	cacheMock "github.com/buildpacks/lifecycle/testmock/cache"
 )
 
 func TestImageDeleter(t *testing.T) {

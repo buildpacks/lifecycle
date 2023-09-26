@@ -24,11 +24,11 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	llog "github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/phase/testmock"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-	"github.com/buildpacks/lifecycle/testmock"
 )
 
-//go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
+//go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle/phase BuildEnv
 
 func TestBuild(t *testing.T) {
 	spec.Run(t, "unit-build", testBuild, spec.Report(report.Terminal{}))

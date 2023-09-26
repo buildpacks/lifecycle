@@ -13,7 +13,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -21,6 +20,7 @@ import (
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
@@ -149,7 +149,7 @@ func (r *restoreCmd) Exec() error {
 		cmd.DefaultLogger.Warnf("Not using analyzed data, usable file not found: %s", err)
 	}
 
-	group, err := lifecycle.ReadGroup(r.GroupPath)
+	group, err := phase.ReadGroup(r.GroupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
@@ -263,8 +263,8 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 	return remoteImage, nil
 }
 
-func (r *restoreCmd) restore(layerMetadata files.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
-	restorer := &lifecycle.Restorer{
+func (r *restoreCmd) restore(layerMetadata files.LayersMetadata, group buildpack.Group, cacheStore phase.Cache) error {
+	restorer := &phase.Restorer{
 		LayersDir:             r.LayersDir,
 		Buildpacks:            group.Group,
 		Logger:                cmd.DefaultLogger,

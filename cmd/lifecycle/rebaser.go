@@ -11,12 +11,12 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
@@ -128,7 +128,7 @@ func (r *rebaseCmd) Exec() error {
 		return cmd.FailErr(err, "access run image")
 	}
 
-	rebaser := &lifecycle.Rebaser{
+	rebaser := &phase.Rebaser{
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: r.PlatformAPI,
 		Force:       r.ForceRebase,
