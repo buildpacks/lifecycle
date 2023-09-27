@@ -58,7 +58,7 @@ func (e *extendCmd) Exec() error {
 		return err
 	}
 	extender, err := extenderFactory.NewExtender(
-		*e.LifecycleInputs,
+		e.Inputs(),
 		applier,
 		cmd.DefaultLogger,
 	)

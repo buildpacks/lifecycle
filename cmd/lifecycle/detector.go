@@ -66,7 +66,7 @@ func (d *detectCmd) Exec() error {
 		dirStore,
 	)
 	detector, err := detectorFactory.NewDetector(
-		*d.LifecycleInputs,
+		d.Inputs(),
 		cmd.DefaultLogger,
 	)
 	if err != nil {
@@ -90,7 +90,7 @@ func (d *detectCmd) Exec() error {
 		)
 		var generator *phase.Generator
 		generator, err = generatorFactory.NewGenerator(
-			*d.LifecycleInputs,
+			d.Inputs(),
 			cmd.Stdout, cmd.Stderr,
 			cmd.DefaultLogger,
 		)

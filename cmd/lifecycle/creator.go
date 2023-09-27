@@ -131,7 +131,7 @@ func (c *createCmd) Exec() error {
 		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistries),
 		image.NewRegistryHandler(c.keychain, c.InsecureRegistries),
 	)
-	analyzer, err := analyzerFactory.NewAnalyzer(*c.LifecycleInputs, cmd.DefaultLogger)
+	analyzer, err := analyzerFactory.NewAnalyzer(c.Inputs(), cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize analyzer")
 	}
@@ -151,7 +151,7 @@ func (c *createCmd) Exec() error {
 		phase.NewConfigHandler(),
 		dirStore,
 	)
-	detector, err := detectorFactory.NewDetector(*c.LifecycleInputs, cmd.DefaultLogger)
+	detector, err := detectorFactory.NewDetector(c.Inputs(), cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}

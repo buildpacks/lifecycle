@@ -205,7 +205,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 		return err
 	}
 
-	runImageForExport, err := platform.GetRunImageForExport(*e.LifecycleInputs)
+	runImageForExport, err := platform.GetRunImageForExport(e.Inputs())
 	if err != nil {
 		return err
 	}

@@ -103,7 +103,7 @@ func (a *analyzeCmd) Exec() error {
 		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout, a.InsecureRegistries),
 		image.NewRegistryHandler(a.keychain, a.InsecureRegistries),
 	)
-	analyzer, err := factory.NewAnalyzer(*a.LifecycleInputs, cmd.DefaultLogger)
+	analyzer, err := factory.NewAnalyzer(a.Inputs(), cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize analyzer")
 	}
