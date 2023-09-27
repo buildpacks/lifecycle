@@ -6,7 +6,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
@@ -60,22 +59,14 @@ func (d *detectCmd) Privileges() error {
 
 func (d *detectCmd) Exec() error {
 	dirStore := platform.NewDirStore(d.BuildpacksDir, d.ExtensionsDir)
-	detectorFactory := phase.NewDetectorFactory(
+	detectorFactory := phase.NewHermeticFactory(
 		d.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		phase.NewConfigHandler(),
 		dirStore,
 	)
-	amd, err := files.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
-	if err != nil {
-		return unwrapErrorFailWithMessage(err, "reading analyzed.toml")
-	}
 	detector, err := detectorFactory.NewDetector(
-		amd,
-		d.AppDir,
-		d.BuildConfigDir,
-		d.OrderPath,
-		d.PlatformDir,
+		d.Inputs(),
 		cmd.DefaultLogger,
 	)
 	if err != nil {
@@ -86,27 +77,20 @@ func (d *detectCmd) Exec() error {
 			return err
 		}
 	}
-	group, plan, err := doDetect(detector, d.Platform)
+	group, _, err := doDetect(detector, d.Platform)
 	if err != nil {
 		return err // pass through error
 	}
 	if group.HasExtensions() {
-		generatorFactory := phase.NewGeneratorFactory(
+		generatorFactory := phase.NewHermeticFactory(
+			d.PlatformAPI,
 			&cmd.BuildpackAPIVerifier{},
 			phase.Config,
 			dirStore,
 		)
 		var generator *phase.Generator
 		generator, err = generatorFactory.NewGenerator(
-			d.AnalyzedPath,
-			d.AppDir,
-			d.BuildConfigDir,
-			group.GroupExtensions,
-			d.GeneratedDir,
-			plan,
-			d.PlatformAPI,
-			d.PlatformDir,
-			d.RunPath,
+			d.Inputs(),
 			cmd.Stdout, cmd.Stderr,
 			cmd.DefaultLogger,
 		)
@@ -118,16 +102,14 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-
-		if err = d.writeGenerateData(result.AnalyzedMD); err != nil {
+		if err := phase.Config.WriteAnalyzed(d.AnalyzedPath, &result.AnalyzedMD, cmd.DefaultLogger); err != nil {
 			return err
 		}
-		// was the build plan updated?
-		if result.UsePlan {
-			plan = result.Plan
+		if err := phase.Config.WritePlan(d.PlanPath, &result.Plan); err != nil {
+			return err
 		}
 	}
-	return d.writeDetectData(group, plan)
+	return nil
 }
 
 func unwrapErrorFailWithMessage(err error, msg string) error {
@@ -167,25 +149,11 @@ func doDetect(detector *phase.Detector, p *platform.Platform) (buildpack.Group, 
 			return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
 		}
 	}
+	if err := phase.Config.WriteGroup(p.GroupPath, &group); err != nil {
+		return buildpack.Group{}, files.Plan{}, err
+	}
+	if err := phase.Config.WritePlan(p.PlanPath, &plan); err != nil {
+		return buildpack.Group{}, files.Plan{}, err
+	}
 	return group, plan, nil
-}
-
-func (d *detectCmd) writeDetectData(group buildpack.Group, plan files.Plan) error {
-	if err := encoding.WriteTOML(d.GroupPath, group); err != nil {
-		return cmd.FailErr(err, "write buildpack group")
-	}
-	if err := encoding.WriteTOML(d.PlanPath, plan); err != nil {
-		return cmd.FailErr(err, "write detect plan")
-	}
-	return nil
-}
-
-// writeGenerateData re-outputs the analyzedMD that we read previously, but now we've added the RunImage, if a custom runImage was configured
-func (d *detectCmd) writeGenerateData(analyzedMD files.Analyzed) error {
-	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata is: ")
-	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
-	if err := encoding.WriteTOML(d.AnalyzedPath, analyzedMD); err != nil {
-		return cmd.FailErr(err, "write analyzed metadata")
-	}
-	return nil
 }

@@ -5,7 +5,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/internal/layer"
@@ -14,33 +13,8 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
-type AnalyzerFactory struct {
-	platformAPI     *api.Version
-	apiVerifier     BuildpackAPIVerifier
-	cacheHandler    CacheHandler
-	configHandler   ConfigHandler
-	imageHandler    image.Handler
-	registryHandler image.RegistryHandler
-}
-
-func NewAnalyzerFactory(
-	platformAPI *api.Version,
-	apiVerifier BuildpackAPIVerifier,
-	cacheHandler CacheHandler,
-	configHandler ConfigHandler,
-	imageHandler image.Handler,
-	registryHandler image.RegistryHandler,
-) *AnalyzerFactory {
-	return &AnalyzerFactory{
-		platformAPI:     platformAPI,
-		apiVerifier:     apiVerifier,
-		cacheHandler:    cacheHandler,
-		configHandler:   configHandler,
-		imageHandler:    imageHandler,
-		registryHandler: registryHandler,
-	}
-}
-
+// Analyzer reads metadata from the previous image (if it exists) and the run image,
+// and additionally restores the SBOM layer from the previous image for use later in the build.
 type Analyzer struct {
 	PreviousImage imgutil.Image
 	RunImage      imgutil.Image
@@ -50,88 +24,32 @@ type Analyzer struct {
 }
 
 // NewAnalyzer configures a new Analyzer according to the provided Platform API version.
-func (f *AnalyzerFactory) NewAnalyzer(additionalTags []string, cacheImageRef string, launchCacheDir string, layersDir string, outputImageRef string, previousImageRef string, runImageRef string, skipLayers bool, logger log.Logger) (*Analyzer, error) {
+func (f *ConnectedFactory) NewAnalyzer(inputs platform.LifecycleInputs, logger log.Logger) (*Analyzer, error) {
 	analyzer := &Analyzer{
 		Logger:       logger,
 		SBOMRestorer: &layer.NopSBOMRestorer{},
 		PlatformAPI:  f.platformAPI,
 	}
 
-	if err := f.ensureRegistryAccess(additionalTags, cacheImageRef, outputImageRef, runImageRef, previousImageRef); err != nil {
+	if err := f.ensureRegistryAccess(inputs); err != nil {
 		return nil, err
 	}
 
-	if f.platformAPI.AtLeast("0.8") && !skipLayers {
-		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{ // FIXME: eventually layer.NewSBOMRestorer should always return the default one, and then we can use the constructor
-			LayersDir: layersDir,
+	if f.platformAPI.AtLeast("0.8") && !inputs.SkipLayers {
+		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{
+			LayersDir: inputs.LayersDir,
 			Logger:    logger,
 		}
 	}
 
-	if err := f.setPrevious(analyzer, previousImageRef, launchCacheDir); err != nil {
+	var err error
+	if analyzer.PreviousImage, err = f.getPreviousImage(inputs.PreviousImageRef, inputs.LaunchCacheDir); err != nil {
 		return nil, err
 	}
-	if err := f.setRun(analyzer, runImageRef); err != nil {
+	if analyzer.RunImage, err = f.getRunImage(inputs.RunImageRef); err != nil {
 		return nil, err
 	}
 	return analyzer, nil
-}
-
-func (f *AnalyzerFactory) ensureRegistryAccess(
-	additionalTags []string,
-	cacheImageRef string,
-	outputImageRef string,
-	runImageRef string,
-	previousImageRef string,
-) error {
-	var readImages, writeImages []string
-	writeImages = append(writeImages, cacheImageRef)
-	if f.imageHandler.Kind() == image.RemoteKind {
-		readImages = append(readImages, previousImageRef, runImageRef)
-		writeImages = append(writeImages, outputImageRef)
-		writeImages = append(writeImages, additionalTags...)
-	}
-
-	if err := f.registryHandler.EnsureReadAccess(readImages...); err != nil {
-		return errors.Wrap(err, "validating registry read access")
-	}
-	if err := f.registryHandler.EnsureWriteAccess(writeImages...); err != nil {
-		return errors.Wrap(err, "validating registry write access")
-	}
-	return nil
-}
-
-func (f *AnalyzerFactory) setPrevious(analyzer *Analyzer, imageRef string, launchCacheDir string) error {
-	if imageRef == "" {
-		return nil
-	}
-	var err error
-	analyzer.PreviousImage, err = f.imageHandler.InitImage(imageRef)
-	if err != nil {
-		return errors.Wrap(err, "getting previous image")
-	}
-	if launchCacheDir == "" || f.imageHandler.Kind() != image.LocalKind {
-		return nil
-	}
-
-	volumeCache, err := cache.NewVolumeCache(launchCacheDir)
-	if err != nil {
-		return errors.Wrap(err, "creating launch cache")
-	}
-	analyzer.PreviousImage = cache.NewCachingImage(analyzer.PreviousImage, volumeCache)
-	return nil
-}
-
-func (f *AnalyzerFactory) setRun(analyzer *Analyzer, imageRef string) error {
-	if imageRef == "" {
-		return nil
-	}
-	var err error
-	analyzer.RunImage, err = f.imageHandler.InitImage(imageRef)
-	if err != nil {
-		return errors.Wrap(err, "getting run image")
-	}
-	return nil
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.

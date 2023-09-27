@@ -21,6 +21,7 @@ import (
 	llog "github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/phase/testmock"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -35,7 +36,7 @@ func TestGenerator(t *testing.T) {
 func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#NewGenerator", func() {
 		var (
-			generatorFactory  *phase.GeneratorFactory
+			generatorFactory  *phase.HermeticFactory
 			fakeAPIVerifier   *testmock.MockBuildpackAPIVerifier
 			fakeConfigHandler *testmock.MockConfigHandler
 			fakeDirStore      *testmock.MockDirStore
@@ -51,7 +52,8 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeDirStore = testmock.NewMockDirStore(mockController)
 			logger = &log.Logger{Handler: &discard.Handler{}}
 
-			generatorFactory = phase.NewGeneratorFactory(
+			generatorFactory = phase.NewHermeticFactory(
+				api.Platform.Latest(),
 				fakeAPIVerifier,
 				fakeConfigHandler,
 				fakeDirStore,
@@ -66,7 +68,10 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger)
 			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path", logger).Return(files.Analyzed{RunImage: &files.RunImage{Reference: "some-run-image-ref"}}, nil)
 			fakeConfigHandler.EXPECT().ReadRun("some-run-path", logger).Return(files.Run{Images: []files.RunImageForExport{{Image: "some-run-image"}}}, nil)
-
+			providedExtensions := []buildpack.GroupElement{
+				{ID: "A", Version: "v1", API: "0.9"},
+			}
+			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return([]buildpack.GroupElement{}, providedExtensions, nil)
 			providedPlan := files.Plan{Entries: []files.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupElement{
@@ -77,20 +82,19 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}}
-			generator, err := generatorFactory.NewGenerator(
-				"some-analyzed-path",
-				"some-app-dir",
-				"some-build-config-dir",
-				[]buildpack.GroupElement{
-					{ID: "A", Version: "v1", API: "0.9"},
-				},
-				"some-output-dir",
-				providedPlan,
-				api.Platform.Latest(),
-				"some-platform-dir",
-				"some-run-path",
-				stdout, stderr,
-				logger,
+			fakeConfigHandler.EXPECT().ReadPlan("some-plan-path").Return(providedPlan, nil)
+
+			generator, err := generatorFactory.NewGenerator(platform.LifecycleInputs{
+				AnalyzedPath:   "some-analyzed-path",
+				AppDir:         "some-app-dir",
+				BuildConfigDir: "some-build-config-dir",
+				GroupPath:      "some-group-path",
+				GeneratedDir:   "some-output-dir",
+				PlanPath:       "some-plan-path",
+				PlatformAPI:    api.Platform.Latest(),
+				PlatformDir:    "some-platform-dir",
+				RunPath:        "some-run-path",
+			}, stdout, stderr, logger,
 			)
 			h.AssertNil(t, err)
 
@@ -98,7 +102,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, generator.AppDir, "some-app-dir")
 			h.AssertNotNil(t, generator.DirStore)
 			h.AssertEq(t, generator.Extensions, []buildpack.GroupElement{
-				{ID: "A", Version: "v1", API: "0.9"},
+				{ID: "A", Version: "v1", API: "0.9", Extension: true},
 			})
 			h.AssertEq(t, generator.GeneratedDir, "some-output-dir")
 			h.AssertEq(t, generator.Logger, logger)

@@ -52,22 +52,14 @@ func (e *extendCmd) Privileges() error {
 }
 
 func (e *extendCmd) Exec() error {
-	extenderFactory := phase.NewExtenderFactory(&cmd.BuildpackAPIVerifier{}, phase.NewConfigHandler())
+	extenderFactory := phase.NewHermeticFactory(e.PlatformAPI, &cmd.BuildpackAPIVerifier{}, phase.NewConfigHandler(), platform.NewDirStore("", ""))
 	applier, err := kaniko.NewDockerfileApplier()
 	if err != nil {
 		return err
 	}
 	extender, err := extenderFactory.NewExtender(
-		e.AnalyzedPath,
-		e.AppDir,
-		e.ExtendedDir,
-		e.GeneratedDir,
-		e.GroupPath,
-		e.LayersDir,
-		e.PlatformDir,
-		e.KanikoCacheTTL,
+		e.Inputs(),
 		applier,
-		e.ExtendKind,
 		cmd.DefaultLogger,
 	)
 	if err != nil {

@@ -38,27 +38,6 @@ type DetectResolver interface {
 	Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []files.BuildPlanEntry, error)
 }
 
-type DetectorFactory struct {
-	platformAPI   *api.Version
-	apiVerifier   BuildpackAPIVerifier
-	configHandler ConfigHandler
-	dirStore      DirStore
-}
-
-func NewDetectorFactory(
-	platformAPI *api.Version,
-	apiVerifier BuildpackAPIVerifier,
-	configHandler ConfigHandler,
-	dirStore DirStore,
-) *DetectorFactory {
-	return &DetectorFactory{
-		platformAPI:   platformAPI,
-		apiVerifier:   apiVerifier,
-		configHandler: configHandler,
-		dirStore:      dirStore,
-	}
-}
-
 type Detector struct {
 	AppDir         string
 	BuildConfigDir string
@@ -79,55 +58,29 @@ type Detector struct {
 	memHandler *memory.Handler
 }
 
-func (f *DetectorFactory) NewDetector(analyzedMD files.Analyzed, appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
+// NewDetector constructs a new Detector by initializing services and reading the provided analyzed and order files.
+func (f *HermeticFactory) NewDetector(inputs platform.LifecycleInputs, logger log.LoggerHandlerWithLevel) (*Detector, error) {
 	memHandler := memory.New()
 	detector := &Detector{
-		AnalyzeMD:      analyzedMD,
-		AppDir:         appDir,
-		BuildConfigDir: buildConfigDir,
+		AppDir:         inputs.AppDir,
+		BuildConfigDir: inputs.BuildConfigDir,
 		DirStore:       f.dirStore,
 		Executor:       &buildpack.DefaultDetectExecutor{},
 		Logger:         logger,
-		PlatformDir:    platformDir,
+		PlatformDir:    inputs.PlatformDir,
 		Resolver:       NewDefaultDetectResolver(&apexlog.Logger{Handler: memHandler}),
 		Runs:           &sync.Map{},
 		memHandler:     memHandler,
 		PlatformAPI:    f.platformAPI,
 	}
-	if err := f.setOrder(detector, orderPath, logger); err != nil {
+	var err error
+	if detector.AnalyzeMD, err = f.configHandler.ReadAnalyzed(inputs.AnalyzedPath, logger); err != nil {
+		return nil, err
+	}
+	if detector.Order, detector.HasExtensions, err = f.getOrder(inputs.OrderPath, logger); err != nil {
 		return nil, err
 	}
 	return detector, nil
-}
-
-func (f *DetectorFactory) setOrder(detector *Detector, path string, logger log.Logger) error {
-	orderBp, orderExt, err := f.configHandler.ReadOrder(path)
-	if err != nil {
-		return errors.Wrap(err, "reading order")
-	}
-	if len(orderExt) > 0 {
-		detector.HasExtensions = true
-	}
-	if err = f.verifyAPIs(orderBp, orderExt, logger); err != nil {
-		return err
-	}
-	detector.Order = PrependExtensions(orderBp, orderExt)
-	return nil
-}
-
-func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack.Order, logger log.Logger) error {
-	for _, group := range append(orderBp, orderExt...) {
-		for _, groupEl := range group.Group {
-			module, err := f.dirStore.Lookup(groupEl.Kind(), groupEl.ID, groupEl.Version)
-			if err != nil {
-				return err
-			}
-			if err = f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), module.API(), logger); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func (d *Detector) Detect() (buildpack.Group, files.Plan, error) {

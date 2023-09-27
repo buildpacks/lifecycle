@@ -24,6 +24,7 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Extender struct {
@@ -49,89 +50,40 @@ type DockerfileApplier interface {
 	Cleanup() error
 }
 
-type ExtenderFactory struct {
-	apiVerifier   BuildpackAPIVerifier
-	configHandler ConfigHandler
-}
-
-func NewExtenderFactory(apiVerifier BuildpackAPIVerifier, configHandler ConfigHandler) *ExtenderFactory {
-	return &ExtenderFactory{
-		apiVerifier:   apiVerifier,
-		configHandler: configHandler,
-	}
-}
-
-func (f *ExtenderFactory) NewExtender(
-	analyzedPath string,
-	appDir string,
-	extendedDir string,
-	generatedDir string,
-	groupPath string,
-	layersDir string,
-	platformDir string,
-	cacheTTL time.Duration,
-	dockerfileApplier DockerfileApplier,
-	kind string,
-	logger log.Logger,
-) (*Extender, error) {
+// NewExtender constructs a new Extender by initializing services and reading the provided analyzed and group files
+// to determine the image to extend and the extensions to use.
+func (f *HermeticFactory) NewExtender(inputs platform.LifecycleInputs, dockerfileApplier DockerfileApplier, logger log.Logger) (*Extender, error) {
 	extender := &Extender{
-		AppDir:            appDir,
-		ExtendedDir:       extendedDir,
-		GeneratedDir:      generatedDir,
-		LayersDir:         layersDir,
-		PlatformDir:       platformDir,
-		CacheTTL:          cacheTTL,
+		AppDir:            inputs.AppDir,
+		ExtendedDir:       inputs.ExtendedDir,
+		GeneratedDir:      inputs.GeneratedDir,
+		LayersDir:         inputs.LayersDir,
+		PlatformDir:       inputs.PlatformDir,
+		CacheTTL:          inputs.KanikoCacheTTL,
 		DockerfileApplier: dockerfileApplier,
 	}
-	if err := f.setImageRef(extender, kind, analyzedPath, logger); err != nil {
+	var err error
+	if extender.ImageRef, err = f.getExtendImageRef(inputs, logger); err != nil {
 		return nil, err
 	}
-	if err := f.setExtensions(extender, groupPath, logger); err != nil {
+	if extender.Extensions, err = f.getExtensions(inputs.GroupPath, logger); err != nil {
 		return nil, err
 	}
 	return extender, nil
 }
 
-func (f *ExtenderFactory) setImageRef(extender *Extender, kind, path string, logr log.Logger) error {
-	analyzedMD, err := f.configHandler.ReadAnalyzed(path, logr)
+func (f *HermeticFactory) getExtendImageRef(inputs platform.LifecycleInputs, logger log.Logger) (string, error) {
+	analyzedMD, err := f.configHandler.ReadAnalyzed(inputs.AnalyzedPath, logger)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if kind == "build" {
-		if analyzedMD.BuildImage != nil {
-			extender.ImageRef = analyzedMD.BuildImage.Reference
-		}
-	} else if kind == "run" {
-		if analyzedMD.RunImage != nil {
-			extender.ImageRef = analyzedMD.RunImage.Reference
-		}
+	if inputs.ExtendKind == "build" && analyzedMD.BuildImage != nil {
+		return analyzedMD.BuildImage.Reference, nil
 	}
-
-	return nil
-}
-
-func (f *ExtenderFactory) setExtensions(extender *Extender, path string, logger log.Logger) error {
-	_, groupExt, err := f.configHandler.ReadGroup(path)
-	if err != nil {
-		return fmt.Errorf("reading group: %w", err)
+	if inputs.ExtendKind == "run" && analyzedMD.RunImage != nil {
+		return analyzedMD.RunImage.Reference, nil
 	}
-	for i := range groupExt {
-		groupExt[i].Extension = true
-	}
-	if err = f.verifyAPIs(groupExt, logger); err != nil {
-		return err
-	}
-	extender.Extensions = groupExt
-	return nil
-}
-
-func (f *ExtenderFactory) verifyAPIs(groupExt []buildpack.GroupElement, logger log.Logger) error {
-	for _, groupEl := range groupExt {
-		if err := f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), groupEl.API, logger); err != nil {
-			return err
-		}
-	}
-	return nil
+	return "", nil
 }
 
 func (e *Extender) Extend(kind string, logger log.Logger) error {

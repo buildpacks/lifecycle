@@ -6,6 +6,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform/files"
 )
@@ -45,6 +46,7 @@ type ConfigHandler interface {
 	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
 	ReadRun(runPath string, logger log.Logger) (files.Run, error)
+	ReadPlan(path string) (files.Plan, error)
 }
 
 type DefaultConfigHandler struct{}
@@ -53,8 +55,19 @@ func NewConfigHandler() *DefaultConfigHandler {
 	return &DefaultConfigHandler{}
 }
 
-func (h *DefaultConfigHandler) ReadAnalyzed(path string, logr log.Logger) (files.Analyzed, error) {
-	return files.ReadAnalyzed(path, logr)
+// ReadAnalyzed reads the provided analyzed.toml file.
+func (h *DefaultConfigHandler) ReadAnalyzed(path string, logger log.Logger) (files.Analyzed, error) {
+	return files.ReadAnalyzed(path, logger)
+}
+
+// WriteAnalyzed writes the provided analyzed metadata to analyzed.toml.
+func (h *DefaultConfigHandler) WriteAnalyzed(path string, analyzedMD *files.Analyzed, logger log.Logger) error {
+	logger.Debugf("Run image info in analyzed metadata is: ")
+	logger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
+	if err := encoding.WriteTOML(path, analyzedMD); err != nil {
+		return fmt.Errorf("failed to write analyzed: %w", err)
+	}
+	return nil
 }
 
 func (h *DefaultConfigHandler) ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error) {
@@ -74,6 +87,31 @@ func ReadGroup(path string) (buildpack.Group, error) {
 		group.GroupExtensions[e].Optional = true
 	}
 	return group, err
+}
+
+// WriteGroup writes the provided group information to group.toml.
+func (h *DefaultConfigHandler) WriteGroup(path string, group *buildpack.Group) error {
+	if err := encoding.WriteTOML(path, group); err != nil {
+		return fmt.Errorf("failed to write group: %w", err)
+	}
+	return nil
+}
+
+// ReadPlan reads the provided plan.toml file.
+func (h *DefaultConfigHandler) ReadPlan(path string) (files.Plan, error) {
+	var plan files.Plan
+	if _, err := toml.DecodeFile(path, &plan); err != nil {
+		return files.Plan{}, err
+	}
+	return plan, nil
+}
+
+// WritePlan writes the provided plan information to plan.toml.
+func (h *DefaultConfigHandler) WritePlan(path string, plan *files.Plan) error {
+	if err := encoding.WriteTOML(path, plan); err != nil {
+		return fmt.Errorf("failed to write plan: %w", err)
+	}
+	return nil
 }
 
 func (h *DefaultConfigHandler) ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {

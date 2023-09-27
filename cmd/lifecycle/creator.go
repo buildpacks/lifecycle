@@ -123,7 +123,7 @@ func (c *createCmd) Exec() error {
 		plan       files.Plan
 	)
 	cmd.DefaultLogger.Phase("ANALYZING")
-	analyzerFactory := phase.NewAnalyzerFactory(
+	analyzerFactory := phase.NewConnectedFactory(
 		c.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(c.keychain),
@@ -131,7 +131,7 @@ func (c *createCmd) Exec() error {
 		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistries),
 		image.NewRegistryHandler(c.keychain, c.InsecureRegistries),
 	)
-	analyzer, err := analyzerFactory.NewAnalyzer(c.AdditionalTags, c.CacheImageRef, c.LaunchCacheDir, c.LayersDir, c.OutputImageRef, c.PreviousImageRef, c.RunImageRef, c.SkipLayers, cmd.DefaultLogger)
+	analyzer, err := analyzerFactory.NewAnalyzer(c.Inputs(), cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize analyzer")
 	}
@@ -139,16 +139,19 @@ func (c *createCmd) Exec() error {
 	if err != nil {
 		return err
 	}
+	if err := phase.Config.WriteAnalyzed(c.AnalyzedPath, &analyzedMD, cmd.DefaultLogger); err != nil {
+		return err
+	}
 
 	// Detect
 	cmd.DefaultLogger.Phase("DETECTING")
-	detectorFactory := phase.NewDetectorFactory(
+	detectorFactory := phase.NewHermeticFactory(
 		c.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		phase.NewConfigHandler(),
 		dirStore,
 	)
-	detector, err := detectorFactory.NewDetector(analyzedMD, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
+	detector, err := detectorFactory.NewDetector(c.Inputs(), cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}
@@ -164,8 +167,7 @@ func (c *createCmd) Exec() error {
 			Platform: c.Platform,
 			keychain: c.keychain,
 		}
-		err := restoreCmd.restore(analyzedMD.LayersMetadata, group, cacheStore)
-		if err != nil {
+		if err := restoreCmd.restore(analyzedMD.LayersMetadata, group, cacheStore); err != nil {
 			return err
 		}
 	}
