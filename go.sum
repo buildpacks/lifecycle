@@ -71,8 +71,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/toml v1.3.2 h1:o7IhLm0Msx3BaB+n3Ag7L8EVlByGnpq14C4YWiu/gL8=
 github.com/BurntSushi/toml v1.3.2/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/GoogleContainerTools/kaniko v1.15.0 h1:W3fbiRJ1S4dNXZo7IXT6Q47Fde+4shnJ+mTCZpTQNBo=
-github.com/GoogleContainerTools/kaniko v1.15.0/go.mod h1:zsbhrd4mL8qdZsO1RRWpNEwBEC0GGSVe2OehQDBK7d0=
+github.com/GoogleContainerTools/kaniko v1.16.0 h1:2Z1kPdbWkgRTfiGv3OE1Tn6BtFwfmh/eI3NMrdpZ58s=
+github.com/GoogleContainerTools/kaniko v1.16.0/go.mod h1:IUtehN2dxFOvcQ1eXpsTOhqd2LE5SrIQOKQt3wJs+CE=
 github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migciow=
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
 github.com/Microsoft/hcsshim v0.11.0 h1:7EFNIY4igHEXUdj1zXgAyU3fLc7QfOKHbkldRVTBdiM=
