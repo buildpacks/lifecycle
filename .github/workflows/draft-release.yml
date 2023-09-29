@@ -154,7 +154,7 @@ jobs:
 
           ## Lifecycle Image
 
-          An OCI image containing the lifecycle binaries is available at index.docker.io/dilipgb6594/lifecycle:${{ env.LIFECYCLE_VERSION }}.
+          An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}.
 
           ## Features
 
