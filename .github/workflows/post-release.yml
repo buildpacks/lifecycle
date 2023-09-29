@@ -63,7 +63,7 @@ jobs:
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-s390x@${{ env.LINUX_S390X_SHA }} \
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows@${{ env.WINDOWS_AMD64_SHA }}
 
-          MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }})
+          MANIFEST_SHA=$(docker manifest push index.docker.io/dilipgb6594/lifecycle:${{ env.LIFECYCLE_VERSION }})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
 
           cosign sign -r -y \
@@ -100,7 +100,7 @@ jobs:
             buildpacksio/lifecycle:latest-linux-s390x@${{ env.LINUX_S390X_SHA }} \
             buildpacksio/lifecycle:latest-windows@${{ env.WINDOWS_AMD64_SHA }}
 
-          MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:latest)
+          MANIFEST_SHA=$(docker manifest push index.docker.io/dilipgb6594/lifecycle:latest)
           echo "MANIFEST_SHA: $MANIFEST_SHA"
 
           cosign sign -r -y \
