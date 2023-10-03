@@ -116,9 +116,10 @@ func (g *Generator) Generate() (GenerateResult, error) {
 			g.Logger.Warnf("new runtime base image '%s' not found in run metadata", generatedRunImageRef)
 		}
 		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", generatedRunImageRef)
-		finalAnalyzedMD.RunImage = &files.RunImage{ // reference and target data are cleared
-			Extend: extend,
-			Image:  generatedRunImageRef,
+		finalAnalyzedMD.RunImage = &files.RunImage{ // target data is cleared
+			Extend:    extend,
+			Reference: generatedRunImageRef,
+			Image:     generatedRunImageRef,
 		}
 	}
 	if extend {

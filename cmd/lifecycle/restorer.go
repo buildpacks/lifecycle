@@ -96,10 +96,16 @@ func (r *restoreCmd) Privileges() error {
 }
 
 func (r *restoreCmd) Exec() error {
-	var (
-		analyzedMD files.Analyzed
-		err        error
-	)
+	group, groupExt, err := phase.Config.ReadGroup(r.GroupPath)
+	if err != nil {
+		return cmd.FailErr(err, "read buildpack group")
+	}
+	if err := verifyBuildpackApis(buildpack.Group{Group: group}); err != nil {
+		return err
+	}
+	groupFile := buildpack.Group{Group: group, GroupExtensions: groupExt}
+
+	var analyzedMD files.Analyzed
 	if analyzedMD, err = files.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
 		if r.supportsBuildImageExtension() && r.BuildImageRef != "" {
 			cmd.DefaultLogger.Debugf("Pulling builder image metadata for %s...", r.BuildImageRef)
@@ -128,17 +134,17 @@ func (r *restoreCmd) Exec() error {
 			// update analyzed metadata, even if we only needed to pull the image metadata, because
 			// the extender needs a digest reference in analyzed.toml,
 			// and daemon images will only have a daemon image ID
-			if err = updateAnalyzedMD(&analyzedMD, runImage); err != nil {
+			if err = r.updateAnalyzedMD(&analyzedMD, runImage); err != nil {
 				return cmd.FailErr(err, "update analyzed metadata")
 			}
-		} else if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
+		} else if r.needsUpdating(analyzedMD.RunImage, groupFile) {
 			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
 			h := image.NewHandler(r.docker, r.keychain, r.LayoutDir, r.UseLayout, r.InsecureRegistries)
 			runImage, err = h.InitImage(runImageName)
 			if err != nil || !runImage.Found() {
-				return cmd.FailErr(err, fmt.Sprintf("pull run image %s", runImageName))
+				return cmd.FailErr(err, fmt.Sprintf("get run image %s", runImageName))
 			}
-			if err = updateAnalyzedMD(&analyzedMD, runImage); err != nil {
+			if err = r.updateAnalyzedMD(&analyzedMD, runImage); err != nil {
 				return cmd.FailErr(err, "update analyzed metadata")
 			}
 		}
@@ -149,30 +155,27 @@ func (r *restoreCmd) Exec() error {
 		cmd.DefaultLogger.Warnf("Not using analyzed data, usable file not found: %s", err)
 	}
 
-	group, err := phase.ReadGroup(r.GroupPath)
-	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
-	}
-	if err := verifyBuildpackApis(group); err != nil {
-		return err
-	}
-
 	cacheStore, err := initCache(r.CacheImageRef, r.CacheDir, r.keychain, r.PlatformAPI.LessThan("0.13"))
 	if err != nil {
 		return err
 	}
-
-	return r.restore(analyzedMD.LayersMetadata, group, cacheStore)
+	return r.restore(analyzedMD.LayersMetadata, groupFile, cacheStore)
 }
 
-func updateAnalyzedMD(analyzedMD *files.Analyzed, remoteRunImage imgutil.Image) error {
-	digestRef, err := remoteRunImage.Identifier()
+func (r *restoreCmd) updateAnalyzedMD(analyzedMD *files.Analyzed, runImage imgutil.Image) error {
+	if r.PlatformAPI.LessThan("0.10") {
+		return nil
+	}
+	digestRef, err := runImage.Identifier()
 	if err != nil {
 		return cmd.FailErr(err, "get digest reference for run image")
 	}
-	targetData, err := platform.GetTargetMetadata(remoteRunImage)
-	if err != nil {
-		return cmd.FailErr(err, "read target data from run image")
+	var targetData *files.TargetMetadata
+	if r.PlatformAPI.AtLeast("0.12") {
+		targetData, err = platform.GetTargetMetadata(runImage)
+		if err != nil {
+			return cmd.FailErr(err, "read target data from run image")
+		}
 	}
 	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata was: ")
 	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
@@ -191,12 +194,18 @@ func needsPulling(runImage *files.RunImage) bool {
 	return runImage.Extend
 }
 
-func needsUpdating(runImage *files.RunImage) bool {
+func (r *restoreCmd) needsUpdating(runImage *files.RunImage, group buildpack.Group) bool {
+	if r.PlatformAPI.LessThan("0.10") {
+		return false
+	}
+	if !group.HasExtensions() {
+		return false
+	}
 	if runImage == nil {
 		// sanity check to prevent panic, should be unreachable
 		return false
 	}
-	if runImage.Reference != "" && isPopulated(runImage.TargetMetadata) {
+	if isPopulated(runImage.TargetMetadata) {
 		return false
 	}
 	return true
