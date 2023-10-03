@@ -103,7 +103,7 @@ func (r *restoreCmd) Exec() error {
 	if err := verifyBuildpackApis(buildpack.Group{Group: group}); err != nil {
 		return err
 	}
-	groupFile := buildpack.Group{Group: groupExt, GroupExtensions: groupExt}
+	groupFile := buildpack.Group{Group: group, GroupExtensions: groupExt}
 
 	var analyzedMD files.Analyzed
 	if analyzedMD, err = files.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
