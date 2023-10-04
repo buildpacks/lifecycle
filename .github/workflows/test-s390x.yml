@@ -16,14 +16,9 @@ jobs:
     env:
       ZVSI_FP_NAME: bp-floating-ci-${{ github.run_id }} 
       ZVSI_INSTANCE_NAME: bp-zvsi-ci-${{ github.run_id }} 
-      ZVSI_VPC: r038-b86410fb-6889-4094-821d-1ceb72176bc4
       ZVSI_ZONE_NAME: ca-tor-1
       ZVSI_PROFILE_NAME: bz2-4x16
-      ZVSI_SUBNET: 02q7-af49cf76-0471-49f4-a245-b60d63196efb
-      ZVSI_IMAGE: r038-67da7290-933e-42e4-a1c2-ff439b4b6d2c
-      ZVSI_KEY: r038-f8e35cee-0475-4315-a051-40f4d2fb6af9
-      ZVSI_RG_ID: 31e0f1b03d1b4d42bd98b6768ba5421a
-      ZVSI_SG: r038-1e644f46-8044-4043-9108-2b7dc178827f
+
     strategy:
       fail-fast: false
     steps:
@@ -37,9 +32,9 @@ jobs:
         id: ZVSI
         run: |
           #creation of zvsi
-          ibmcloud is instance-create $ZVSI_INSTANCE_NAME $ZVSI_VPC $ZVSI_ZONE_NAME $ZVSI_PROFILE_NAME $ZVSI_SUBNET --image $ZVSI_IMAGE --keys $ZVSI_KEY --resource-group-id $ZVSI_RG_ID --sgs $ZVSI_SG
+          ibmcloud is instance-create $ZVSI_INSTANCE_NAME ${{ secrets.ZVSI_VPC }} $ZVSI_ZONE_NAME $ZVSI_PROFILE_NAME ${{ secrets.ZVSI_SUBNET }} --image ${{ secrets.ZVSI_IMAGE }} --keys ${{ secrets.ZVSI_KEY }} --resource-group-id ${{ secrets.ZVSI_RG_ID }} --sgs ${{ secrets.ZVSI_SG }}
           #Reserving a floating ip to the ZVSI
-          ibmcloud is floating-ip-reserve $ZVSI_FP_NAME --zone $ZVSI_ZONE_NAME --resource-group-id $ZVSI_RG_ID --in $ZVSI_INSTANCE_NAME
+          ibmcloud is floating-ip-reserve $ZVSI_FP_NAME --zone $ZVSI_ZONE_NAME --resource-group-id ${{ secrets.ZVSI_RG_ID }} --in $ZVSI_INSTANCE_NAME
           #Bouding the Floating ip to the ZVSI
           ibmcloud is floating-ip-update $ZVSI_FP_NAME --nic primary --in $ZVSI_INSTANCE_NAME          
           sleep 60
