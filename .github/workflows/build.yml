@@ -221,10 +221,10 @@ jobs:
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
           docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
-            buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
-            buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
-            buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x@${LINUX_S390X_SHA} \
-            buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x@${LINUX_S390X_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
