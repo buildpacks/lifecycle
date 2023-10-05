@@ -27,7 +27,7 @@ jobs:
       - name: Determine download urls for linux-x86-64, linux-arm64, linux-s390x, and windows
         id: artifact-urls
         # FIXME: this script should be updated to work with actions/github-script@v6
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
