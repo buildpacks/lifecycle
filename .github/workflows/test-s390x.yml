@@ -1,0 +1,87 @@
+name: test-s390x
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+      - 'release/**'
+
+jobs:
+  test-linux-s390x:
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release*')
+    runs-on: ubuntu-latest
+    env:
+      ZVSI_FP_NAME: bp-floating-ci-${{ github.run_id }} 
+      ZVSI_INSTANCE_NAME: bp-zvsi-ci-${{ github.run_id }} 
+      ZVSI_ZONE_NAME: ca-tor-1
+      ZVSI_PROFILE_NAME: bz2-4x16
+
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v3
+      - name: install ibmcli and setup ibm login 
+        run: |
+          curl -fsSL https://clis.cloud.ibm.com/install/linux | sh
+          ibmcloud login -q --apikey ${{ secrets.IBMCLOUD_API_KEY }} -r ca-tor
+          ibmcloud plugin install vpc-infrastructure 
+      - name: Creation of ZVSI
+        id: ZVSI
+        run: |
+          #creation of zvsi
+          ibmcloud is instance-create $ZVSI_INSTANCE_NAME ${{ secrets.ZVSI_VPC }} $ZVSI_ZONE_NAME $ZVSI_PROFILE_NAME ${{ secrets.ZVSI_SUBNET }} --image ${{ secrets.ZVSI_IMAGE }} --keys ${{ secrets.ZVSI_KEY }} --resource-group-id ${{ secrets.ZVSI_RG_ID }} --sgs ${{ secrets.ZVSI_SG }}
+          #Reserving a floating ip to the ZVSI
+          ibmcloud is floating-ip-reserve $ZVSI_FP_NAME --zone $ZVSI_ZONE_NAME --resource-group-id ${{ secrets.ZVSI_RG_ID }} --in $ZVSI_INSTANCE_NAME
+          #Bouding the Floating ip to the ZVSI
+          ibmcloud is floating-ip-update $ZVSI_FP_NAME --nic primary --in $ZVSI_INSTANCE_NAME          
+          sleep 60
+          #Saving the Floating IP to login ZVSI
+          ZVSI_HOST=$(ibmcloud is floating-ip $ZVSI_FP_NAME | awk '/Address/{print $2}')
+          echo $ZVSI_HOST
+          echo "IP=${ZVSI_HOST}" >> $GITHUB_OUTPUT
+      - name: Status of ZVSI
+        run: |
+          check=$(ibmcloud is ins| awk '/'$ZVSI_INSTANCE_NAME'/{print $3}')
+          while [[ $check != "running" ]]
+          do
+            check=$(ibmcloud is ins | awk '/'$ZVSI_INSTANCE_NAME'/{print $3}')
+            if [[ $check == 'failed' ]]
+            then
+              echo "Failed to run the ZVSI"
+              break
+              fi
+          done
+      - name: Install dependencies and run all tests on s390x ZVSI
+        uses: appleboy/ssh-action@v0.1.10
+        env:
+          GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+          GH_REF: ${{ github.ref }}
+        with: 
+          host: ${{ steps.ZVSI.outputs.IP }}
+          username: ${{ secrets.ZVSI_SSH_USER }}
+          key: ${{ secrets.ZVSI_PR_KEY }}
+          envs: GH_REPOSITORY,GH_REF
+          command_timeout: 100m
+          script: |
+            apt-get update -y
+            apt-get install -y wget curl git make gcc jq docker.io
+            wget https://go.dev/dl/go1.20.6.linux-s390x.tar.gz
+            rm -rf /usr/local/go && tar -C /usr/local -xzf go1.20.6.linux-s390x.tar.gz
+            export PATH=$PATH:/usr/local/go/bin
+            git clone ${GH_REPOSITORY} lifecycle
+            cd lifecycle && git checkout ${GH_REF}
+            go env
+            export PATH=$PATH:~/go/bin
+            make format || true
+            make test
+      - name: Cleanup ZVSI
+        if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
+        run: |
+          #Delete the created ZVSI
+          ibmcloud is instance-delete $ZVSI_INSTANCE_NAME --force
+          sleep 20
+          #Release the created FP
+          ibmcloud is floating-ip-release $ZVSI_FP_NAME --force
