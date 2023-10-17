@@ -18,7 +18,7 @@ require (
 	github.com/moby/buildkit v0.12.2
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.4.0
 	golang.org/x/sys v0.13.0
 )
 
