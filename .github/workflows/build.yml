@@ -274,7 +274,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          git checkout v0.30.0
+          git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
           LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
           LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
           make acceptance
@@ -345,7 +345,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          git checkout v0.30.0
+          git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
           $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
           $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
           make acceptance
