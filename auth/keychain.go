@@ -10,6 +10,7 @@ import (
 
 	ecr "github.com/awslabs/amazon-ecr-credential-helper/ecr-login"
 	"github.com/chrismellard/docker-credential-acr-env/pkg/credhelper"
+	"github.com/docker/docker/registry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -44,10 +45,16 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 // NewEnvKeychain returns an authn.Keychain that uses the provided environment variable as a source of credentials.
 // The value of the environment variable should be a JSON object that maps OCI registry hostnames to Authorization headers.
 func NewEnvKeychain(envVar string) (authn.Keychain, error) {
-	authHeaders, err := ReadEnvVar(envVar)
+	authHeaders := map[string]string{}
+	rawHeaders, err := ReadEnvVar(envVar)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading auth env var")
 	}
+
+	for reg, header := range rawHeaders {
+		authHeaders[registry.ConvertToHostname(reg)] = header
+	}
+
 	return &EnvKeychain{AuthHeaders: authHeaders}, nil
 }
 
