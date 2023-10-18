@@ -163,11 +163,11 @@ jobs:
         with:
           name: lifecycle-linux-s390x
           path: out/lifecycle-v*+linux.s390x.tgz
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-linux-s390x-sha256
           path: out/lifecycle-v*+linux.s390x.tgz.sha256
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
