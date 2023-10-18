@@ -3,12 +3,12 @@ package auth_test
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"os"
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -28,7 +28,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					err := os.Setenv(
 						"CNB_REGISTRY_AUTH",
 						`{
-	"basic-registry.com": "Basic some-basic-auth=",
+	"https://basic-registry.com/v1/": "Basic some-basic-auth=",
 	"bearer-registry.com": "Bearer some-bearer-auth=",
 	"oauth.registry.io": "X-Identity some-identity-token="
 }`,
