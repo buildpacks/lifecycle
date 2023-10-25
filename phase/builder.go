@@ -2,10 +2,14 @@ package phase
 
 import (
 	"fmt"
+	"github.com/microsoft/ApplicationInsights-Go/appinsights"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -36,22 +40,24 @@ type BuildEnv interface {
 }
 
 type Builder struct {
-	AppDir         string
-	BuildConfigDir string
-	LayersDir      string
-	PlatformDir    string
-	BuildExecutor  buildpack.BuildExecutor
-	DirStore       DirStore
-	Group          buildpack.Group
-	Logger         log.Logger
-	Out, Err       io.Writer
-	Plan           files.Plan
-	PlatformAPI    *api.Version
-	AnalyzeMD      files.Analyzed
+	AppDir          string
+	BuildConfigDir  string
+	LayersDir       string
+	PlatformDir     string
+	BuildExecutor   buildpack.BuildExecutor
+	DirStore        DirStore
+	Group           buildpack.Group
+	Logger          log.Logger
+	Out, Err        io.Writer
+	Plan            files.Plan
+	PlatformAPI     *api.Version
+	AnalyzeMD       files.Analyzed
+	TelemetryClient appinsights.TelemetryClient
 }
 
 func (b *Builder) Build() (*files.BuildMetadata, error) {
 	defer log.NewMeasurement("Builder", b.Logger)()
+	defer b.shutdown()
 
 	// ensure layers SBOM directory is removed
 	if err := os.RemoveAll(filepath.Join(b.LayersDir, "sbom")); err != nil {
@@ -76,6 +82,11 @@ func (b *Builder) Build() (*files.BuildMetadata, error) {
 	filteredPlan := b.Plan
 
 	for _, bp := range b.Group.Group {
+		start := time.Now()
+		buildEvent := appinsights.NewEventTelemetry("lifecycle.build")
+		buildEvent.Properties["correlationId"] = os.Getenv("CORRELATION_ID")
+		buildEvent.Properties["buildpackId"] = bp.ID
+		buildEvent.Properties["buildpackVersion"] = bp.Version
 		b.Logger.Debugf("Running build for buildpack %s", bp)
 
 		b.Logger.Debug("Looking up buildpack")
@@ -89,6 +100,16 @@ func (b *Builder) Build() (*files.BuildMetadata, error) {
 
 		br, err := b.BuildExecutor.Build(*bpTOML, inputs, b.Logger)
 		if err != nil {
+			buildEvent.Properties["succeeded"] = "false"
+			buildEvent.Properties["error"] = err.Error()
+			if e, ok := err.(*buildpack.Error); ok {
+				if execErr, ok := e.RootError.(*exec.ExitError); ok {
+					buildEvent.Properties["exitCode"] = strconv.Itoa(execErr.ExitCode())
+				}
+			}
+
+			buildEvent.Properties["durationInMs"] = strconv.FormatInt(time.Since(start).Milliseconds(), 10)
+			b.TelemetryClient.Track(buildEvent)
 			return nil, err
 		}
 
@@ -108,6 +129,9 @@ func (b *Builder) Build() (*files.BuildMetadata, error) {
 		}
 
 		b.Logger.Debugf("Finished running build for buildpack %s", bp)
+		buildEvent.Properties["succeeded"] = "true"
+		buildEvent.Properties["durationInMs"] = strconv.FormatInt(time.Since(start).Milliseconds(), 10)
+		b.TelemetryClient.Track(buildEvent)
 	}
 
 	if b.PlatformAPI.AtLeast("0.8") {
@@ -145,6 +169,15 @@ func (b *Builder) Build() (*files.BuildMetadata, error) {
 		Slices:                      slices,
 		BuildpackDefaultProcessType: processMap.defaultType,
 	}, nil
+}
+
+func (b *Builder) shutdown() {
+	select {
+	case <-b.TelemetryClient.Channel().Close(10 * time.Second):
+		// If we got here, then all telemetry was submitted
+		// successfully, and we can proceed to exiting.
+	case <-time.After(30 * time.Second):
+	}
 }
 
 func (b *Builder) getBuildInputs() buildpack.BuildInputs {

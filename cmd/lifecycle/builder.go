@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
-
 	"github.com/BurntSushi/toml"
+	"github.com/microsoft/ApplicationInsights-Go/appinsights"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -75,19 +75,20 @@ func (b *buildCmd) Exec() error {
 
 func (b *buildCmd) build(group buildpack.Group, plan files.Plan, analyzedMD files.Analyzed) error {
 	builder := &phase.Builder{
-		AppDir:         b.AppDir,
-		BuildConfigDir: b.BuildConfigDir,
-		LayersDir:      b.LayersDir,
-		PlatformDir:    b.PlatformDir,
-		BuildExecutor:  &buildpack.DefaultBuildExecutor{},
-		DirStore:       platform.NewDirStore(b.BuildpacksDir, ""),
-		Group:          group,
-		Logger:         cmd.DefaultLogger,
-		Out:            cmd.Stdout,
-		Err:            cmd.Stderr,
-		Plan:           plan,
-		PlatformAPI:    b.PlatformAPI,
-		AnalyzeMD:      analyzedMD,
+		AppDir:          b.AppDir,
+		BuildConfigDir:  b.BuildConfigDir,
+		LayersDir:       b.LayersDir,
+		PlatformDir:     b.PlatformDir,
+		BuildExecutor:   &buildpack.DefaultBuildExecutor{},
+		DirStore:        platform.NewDirStore(b.BuildpacksDir, ""),
+		Group:           group,
+		Logger:          cmd.DefaultLogger,
+		Out:             cmd.Stdout,
+		Err:             cmd.Stderr,
+		Plan:            plan,
+		PlatformAPI:     b.PlatformAPI,
+		AnalyzeMD:       analyzedMD,
+		TelemetryClient: appinsights.NewTelemetryClient("<change to instrumentation key>"),
 	}
 	md, err := builder.Build()
 	if err != nil {
