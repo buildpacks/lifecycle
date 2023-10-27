@@ -11,13 +11,18 @@ import (
 )
 
 var (
-	ErrOutputImageRequired           = "image argument is required"
-	ErrRunImageRequiredWhenNoStackMD = "-run-image is required when there is no stack metadata available"
-	ErrRunImageRequiredWhenNoRunMD   = "-run-image is required when there is no run metadata available"
-	ErrSupplyOnlyOneRunImage         = "supply only one of -run-image or (deprecated) -image"
-	ErrRunImageUnsupported           = "-run-image is unsupported"
-	ErrImageUnsupported              = "-image is unsupported"
-	MsgIgnoringLaunchCache           = "Ignoring -launch-cache, only intended for use with -daemon"
+	// ErrOutputImageRequired user facing error message
+	ErrOutputImageRequired = "image argument is required"
+	// ErrRunImageRequiredWhenNoRunMD user facing error message
+	ErrRunImageRequiredWhenNoRunMD = "-run-image is required when there is no run metadata available"
+	// ErrSupplyOnlyOneRunImage user facing error message
+	ErrSupplyOnlyOneRunImage = "supply only one of -run-image or (deprecated) -image"
+	// ErrRunImageUnsupported user facing error message
+	ErrRunImageUnsupported = "-run-image is unsupported"
+	// ErrImageUnsupported user facing error message
+	ErrImageUnsupported = "-image is unsupported"
+	// MsgIgnoringLaunchCache user facing error message
+	MsgIgnoringLaunchCache = "Ignoring -launch-cache, only intended for use with -daemon"
 )
 
 func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) error {
@@ -178,7 +183,7 @@ func fillRunImageFromStackTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) er
 	}
 	i.RunImageRef, err = BestRunImageMirrorFor(targetRegistry, stackMD.RunImage, i.AccessChecker())
 	if err != nil {
-		return errors.New(ErrRunImageRequiredWhenNoStackMD)
+		return err
 	}
 	return nil
 }

@@ -24,28 +24,28 @@ func (m mockLog) incr(key string) {
 	}
 }
 
-func (m mockLog) Debug(msg string) {
+func (m mockLog) Debug(_ string) {
 	m.incr("Debug")
 }
-func (m mockLog) Debugf(fmt string, v ...interface{}) {
+func (m mockLog) Debugf(_ string, _ ...interface{}) {
 	m.incr("Debug")
 }
-func (m mockLog) Info(msg string) {
+func (m mockLog) Info(_ string) {
 	m.incr("Info")
 }
-func (m mockLog) Infof(fmt string, v ...interface{}) {
+func (m mockLog) Infof(_ string, _ ...interface{}) {
 	m.incr("Info")
 }
-func (m mockLog) Warn(msg string) {
+func (m mockLog) Warn(_ string) {
 	m.incr("Warn")
 }
-func (m mockLog) Warnf(fmt string, v ...interface{}) {
+func (m mockLog) Warnf(_ string, _ ...interface{}) {
 	m.incr("Warn")
 }
-func (m mockLog) Error(msg string) {
+func (m mockLog) Error(_ string) {
 	m.incr("Error")
 }
-func (m mockLog) Errorf(fmt string, v ...interface{}) {
+func (m mockLog) Errorf(_ string, _ ...interface{}) {
 	m.incr("Error")
 }
 
