@@ -110,7 +110,7 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 								inputs.StackPath = "not-exist-stack.toml"
 								err := platform.ResolveInputs(platform.Create, inputs, logger)
 								h.AssertNotNil(t, err)
-								expected := "-run-image is required when there is no stack metadata available"
+								expected := "missing run image metadata (-run-image)"
 								h.AssertStringContains(t, err.Error(), expected)
 							})
 						})

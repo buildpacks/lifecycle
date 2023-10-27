@@ -25,7 +25,7 @@ const (
 func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForExport, checkReadAccess CheckReadAccess) (string, error) {
 	var runImageMirrors []string
 	if runImageMD.Image == "" {
-		return "", errors.New("missing run image metadata")
+		return "", errors.New("missing run image metadata (-run-image)")
 	}
 	runImageMirrors = append(runImageMirrors, runImageMD.Image)
 	runImageMirrors = append(runImageMirrors, runImageMD.Mirrors...)

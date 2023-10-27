@@ -235,5 +235,18 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, name, "gcr.io/myorg/myrepo")
 			})
 		})
+
+		when("there is no read access", func() {
+			it("fails", func() {
+				noReadAccess := func(_ string, _ authn.Keychain) (bool, error) {
+					return false, nil
+				}
+
+				_, err := platform.BestRunImageMirrorFor("gcr.io", stackMD.RunImage, noReadAccess)
+				h.AssertNotNil(t, err)
+				expected := "failed to find accessible run image"
+				h.AssertStringContains(t, err.Error(), expected)
+			})
+		})
 	})
 }
