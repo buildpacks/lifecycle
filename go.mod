@@ -2,7 +2,7 @@ module github.com/buildpacks/lifecycle
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/GoogleContainerTools/kaniko v1.16.0
+	github.com/GoogleContainerTools/kaniko v1.17.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20231003182221-725682229e60
 	github.com/buildpacks/imgutil v0.0.0-20230919143643-4ec9360d5f02
@@ -13,7 +13,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.16.1
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/heroku/color v0.0.6
 	github.com/moby/buildkit v0.12.2
 	github.com/pkg/errors v0.9.1
