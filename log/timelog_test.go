@@ -64,20 +64,20 @@ func testTimeLog(t *testing.T, when spec.G, it spec.S) {
 
 			c1.Log = logger
 			c1.RecordStart()
-			h.AssertEq(t, logger.callCount["Info"], 1)
+			h.AssertEq(t, logger.callCount["Debug"], 1)
 			h.AssertEq(t, c1.StartTime == nullTime, false)
 			h.AssertEq(t, c1.EndTime, nullTime)
 
 			c1.RecordEnd()
-			h.AssertEq(t, logger.callCount["Info"], 2)
+			h.AssertEq(t, logger.callCount["Debug"], 2)
 			h.AssertEq(t, c1.EndTime == nullTime, false)
 		})
 		it("the convenience functions call the logger", func() {
 			logger := mockLog{callCount: map[string]int{}}
 			endfunc := log.NewMeasurement("value", logger)
-			h.AssertEq(t, logger.callCount["Info"], 1)
+			h.AssertEq(t, logger.callCount["Debug"], 1)
 			endfunc()
-			h.AssertEq(t, logger.callCount["Info"], 2)
+			h.AssertEq(t, logger.callCount["Debug"], 2)
 		})
 	})
 }
