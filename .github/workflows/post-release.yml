@@ -40,6 +40,10 @@ jobs:
           echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
           echo "LINUX_ARM64_SHA=$LINUX_ARM64_SHA" >> $GITHUB_ENV
 
+          LINUX_S390X_SHA=$(cosign verify --certificate-identity-regexp "https://github.com/${{ github.repository_owner }}/lifecycle/.github/workflows/build.yml" --certificate-oidc-issuer https://token.actions.githubusercontent.com buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-s390x | jq -r .[0].critical.image.\"docker-manifest-digest\")
+          echo "LINUX_S390X_SHA: $LINUX_S390X_SHA"
+          echo "LINUX_S390X_SHA=$LINUX_S390X_SHA" >> $GITHUB_ENV
+
           WINDOWS_AMD64_SHA=$(cosign verify --certificate-identity-regexp "https://github.com/${{ github.repository_owner }}/lifecycle/.github/workflows/build.yml" --certificate-oidc-issuer https://token.actions.githubusercontent.com buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows | jq -r .[0].critical.image.\"docker-manifest-digest\")
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
           echo "WINDOWS_AMD64_SHA=$WINDOWS_AMD64_SHA" >> $GITHUB_ENV
