@@ -5,7 +5,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-//go:generate mockgen -package testmockcache -destination ../lifecycle/testmock/cache/image_comparer.go github.com/buildpacks/lifecycle/cache ImageComparer
+//go:generate mockgen -package testmockcache -destination ../phase/testmock/cache/image_comparer.go github.com/buildpacks/lifecycle/cache ImageComparer
 
 // ImageComparer provides a way to compare images
 type ImageComparer interface {

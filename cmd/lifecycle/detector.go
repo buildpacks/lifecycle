@@ -62,7 +62,7 @@ func (d *detectCmd) Exec() error {
 	detectorFactory := phase.NewHermeticFactory(
 		d.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
-		phase.NewConfigHandler(),
+		files.NewHandler(),
 		dirStore,
 	)
 	detector, err := detectorFactory.NewDetector(
@@ -85,7 +85,7 @@ func (d *detectCmd) Exec() error {
 		generatorFactory := phase.NewHermeticFactory(
 			d.PlatformAPI,
 			&cmd.BuildpackAPIVerifier{},
-			phase.Config,
+			files.Handler,
 			dirStore,
 		)
 		var generator *phase.Generator
@@ -102,10 +102,10 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		if err := phase.Config.WriteAnalyzed(d.AnalyzedPath, &result.AnalyzedMD, cmd.DefaultLogger); err != nil {
+		if err := files.Handler.WriteAnalyzed(d.AnalyzedPath, &result.AnalyzedMD, cmd.DefaultLogger); err != nil {
 			return err
 		}
-		if err := phase.Config.WritePlan(d.PlanPath, &result.Plan); err != nil {
+		if err := files.Handler.WritePlan(d.PlanPath, &result.Plan); err != nil {
 			return err
 		}
 	}
@@ -149,10 +149,10 @@ func doDetect(detector *phase.Detector, p *platform.Platform) (buildpack.Group, 
 			return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
 		}
 	}
-	if err := phase.Config.WriteGroup(p.GroupPath, &group); err != nil {
+	if err := files.Handler.WriteGroup(p.GroupPath, &group); err != nil {
 		return buildpack.Group{}, files.Plan{}, err
 	}
-	if err := phase.Config.WritePlan(p.PlanPath, &plan); err != nil {
+	if err := files.Handler.WritePlan(p.PlanPath, &plan); err != nil {
 		return buildpack.Group{}, files.Plan{}, err
 	}
 	return group, plan, nil

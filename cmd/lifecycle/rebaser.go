@@ -15,7 +15,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
@@ -137,8 +136,7 @@ func (r *rebaseCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "rebase")
 	}
-
-	if err := encoding.WriteTOML(r.ReportPath, &report); err != nil {
+	if err = files.Handler.WriteRebaseReport(r.ReportPath, &report); err != nil {
 		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "write rebase report")
 	}
 	return nil

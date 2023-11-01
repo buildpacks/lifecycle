@@ -59,7 +59,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 				analyzedMD, nil,
 			).AnyTimes()
 			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return(
-				[]buildpack.GroupElement{}, []buildpack.GroupElement{{ID: "A", Version: "v1", API: "0.9"}}, nil,
+				buildpack.Group{GroupExtensions: []buildpack.GroupElement{{ID: "A", Version: "v1", API: "0.9", Extension: true}}}, nil,
 			).AnyTimes()
 			fakeDirStore.EXPECT().LookupExt("A", "v1").Return(&buildpack.ExtDescriptor{
 				WithAPI: "0.9",

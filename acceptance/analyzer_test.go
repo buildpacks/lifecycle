@@ -521,7 +521,7 @@ func assertAnalyzedMetadata(t *testing.T, path string) *files.Analyzed {
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	analyzedMD, err := files.ReadAnalyzed(path, cmd.DefaultLogger)
+	analyzedMD, err := files.Handler.ReadAnalyzed(path, cmd.DefaultLogger)
 	h.AssertNil(t, err)
 
 	return &analyzedMD

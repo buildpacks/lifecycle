@@ -9,7 +9,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/phase"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -80,19 +80,17 @@ group = [{id = "D", version = "v1"}]
 	when("#ReadGroup", func() {
 		it("returns a single group object with a buildpack group and an extensions group", func() {
 			h.Mkfile(t, groupTOMLContents, filepath.Join(tmpDir, "group.toml"))
-			foundGroup, err := phase.ReadGroup(filepath.Join(tmpDir, "group.toml"))
+			group, err := files.Handler.ReadGroup(filepath.Join(tmpDir, "group.toml"))
 			h.AssertNil(t, err)
-			h.AssertEq(t, foundGroup, buildpack.Group{
-				Group:           expectedGroupBp,
-				GroupExtensions: expectedGroupExt,
-			})
+			h.AssertEq(t, group.Group, expectedGroupBp)
+			h.AssertEq(t, group.GroupExtensions, expectedGroupExt)
 		})
 	})
 
 	when("#ReadOrder", func() {
 		it("returns an ordering of buildpacks and an ordering of extensions", func() {
 			h.Mkfile(t, orderTOMLContents, filepath.Join(tmpDir, "order.toml"))
-			foundOrder, foundOrderExt, err := phase.ReadOrder(filepath.Join(tmpDir, "order.toml"))
+			foundOrder, foundOrderExt, err := files.Handler.ReadOrder(filepath.Join(tmpDir, "order.toml"))
 			h.AssertNil(t, err)
 			h.AssertEq(t, foundOrder, expectedOrderBp)
 			h.AssertEq(t, foundOrderExt, expectedOrderExt)
@@ -101,20 +99,20 @@ group = [{id = "D", version = "v1"}]
 
 	when("DefaultConfigHandler", func() {
 		var (
-			configHandler *phase.DefaultConfigHandler
+			configHandler *files.TOMLHandler
 		)
 
 		it.Before(func() {
-			configHandler = phase.NewConfigHandler()
+			configHandler = files.NewHandler()
 		})
 
 		when(".ReadGroup", func() {
 			it("returns a group for buildpacks and a group for extensions", func() {
 				h.Mkfile(t, groupTOMLContents, filepath.Join(tmpDir, "group.toml"))
-				foundGroup, foundGroupExt, err := configHandler.ReadGroup(filepath.Join(tmpDir, "group.toml"))
+				group, err := configHandler.ReadGroup(filepath.Join(tmpDir, "group.toml"))
 				h.AssertNil(t, err)
-				h.AssertEq(t, foundGroup, expectedGroupBp)
-				h.AssertEq(t, foundGroupExt, expectedGroupExt)
+				h.AssertEq(t, group.Group, expectedGroupBp)
+				h.AssertEq(t, group.GroupExtensions, expectedGroupExt)
 			})
 		})
 

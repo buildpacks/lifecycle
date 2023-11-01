@@ -34,17 +34,14 @@ func NewHermeticFactory(
 }
 
 func (f *HermeticFactory) getExtensions(groupPath string, logger log.Logger) ([]buildpack.GroupElement, error) {
-	_, groupExt, err := f.configHandler.ReadGroup(groupPath)
+	group, err := f.configHandler.ReadGroup(groupPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading group: %w", err)
 	}
-	for i := range groupExt {
-		groupExt[i].Extension = true
-	}
-	if err = f.verifyGroup(groupExt, logger); err != nil {
+	if err = f.verifyGroup(group.GroupExtensions, logger); err != nil {
 		return nil, err
 	}
-	return groupExt, nil
+	return group.GroupExtensions, nil
 }
 
 func (f *HermeticFactory) getOrder(path string, logger log.Logger) (order buildpack.Order, hasExtensions bool, err error) {

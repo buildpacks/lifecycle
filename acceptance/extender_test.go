@@ -21,7 +21,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -120,7 +120,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					},
 				}
 				analyzedPath = h.TempFile(t, "", "analyzed.toml")
-				h.AssertNil(t, encoding.WriteTOML(analyzedPath, analyzedMD))
+				h.AssertNil(t, files.Handler.WriteAnalyzed(analyzedPath, &analyzedMD, cmd.DefaultLogger))
 			})
 
 			it.After(func() {

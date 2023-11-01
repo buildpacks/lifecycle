@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
 
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
@@ -427,8 +427,7 @@ func assertRunMetadata(t *testing.T, path string) *files.Run { //nolint
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var runMD files.Run
-	_, err = toml.Decode(string(contents), &runMD)
+	runMD, err := files.Handler.ReadRun(path, cmd.DefaultLogger)
 	h.AssertNil(t, err)
 
 	return &runMD

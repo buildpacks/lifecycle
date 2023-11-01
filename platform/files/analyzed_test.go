@@ -6,7 +6,7 @@ import (
 
 	"github.com/sclevine/spec"
 
-	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -29,8 +29,8 @@ func testAnalyzed(t *testing.T, when spec.G, it spec.S) {
 					RunImage: &files.RunImage{Reference: "some-ref"},
 				}
 				f := h.TempFile(t, "", "")
-				h.AssertNil(t, encoding.WriteTOML(f, amd))
-				amd2, err := files.ReadAnalyzed(f, nil)
+				h.AssertNil(t, files.Handler.WriteAnalyzed(f, &amd, cmd.DefaultLogger))
+				amd2, err := files.Handler.ReadAnalyzed(f, nil)
 				h.AssertNil(t, err)
 				h.AssertEq(t, amd.PreviousImageRef(), amd2.PreviousImageRef())
 				h.AssertEq(t, amd.LayersMetadata, amd2.LayersMetadata)
@@ -48,7 +48,7 @@ func testAnalyzed(t *testing.T, when spec.G, it spec.S) {
 					RunImage: &files.RunImage{Reference: "some-ref"},
 				}
 				f := h.TempFile(t, "", "")
-				h.AssertNil(t, encoding.WriteTOML(f, amd))
+				h.AssertNil(t, files.Handler.WriteAnalyzed(f, &amd, cmd.DefaultLogger))
 				contents, err := os.ReadFile(f)
 				h.AssertNil(t, err)
 				expectedContents := `[image]
@@ -86,8 +86,8 @@ func testAnalyzed(t *testing.T, when spec.G, it spec.S) {
 					BuildImage: &files.ImageIdentifier{Reference: "implementation"},
 				}
 				f := h.TempFile(t, "", "")
-				h.AssertNil(t, encoding.WriteTOML(f, amd))
-				amd2, err := files.ReadAnalyzed(f, nil)
+				h.AssertNil(t, files.Handler.WriteAnalyzed(f, &amd, cmd.DefaultLogger))
+				amd2, err := files.Handler.ReadAnalyzed(f, nil)
 				h.AssertNil(t, err)
 				h.AssertEq(t, amd.PreviousImageRef(), amd2.PreviousImageRef())
 				h.AssertEq(t, amd.LayersMetadata, amd2.LayersMetadata)

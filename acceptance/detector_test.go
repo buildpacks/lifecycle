@@ -12,12 +12,11 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -170,16 +169,14 @@ fail: fail_detect_buildpack@some_version
 
 			// check group.toml
 			foundGroupTOML := filepath.Join(copyDir, "layers", "group.toml")
-			var buildpackGroup buildpack.Group
-			_, err := toml.DecodeFile(foundGroupTOML, &buildpackGroup)
+			group, err := files.Handler.ReadGroup(foundGroupTOML)
 			h.AssertNil(t, err)
-			h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
-			h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
+			h.AssertEq(t, group.Group[0].ID, "simple_buildpack")
+			h.AssertEq(t, group.Group[0].Version, "simple_buildpack_version")
 
 			// check plan.toml
-			tempPlanToml := filepath.Join(copyDir, "layers", "plan.toml")
-			var buildPlan files.Plan
-			_, err = toml.DecodeFile(tempPlanToml, &buildPlan)
+			foundPlanTOML := filepath.Join(copyDir, "layers", "plan.toml")
+			buildPlan, err := files.Handler.ReadPlan(foundPlanTOML)
 			h.AssertNil(t, err)
 			h.AssertEq(t, buildPlan.Entries[0].Providers[0].ID, "simple_buildpack")
 			h.AssertEq(t, buildPlan.Entries[0].Providers[0].Version, "simple_buildpack_version")
@@ -230,11 +227,10 @@ fail: fail_detect_buildpack@some_version
 
 			// check group.toml
 			foundGroupTOML := filepath.Join(copyDir, "layers", "custom_group.toml")
-			var buildpackGroup buildpack.Group
-			_, err := toml.DecodeFile(foundGroupTOML, &buildpackGroup)
+			group, err := files.Handler.ReadGroup(foundGroupTOML)
 			h.AssertNil(t, err)
-			h.AssertEq(t, buildpackGroup.Group[0].ID, "always_detect_buildpack")
-			h.AssertEq(t, buildpackGroup.Group[0].Version, "always_detect_buildpack_version")
+			h.AssertEq(t, group.Group[0].ID, "always_detect_buildpack")
+			h.AssertEq(t, group.Group[0].Version, "always_detect_buildpack_version")
 
 			// check plan.toml - should be empty since we're using always_detect_order.toml so there is no "actual plan"
 			tempPlanToml := filepath.Join(copyDir, "layers", "custom_plan.toml")
@@ -291,11 +287,10 @@ fail: fail_detect_buildpack@some_version
 
 				// check group.toml
 				foundGroupTOML := filepath.Join(copyDir, "layers", "group.toml")
-				var buildpackGroup buildpack.Group
-				_, err := toml.DecodeFile(foundGroupTOML, &buildpackGroup)
+				group, err := files.Handler.ReadGroup(foundGroupTOML)
 				h.AssertNil(t, err)
-				h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
-				h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
+				h.AssertEq(t, group.Group[0].ID, "simple_buildpack")
+				h.AssertEq(t, group.Group[0].Version, "simple_buildpack_version")
 			})
 		})
 
@@ -381,21 +376,18 @@ fail: fail_detect_buildpack@some_version
 			h.AssertStringContains(t, output, "simple_extension: output from /bin/detect")
 			t.Log("writes group.toml")
 			foundGroupTOML := filepath.Join(copyDir, "layers", "group.toml")
-			var buildpackGroup buildpack.Group
-			_, err := toml.DecodeFile(foundGroupTOML, &buildpackGroup)
+			group, err := files.Handler.ReadGroup(foundGroupTOML)
 			h.AssertNil(t, err)
-			h.AssertEq(t, buildpackGroup.GroupExtensions[0].ID, "simple_extension")
-			h.AssertEq(t, buildpackGroup.GroupExtensions[0].Version, "simple_extension_version")
-			h.AssertEq(t, buildpackGroup.GroupExtensions[0].Extension, false) // this shows that `extension = true` is not redundantly printed in group.toml
-			h.AssertEq(t, buildpackGroup.Group[0].ID, "buildpack_for_ext")
-			h.AssertEq(t, buildpackGroup.Group[0].Version, "buildpack_for_ext_version")
-			h.AssertEq(t, buildpackGroup.Group[0].Extension, false)
+			h.AssertEq(t, group.GroupExtensions[0].ID, "simple_extension")
+			h.AssertEq(t, group.GroupExtensions[0].Version, "simple_extension_version")
+			h.AssertEq(t, group.Group[0].ID, "buildpack_for_ext")
+			h.AssertEq(t, group.Group[0].Version, "buildpack_for_ext_version")
+			h.AssertEq(t, group.Group[0].Extension, false)
 			t.Log("writes plan.toml")
 			foundPlanTOML := filepath.Join(copyDir, "layers", "plan.toml")
-			var plan files.Plan
-			_, err = toml.DecodeFile(foundPlanTOML, &plan)
+			buildPlan, err := files.Handler.ReadPlan(foundPlanTOML)
 			h.AssertNil(t, err)
-			h.AssertEq(t, len(plan.Entries), 0) // this shows that the plan was filtered to remove `requires` provided by extensions
+			h.AssertEq(t, len(buildPlan.Entries), 0) // this shows that the plan was filtered to remove `requires` provided by extensions
 
 			t.Log("runs /bin/generate for extensions")
 			h.AssertStringContains(t, output, "simple_extension: output from /bin/generate")
@@ -406,10 +398,9 @@ fail: fail_detect_buildpack@some_version
 			h.AssertEq(t, string(contents), "FROM some-run-image-from-extension\n")
 			t.Log("records the new run image in analyzed.toml")
 			foundAnalyzedTOML := filepath.Join(copyDir, "layers", "analyzed.toml")
-			var analyzed files.Analyzed
-			_, err = toml.DecodeFile(foundAnalyzedTOML, &analyzed)
+			analyzedMD, err := files.Handler.ReadAnalyzed(foundAnalyzedTOML, cmd.DefaultLogger)
 			h.AssertNil(t, err)
-			h.AssertEq(t, analyzed.RunImage.Image, "some-run-image-from-extension")
+			h.AssertEq(t, analyzedMD.RunImage.Image, "some-run-image-from-extension")
 		})
 	})
 }
