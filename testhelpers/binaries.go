@@ -9,7 +9,7 @@ import (
 )
 
 func MakeAndCopyLifecycle(t *testing.T, goos, goarch, destDir string, envs ...string) {
-	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
+	outParentDir, err := filepath.Abs(filepath.Join("..", "out"))
 	AssertNil(t, err)
 
 	cmd := exec.Command("make", fmt.Sprintf("build-%s-%s", goos, goarch)) // #nosec G204
@@ -21,7 +21,7 @@ func MakeAndCopyLifecycle(t *testing.T, goos, goarch, destDir string, envs ...st
 	envs = append(
 		envs,
 		"PWD="+cmd.Dir,
-		"BUILD_DIR="+buildDir,
+		"BUILD_DIR="+outParentDir,
 	)
 	cmd.Env = append(os.Environ(), envs...)
 
@@ -29,7 +29,8 @@ func MakeAndCopyLifecycle(t *testing.T, goos, goarch, destDir string, envs ...st
 	output := Run(t, cmd)
 	t.Log(output)
 
-	copyLifecycle(t, filepath.Join(buildDir, fmt.Sprintf("%s-%s", goos, goarch), "lifecycle"), destDir)
+	outDir := filepath.Join(outParentDir, fmt.Sprintf("%s-%s", goos, goarch), "lifecycle")
+	copyLifecycle(t, outDir, destDir)
 }
 
 func copyLifecycle(t *testing.T, src, dst string) {
