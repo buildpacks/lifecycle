@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
@@ -26,7 +25,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
@@ -96,7 +94,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 	// read analyzed metadata for use in later stages
 	var err error
-	e.persistedData.analyzedMD, err = files.ReadAnalyzed(e.AnalyzedPath, cmd.DefaultLogger)
+	e.persistedData.analyzedMD, err = files.Handler.ReadAnalyzed(e.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return err
 	}
@@ -131,9 +129,9 @@ func (e *exportCmd) Privileges() error {
 }
 
 func (e *exportCmd) Exec() error {
-	group, err := phase.ReadGroup(e.GroupPath)
+	group, err := files.Handler.ReadGroup(e.GroupPath)
 	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
+		return err
 	}
 	if err = verifyBuildpackApis(group); err != nil {
 		return err
@@ -162,19 +160,14 @@ func (e *exportCmd) registryImages() []string {
 
 func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyzedMD files.Analyzed) error {
 	artifactsDir, err := os.MkdirTemp("", "lifecycle.exporter.layer")
-
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
 	}
 	defer os.RemoveAll(artifactsDir)
 
-	var projectMD files.ProjectMetadata
-	_, err = toml.DecodeFile(e.ProjectMetadataPath, &projectMD)
+	projectMD, err := files.Handler.ReadProjectMetadata(e.ProjectMetadataPath, cmd.DefaultLogger)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-		cmd.DefaultLogger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", e.ProjectMetadataPath)
+		return err
 	}
 
 	exporter := &phase.Exporter{
@@ -226,7 +219,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 	if err != nil {
 		return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "export")
 	}
-	if err = encoding.WriteTOML(e.ReportPath, &report); err != nil {
+	if err = files.Handler.WriteReport(e.ReportPath, &report); err != nil {
 		return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "write export report")
 	}
 

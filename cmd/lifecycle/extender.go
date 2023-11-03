@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/extend/kaniko"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -52,7 +53,7 @@ func (e *extendCmd) Privileges() error {
 }
 
 func (e *extendCmd) Exec() error {
-	extenderFactory := phase.NewHermeticFactory(e.PlatformAPI, &cmd.BuildpackAPIVerifier{}, phase.NewConfigHandler(), platform.NewDirStore("", ""))
+	extenderFactory := phase.NewHermeticFactory(e.PlatformAPI, &cmd.BuildpackAPIVerifier{}, files.NewHandler(), platform.NewDirStore("", ""))
 	applier, err := kaniko.NewDockerfileApplier()
 	if err != nil {
 		return err

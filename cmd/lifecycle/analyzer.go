@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -99,7 +100,7 @@ func (a *analyzeCmd) Exec() error {
 		a.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
-		phase.Config,
+		files.Handler,
 		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout, a.InsecureRegistries),
 		image.NewRegistryHandler(a.keychain, a.InsecureRegistries),
 	)
@@ -111,5 +112,5 @@ func (a *analyzeCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErrCode(err, a.CodeFor(platform.AnalyzeError), "analyze")
 	}
-	return phase.Config.WriteAnalyzed(a.AnalyzedPath, &analyzedMD, cmd.DefaultLogger)
+	return files.Handler.WriteAnalyzed(a.AnalyzedPath, &analyzedMD, cmd.DefaultLogger)
 }

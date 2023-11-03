@@ -127,7 +127,7 @@ func (c *createCmd) Exec() error {
 		c.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(c.keychain),
-		phase.NewConfigHandler(),
+		files.NewHandler(),
 		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistries),
 		image.NewRegistryHandler(c.keychain, c.InsecureRegistries),
 	)
@@ -139,7 +139,7 @@ func (c *createCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	if err := phase.Config.WriteAnalyzed(c.AnalyzedPath, &analyzedMD, cmd.DefaultLogger); err != nil {
+	if err := files.Handler.WriteAnalyzed(c.AnalyzedPath, &analyzedMD, cmd.DefaultLogger); err != nil {
 		return err
 	}
 
@@ -148,7 +148,7 @@ func (c *createCmd) Exec() error {
 	detectorFactory := phase.NewHermeticFactory(
 		c.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
-		phase.NewConfigHandler(),
+		files.NewHandler(),
 		dirStore,
 	)
 	detector, err := detectorFactory.NewDetector(c.Inputs(), cmd.DefaultLogger)

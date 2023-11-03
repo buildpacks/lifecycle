@@ -80,20 +80,20 @@ func byRegistry(reg string, images []string, checkReadAccess CheckReadAccess, ke
 // as the run image "reference" could be a daemon image ID (which we'd not expect to find in run.toml).
 func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, error) {
 	if inputs.PlatformAPI.LessThan("0.12") {
-		stackMD, err := files.ReadStack(inputs.StackPath, cmd.DefaultLogger)
+		stackMD, err := files.Handler.ReadStack(inputs.StackPath, cmd.DefaultLogger)
 		if err != nil {
 			return files.RunImageForExport{}, err
 		}
 		return stackMD.RunImage, nil
 	}
-	runMD, err := files.ReadRun(inputs.RunPath, cmd.DefaultLogger)
+	runMD, err := files.Handler.ReadRun(inputs.RunPath, cmd.DefaultLogger)
 	if err != nil {
 		return files.RunImageForExport{}, err
 	}
 	if len(runMD.Images) == 0 {
 		return files.RunImageForExport{}, nil
 	}
-	analyzedMD, err := files.ReadAnalyzed(inputs.AnalyzedPath, cmd.DefaultLogger)
+	analyzedMD, err := files.Handler.ReadAnalyzed(inputs.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return files.RunImageForExport{}, err
 	}
@@ -102,8 +102,8 @@ func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, erro
 			return runImage, nil
 		}
 	}
-	buildMD := &files.BuildMetadata{}
-	if err = files.DecodeBuildMetadata(launch.GetMetadataFilePath(inputs.LayersDir), inputs.PlatformAPI, buildMD); err != nil {
+	buildMD, err := files.Handler.ReadBuildMetadata(launch.GetMetadataFilePath(inputs.LayersDir), inputs.PlatformAPI)
+	if err != nil {
 		return files.RunImageForExport{}, err
 	}
 	if len(buildMD.Extensions) > 0 { // FIXME: try to know for sure if extensions were used to switch the run image

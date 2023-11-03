@@ -2,6 +2,8 @@ package acceptance
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,12 +17,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
 
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
@@ -126,6 +128,14 @@ func (p *PhaseTest) Start(t *testing.T, phaseOp ...func(*testing.T, *PhaseTest))
 	}
 
 	h.MakeAndCopyLifecycle(t, p.targetDaemon.os, p.targetDaemon.arch, p.containerBinaryDir)
+	// calculate lifecycle digest
+	hasher := sha256.New()
+	f, err := os.Open(filepath.Join(p.containerBinaryDir, "lifecycle"+exe)) //#nosec G304
+	h.AssertNil(t, err)
+	_, err = io.Copy(hasher, f)
+	h.AssertNil(t, err)
+	t.Logf("Built lifecycle binary with digest: %s", hex.EncodeToString(hasher.Sum(nil)))
+
 	copyFakeSboms(t)
 	h.DockerBuild(
 		t,
@@ -133,6 +143,14 @@ func (p *PhaseTest) Start(t *testing.T, phaseOp ...func(*testing.T, *PhaseTest))
 		p.testImageDockerContext,
 		h.WithArgs("-f", filepath.Join(p.testImageDockerContext, dockerfileName)),
 	)
+	t.Logf("Using image %s with lifecycle version %s",
+		p.testImageRef,
+		h.DockerRun(
+			t,
+			p.testImageRef,
+			h.WithFlags("--env", "CNB_PLATFORM_API="+latestPlatformAPI, "--entrypoint", ctrPath("/cnb/lifecycle/lifecycle"+exe)),
+			h.WithArgs("-version"),
+		))
 }
 
 func (p *PhaseTest) Stop(t *testing.T) {
@@ -427,8 +445,7 @@ func assertRunMetadata(t *testing.T, path string) *files.Run { //nolint
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var runMD files.Run
-	_, err = toml.Decode(string(contents), &runMD)
+	runMD, err := files.Handler.ReadRun(path, cmd.DefaultLogger)
 	h.AssertNil(t, err)
 
 	return &runMD

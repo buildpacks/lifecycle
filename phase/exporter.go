@@ -123,8 +123,8 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	// ensure we always copy the new RunImage into the old stack to preserve old behavior
 	meta.Stack = &files.Stack{RunImage: opts.RunImageForExport}
 
-	buildMD := &files.BuildMetadata{}
-	if err := files.DecodeBuildMetadata(launch.GetMetadataFilePath(opts.LayersDir), e.PlatformAPI, buildMD); err != nil {
+	buildMD, err := files.Handler.ReadBuildMetadata(launch.GetMetadataFilePath(opts.LayersDir), e.PlatformAPI)
+	if err != nil {
 		return files.Report{}, errors.Wrap(err, "read build metadata")
 	}
 

@@ -3,12 +3,9 @@ package main
 import (
 	"errors"
 
-	"github.com/BurntSushi/toml"
-
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
@@ -66,7 +63,7 @@ func (b *buildCmd) Exec() error {
 	if err = verifyBuildpackApis(group); err != nil {
 		return err
 	}
-	amd, err := files.ReadAnalyzed(b.AnalyzedPath, cmd.DefaultLogger)
+	amd, err := files.Handler.ReadAnalyzed(b.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "reading analyzed.toml")
 	}
@@ -93,10 +90,7 @@ func (b *buildCmd) build(group buildpack.Group, plan files.Plan, analyzedMD file
 	if err != nil {
 		return b.unwrapBuildFail(err)
 	}
-	if err = encoding.WriteTOML(launch.GetMetadataFilePath(b.LayersDir), md); err != nil {
-		return cmd.FailErr(err, "write build metadata")
-	}
-	return nil
+	return files.Handler.WriteBuildMetadata(launch.GetMetadataFilePath(b.LayersDir), md)
 }
 
 func (b *buildCmd) unwrapBuildFail(err error) error {
@@ -109,14 +103,13 @@ func (b *buildCmd) unwrapBuildFail(err error) error {
 }
 
 func (b *buildCmd) readData() (buildpack.Group, files.Plan, error) {
-	group, err := phase.ReadGroup(b.GroupPath)
+	group, err := files.Handler.ReadGroup(b.GroupPath)
 	if err != nil {
-		return buildpack.Group{}, files.Plan{}, cmd.FailErr(err, "read buildpack group")
+		return buildpack.Group{}, files.Plan{}, err
 	}
-
-	var plan files.Plan
-	if _, err := toml.DecodeFile(b.PlanPath, &plan); err != nil {
-		return buildpack.Group{}, files.Plan{}, cmd.FailErr(err, "parse detect plan")
+	plan, err := files.Handler.ReadPlan(b.PlanPath)
+	if err != nil {
+		return buildpack.Group{}, files.Plan{}, err
 	}
 	return group, plan, nil
 }

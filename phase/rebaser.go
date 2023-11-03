@@ -31,49 +31,46 @@ type Rebaser struct {
 	Force       bool
 }
 
-type RebaseReport struct {
-	Image files.ImageReport `toml:"image"`
-}
-
-func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, outputImageRef string, additionalNames []string) (RebaseReport, error) {
+// Rebase changes the underlying base image for an application image.
+func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, outputImageRef string, additionalNames []string) (files.RebaseReport, error) {
 	defer log.NewMeasurement("Rebaser", r.Logger)()
 	appPlatformAPI, err := workingImage.Env(platform.EnvPlatformAPI)
 	if err != nil {
-		return RebaseReport{}, fmt.Errorf("failed to get app image platform API: %w", err)
+		return files.RebaseReport{}, fmt.Errorf("failed to get app image platform API: %w", err)
 	}
 	// perform platform API-specific validations
 	if appPlatformAPI == "" || api.MustParse(appPlatformAPI).LessThan("0.12") {
 		if err = validateStackID(workingImage, newBaseImage); err != nil {
-			return RebaseReport{}, err
+			return files.RebaseReport{}, err
 		}
 		if err = validateMixins(workingImage, newBaseImage); err != nil {
-			return RebaseReport{}, err
+			return files.RebaseReport{}, err
 		}
 	} else {
 		if err = r.validateTarget(workingImage, newBaseImage); err != nil {
-			return RebaseReport{}, err
+			return files.RebaseReport{}, err
 		}
 	}
 
 	// get existing metadata label
 	var origMetadata files.LayersMetadataCompat
 	if err = image.DecodeLabel(workingImage, platform.LifecycleMetadataLabel, &origMetadata); err != nil {
-		return RebaseReport{}, fmt.Errorf("get image metadata: %w", err)
+		return files.RebaseReport{}, fmt.Errorf("get image metadata: %w", err)
 	}
 
 	// rebase
 	if err = workingImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage); err != nil {
-		return RebaseReport{}, fmt.Errorf("rebase app image: %w", err)
+		return files.RebaseReport{}, fmt.Errorf("rebase app image: %w", err)
 	}
 
 	// update metadata label
 	origMetadata.RunImage.TopLayer, err = newBaseImage.TopLayer()
 	if err != nil {
-		return RebaseReport{}, fmt.Errorf("get rebase run image top layer SHA: %w", err)
+		return files.RebaseReport{}, fmt.Errorf("get rebase run image top layer SHA: %w", err)
 	}
 	identifier, err := newBaseImage.Identifier()
 	if err != nil {
-		return RebaseReport{}, fmt.Errorf("get run image id or digest: %w", err)
+		return files.RebaseReport{}, fmt.Errorf("get run image id or digest: %w", err)
 	}
 	origMetadata.RunImage.Reference = identifier.String()
 	if r.PlatformAPI.AtLeast("0.12") {
@@ -100,7 +97,7 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 				newStackMD := origMetadata.RunImage.ToStack()
 				origMetadata.Stack = &newStackMD
 			} else {
-				return RebaseReport{}, fmt.Errorf(
+				return files.RebaseReport{}, fmt.Errorf(
 					msgRunImageMDNotContainsName+"; "+msgProvideForceToOverride,
 					newBaseImage.Name(),
 					existingRunImageMD,
@@ -112,10 +109,10 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 	// set metadata label
 	data, err := json.Marshal(origMetadata)
 	if err != nil {
-		return RebaseReport{}, fmt.Errorf("marshall metadata: %w", err)
+		return files.RebaseReport{}, fmt.Errorf("marshall metadata: %w", err)
 	}
 	if err := workingImage.SetLabel(platform.LifecycleMetadataLabel, string(data)); err != nil {
-		return RebaseReport{}, fmt.Errorf("set app image metadata label: %w", err)
+		return files.RebaseReport{}, fmt.Errorf("set app image metadata label: %w", err)
 	}
 
 	// update other labels
@@ -126,14 +123,14 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return strings.HasPrefix(l, "io.buildpacks.stack.")
 	}
 	if err := image.SyncLabels(newBaseImage, workingImage, hasPrefix); err != nil {
-		return RebaseReport{}, fmt.Errorf("set stack labels: %w", err)
+		return files.RebaseReport{}, fmt.Errorf("set stack labels: %w", err)
 	}
 
 	// save
-	report := RebaseReport{}
+	report := files.RebaseReport{}
 	report.Image, err = saveImageAs(workingImage, outputImageRef, additionalNames, r.Logger)
 	if err != nil {
-		return RebaseReport{}, err
+		return files.RebaseReport{}, err
 	}
 	return report, err
 }

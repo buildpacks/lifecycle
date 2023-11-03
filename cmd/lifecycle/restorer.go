@@ -96,17 +96,16 @@ func (r *restoreCmd) Privileges() error {
 }
 
 func (r *restoreCmd) Exec() error {
-	group, groupExt, err := phase.Config.ReadGroup(r.GroupPath)
+	group, err := files.Handler.ReadGroup(r.GroupPath)
 	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
-	}
-	if err := verifyBuildpackApis(buildpack.Group{Group: group}); err != nil {
 		return err
 	}
-	groupFile := buildpack.Group{Group: group, GroupExtensions: groupExt}
+	if err = verifyBuildpackApis(group); err != nil {
+		return err
+	}
 
 	var analyzedMD files.Analyzed
-	if analyzedMD, err = files.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
+	if analyzedMD, err = files.Handler.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
 		if r.supportsBuildImageExtension() && r.BuildImageRef != "" {
 			cmd.DefaultLogger.Debugf("Pulling builder image metadata for %s...", r.BuildImageRef)
 			remoteBuildImage, err := r.pullSparse(r.BuildImageRef)
@@ -137,7 +136,7 @@ func (r *restoreCmd) Exec() error {
 			if err = r.updateAnalyzedMD(&analyzedMD, runImage); err != nil {
 				return cmd.FailErr(err, "update analyzed metadata")
 			}
-		} else if r.needsUpdating(analyzedMD.RunImage, groupFile) {
+		} else if r.needsUpdating(analyzedMD.RunImage, group) {
 			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
 			h := image.NewHandler(r.docker, r.keychain, r.LayoutDir, r.UseLayout, r.InsecureRegistries)
 			runImage, err = h.InitImage(runImageName)
@@ -148,7 +147,7 @@ func (r *restoreCmd) Exec() error {
 				return cmd.FailErr(err, "update analyzed metadata")
 			}
 		}
-		if err = encoding.WriteTOML(r.AnalyzedPath, analyzedMD); err != nil {
+		if err = files.Handler.WriteAnalyzed(r.AnalyzedPath, &analyzedMD, cmd.DefaultLogger); err != nil {
 			return cmd.FailErr(err, "write analyzed metadata")
 		}
 	} else {
@@ -159,7 +158,7 @@ func (r *restoreCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	return r.restore(analyzedMD.LayersMetadata, groupFile, cacheStore)
+	return r.restore(analyzedMD.LayersMetadata, group, cacheStore)
 }
 
 func (r *restoreCmd) updateAnalyzedMD(analyzedMD *files.Analyzed, runImage imgutil.Image) error {

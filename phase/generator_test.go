@@ -69,9 +69,9 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path", logger).Return(files.Analyzed{RunImage: &files.RunImage{Reference: "some-run-image-ref"}}, nil)
 			fakeConfigHandler.EXPECT().ReadRun("some-run-path", logger).Return(files.Run{Images: []files.RunImageForExport{{Image: "some-run-image"}}}, nil)
 			providedExtensions := []buildpack.GroupElement{
-				{ID: "A", Version: "v1", API: "0.9"},
+				{ID: "A", Version: "v1", API: "0.9", Extension: true},
 			}
-			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return([]buildpack.GroupElement{}, providedExtensions, nil)
+			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return(buildpack.Group{GroupExtensions: providedExtensions}, nil)
 			providedPlan := files.Plan{Entries: []files.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupElement{

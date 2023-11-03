@@ -133,7 +133,7 @@ func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
 	case i.DeprecatedRunImageRef != "":
 		return errors.New(ErrImageUnsupported)
 	default:
-		analyzedMD, err := files.ReadAnalyzed(i.AnalyzedPath, logger)
+		analyzedMD, err := files.Handler.ReadAnalyzed(i.AnalyzedPath, logger)
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) erro
 	if err != nil {
 		return err
 	}
-	runMD, err := files.ReadRun(i.RunPath, logger)
+	runMD, err := files.Handler.ReadRun(i.RunPath, logger)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func fillRunImageFromStackTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) er
 	if err != nil {
 		return err
 	}
-	stackMD, err := files.ReadStack(i.StackPath, logger)
+	stackMD, err := files.Handler.ReadStack(i.StackPath, logger)
 	if err != nil {
 		return err
 	}

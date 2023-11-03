@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -221,7 +220,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 			h.AssertStringContains(t, md.Extensions[0].API, "0.10")
-			h.AssertEq(t, md.Extensions[0].Extension, false) // this shows that `extension = true` is not redundantly printed in group.toml
 			h.AssertStringContains(t, md.Extensions[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Extensions[0].Version, "0.0.1")
 		})
@@ -242,7 +240,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to read buildpack group: open /layers/group.toml: no such file or directory"
+					expected := "failed to read group file: open /layers/group.toml: no such file or directory"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -279,7 +277,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to read buildpack group: toml: line 1: expected '.' or '=', but got 'a' instead"
+					expected := "failed to read group file: toml: line 1: expected '.' or '=', but got 'a' instead"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -318,7 +316,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to parse detect plan: open /layers/plan.toml: no such file or directory"
+					expected := "failed to read plan file: open /layers/plan.toml: no such file or directory"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -358,7 +356,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to parse detect plan: toml: line 1: expected '.' or '=', but got 'a' instead"
+					expected := "failed to read plan file: toml: line 1: expected '.' or '=', but got 'a' instead"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -533,9 +531,8 @@ func getBuilderMetadata(t *testing.T, path string) (string, *files.BuildMetadata
 	contents, _ := os.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var buildMD files.BuildMetadata
-	_, err := toml.Decode(string(contents), &buildMD)
+	buildMD, err := files.Handler.ReadBuildMetadata(path, api.MustParse(latestPlatformAPI))
 	h.AssertNil(t, err)
 
-	return string(contents), &buildMD
+	return string(contents), buildMD
 }
