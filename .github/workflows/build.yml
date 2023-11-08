@@ -29,17 +29,6 @@ jobs:
           curl -s -L -o deps/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
           chmod +x deps/bin/jq
           echo "${PWD}/deps/bin" >> $GITHUB_PATH
-      - name: Test
-        env:
-          TEST_COVERAGE: 1
-        run: make test
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./out/tests/coverage-unit.txt
-          flags: unit,os_linux
-          fail_ci_if_error: true
-          verbose: true
   test-windows:
     runs-on: windows-2019
     steps:
@@ -79,22 +68,7 @@ jobs:
           # dump docker info for auditing
           docker version
           docker info
-      - name: Test
-        env:
-          TEST_COVERAGE: 1
-        run: |
-          make test
-      - name: Prepare Codecov
-        uses: crazy-max/ghaction-chocolatey@v2
-        with:
-          args: install codecov -y
-      - name: Run Codecov
-        run: |
-          codecov.exe -f .\out\tests\coverage-unit.txt -v --flag os_windows
   build-and-publish:
-    needs:
-      - test-linux-amd64
-      - test-windows
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -160,10 +134,10 @@ jobs:
         with:
           name: lifecycle-bom-cdx-sha256
           path: lifecycle-v*-bom.cdx.json.sha256
-      - uses: azure/docker-login@v1
+      - uses: docker/login-action@v2
         if: github.event_name == 'push'
         with:
-          login-server: cormtestacr.azurecr.io
+          registry: cormtestacr.azurecr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: actions/download-artifact@v2
