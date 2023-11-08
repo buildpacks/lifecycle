@@ -10,7 +10,6 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/buildpacks/lifecycle/priv"
 )
 
 type detectCmd struct {
