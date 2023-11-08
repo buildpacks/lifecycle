@@ -80,23 +80,8 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 // Privileges validates the needed privileges.
 func (a *analyzeCmd) Privileges() error {
-	var err error
-	a.keychain, err = auth.DefaultKeychain(a.RegistryImages()...)
-	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
-	}
-	if a.UseDaemon {
-		a.docker, err = priv.DockerClient()
-		if err != nil {
-			return cmd.FailErr(err, "initialize docker client")
-		}
-	}
-	if err = priv.EnsureOwner(a.UID, a.GID, a.LayersDir, a.CacheDir, a.LaunchCacheDir); err != nil {
-		return cmd.FailErr(err, "chown volumes")
-	}
-	if err = priv.RunAs(a.UID, a.GID); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", a.UID, a.GID))
-	}
+	// Temporarily skip Privileges() call when used inside ACA builder
+	cmd.DefaultLogger.Debugf("Skipping Privileges() call inside analyzer.")
 	return nil
 }
 

@@ -51,10 +51,8 @@ func (d *detectCmd) Args(nargs int, _ []string) error {
 }
 
 func (d *detectCmd) Privileges() error {
-	// detector should never be run with privileges
-	if priv.IsPrivileged() {
-		return cmd.FailErr(errors.New("refusing to run as root"), "detect")
-	}
+	// Temporarily skip Privileges() call when used inside ACA builder
+	cmd.DefaultLogger.Debugf("Skipping Privileges() call inside detector.")
 	return nil
 }
 

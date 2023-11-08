@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'release/**'
+      - v0.17.2-custom
   pull_request:
     branches:
       - main
@@ -186,6 +187,7 @@ jobs:
       - uses: azure/docker-login@v1
         if: github.event_name == 'push'
         with:
+          login-server: cormtestacr.azurecr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: actions/download-artifact@v2
@@ -214,33 +216,27 @@ jobs:
           DOCKER_CLI_EXPERIMENTAL=enabled
           LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)
 
-          LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64 | awk '{print $NF}')
+          LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag cormtestacr.azurecr.io/oryx/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64 | awk '{print $NF}')
           echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
 
-          LINUX_ARM64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64 | awk '{print $NF}')
+          LINUX_ARM64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag cormtestacr.azurecr.io/oryx/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64 | awk '{print $NF}')
           echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
 
-          WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
+          WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag cormtestacr.azurecr.io/oryx/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
-          docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
+          docker manifest create cormtestacr.azurecr.io/oryx/lifecycle:${LIFECYCLE_IMAGE_TAG} \
+              cormtestacr.azurecr.io/oryx/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
+              cormtestacr.azurecr.io/oryx/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
+              cormtestacr.azurecr.io/oryx/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
 
-          MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
+          MANIFEST_SHA=$(docker manifest push cormtestacr.azurecr.io/oryx/lifecycle:${LIFECYCLE_IMAGE_TAG})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
-
-          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
-            -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
-            -a tag=${LIFECYCLE_IMAGE_TAG} \
-            buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}@${MANIFEST_SHA}
-          cosign verify -key cosign.pub -a tag=${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
       - name: Scan image
         if: github.event_name == 'push'
         uses: anchore/scan-action@v3
         with:
-          image: buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}
+          image: cormtestacr.azurecr.io/oryx/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}
   pack-acceptance-linux:
     if: github.event_name == 'push'
     needs: build-and-publish
@@ -275,7 +271,7 @@ jobs:
           cd pack
           git checkout v0.28.0 # FIXME: let the pack version float again when pack 0.30.0-pre2 is out
           LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
-          LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
+          LIFECYCLE_IMAGE="cormtestacr.azurecr.io/oryx/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
           make acceptance
   pack-acceptance-windows:
     if: github.event_name == 'push'
@@ -346,6 +342,6 @@ jobs:
           cd pack
           git checkout v0.28.0 # FIXME: let the pack version float again when pack 0.30.0-pre2 is out
           $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
-          $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
+          $env:LIFECYCLE_IMAGE="cormtestacr.azurecr.io/oryx/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
           make acceptance
 
