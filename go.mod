@@ -18,8 +18,8 @@ require (
 	github.com/moby/buildkit v0.12.2
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
-	golang.org/x/sync v0.4.0
-	golang.org/x/sys v0.13.0
+	golang.org/x/sync v0.5.0
+	golang.org/x/sys v0.14.1-0.20231108175955-e4099bfacb8c
 )
 
 require (
@@ -54,7 +54,7 @@ require (
 	github.com/aws/smithy-go v1.15.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/cilium/ebpf v0.12.0 // indirect
+	github.com/cilium/ebpf v0.12.3 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
