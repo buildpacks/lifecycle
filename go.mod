@@ -131,7 +131,7 @@ require (
 go 1.20
 
 // Ensure we only pull in the latest version of containerd
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.7.7
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.7.8
 
 // Pin docker/docker until it is upgraded in kaniko
 replace github.com/docker/docker => github.com/docker/docker v23.0.6+incompatible
