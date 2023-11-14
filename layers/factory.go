@@ -49,20 +49,25 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 	for {
 		sha, loaded := f.tarHashes.LoadOrStore(tarPath, "processing")
 		if loaded {
-			shaString := sha.(string)
-			if shaString == "processing" {
-				// another goroutine is processing this layer, wait and try again
-				time.Sleep(500 * time.Millisecond)
-				continue
-			}
+			select {
+			case <-f.Ctx.Done():
+				return nil, f.Ctx.Err()
+			default:
+				shaString := sha.(string)
+				if shaString == "processing" {
+					// another goroutine is processing this layer, wait and try again
+					time.Sleep(500 * time.Millisecond)
+					continue
+				}
 
-			f.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", id, shaString)
-			return Layer{
-				ID:      id,
-				TarPath: tarPath,
-				Digest:  shaString,
-				History: v1.History{CreatedBy: createdBy},
-			}, nil
+				f.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", id, shaString)
+				return Layer{
+					ID:      id,
+					TarPath: tarPath,
+					Digest:  shaString,
+					History: v1.History{CreatedBy: createdBy},
+				}, nil
+			}
 		}
 		break
 	}
