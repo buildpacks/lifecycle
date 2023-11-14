@@ -55,6 +55,7 @@ type LifecycleInputs struct {
 	GID                   int
 	ForceRebase           bool
 	SkipLayers            bool
+	ParallelExport        bool
 	UseDaemon             bool
 	UseLayout             bool
 	AdditionalTags        str.Slice // str.Slice satisfies the `Value` interface required by the `flag` package
