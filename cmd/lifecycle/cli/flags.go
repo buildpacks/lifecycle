@@ -112,6 +112,11 @@ func FlagPlatformDir(platformDir *string) {
 	flagSet.StringVar(platformDir, "platform", *platformDir, "path to platform directory")
 }
 
+// FlagParallelExport parses `parallel` flag
+func FlagParallelExport(parallelExport *bool) {
+	flagSet.BoolVar(parallelExport, "parallel", *parallelExport, "export app image and cache image in parallel")
+}
+
 func FlagPreviousImage(previousImage *string) {
 	flagSet.StringVar(previousImage, "previous-image", *previousImage, "reference to previous image")
 }
