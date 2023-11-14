@@ -52,7 +52,7 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 			shaString := sha.(string)
 			if shaString == "processing" {
 				// another goroutine is processing this layer, wait and try again
-				time.Sleep(time.Duration(500 * time.Millisecond))
+				time.Sleep(500 * time.Millisecond)
 				continue
 			}
 
