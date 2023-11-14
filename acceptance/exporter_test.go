@@ -320,10 +320,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							)
 							h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-							// To detect whether the export of cacheImage and exportedImage is successful
 							h.Run(t, exec.Command("docker", "pull", exportedImageName))
 							assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
-							h.Run(t, exec.Command("docker", "pull", cacheImageName))
 						})
 
 						it("is created with empty layer", func() {

@@ -55,7 +55,6 @@ type LifecycleInputs struct {
 	GID                   int
 	ForceRebase           bool
 	SkipLayers            bool
-	ParallelExport        bool
 	UseDaemon             bool
 	UseLayout             bool
 	AdditionalTags        str.Slice // str.Slice satisfies the `Value` interface required by the `flag` package
@@ -132,7 +131,6 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		KanikoDir:      "/kaniko",
 		LaunchCacheDir: os.Getenv(EnvLaunchCacheDir),
 		SkipLayers:     skipLayers,
-		ParallelExport: boolEnv(EnvParallelExport),
 
 		// Images used by the lifecycle during the build
 

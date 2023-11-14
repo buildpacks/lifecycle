@@ -52,7 +52,6 @@ func (c *createCmd) DefineFlags() {
 	cli.FlagLauncherPath(&c.LauncherPath)
 	cli.FlagLayersDir(&c.LayersDir)
 	cli.FlagOrderPath(&c.OrderPath)
-	cli.FlagParallelExport(&c.ParallelExport)
 	cli.FlagPlatformDir(&c.PlatformDir)
 	cli.FlagPreviousImage(&c.PreviousImageRef)
 	cli.FlagProcessType(&c.DefaultProcessType)
