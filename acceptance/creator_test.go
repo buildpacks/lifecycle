@@ -76,6 +76,29 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 			})
 		})
 
+		when("detected order contains extensions", func() {
+			it("errors", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.10"), "")
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API="+platformAPI,
+					"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
+					"--network", createRegNetwork,
+					createImage,
+					ctrPath(creatorPath),
+					"-log-level", "debug",
+					"-order", "/cnb/order-with-extensions.toml",
+					"-run-image", createRegFixtures.ReadOnlyRunImage,
+					createRegFixtures.SomeAppImage,
+				) // #nosec G204
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "detected order contains extensions which is not supported by the creator"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
 		when("daemon case", func() {
 			it.After(func() {
 				h.DockerImageRemove(t, createdImageName)
