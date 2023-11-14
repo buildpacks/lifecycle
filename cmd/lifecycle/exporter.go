@@ -181,7 +181,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 			UID:          e.UID,
 			GID:          e.GID,
 			Logger:       cmd.DefaultLogger,
-			ctx:          gCtx,
+			Ctx:          gCtx,
 		},
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: e.PlatformAPI,

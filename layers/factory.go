@@ -27,9 +27,8 @@ type Factory struct {
 	ArtifactsDir string // ArtifactsDir is the directory where layer files are written
 	UID, GID     int    // UID and GID are used to normalize layer entries
 	Logger       log.Logger
-
-	tarHashes map[string]string // tarHases Stores hashes of layer tarballs for reuse between the export and cache steps.
-	ctx       context.Context
+	Ctx          context.Context
+	tarHashes    map[string]string // tarHases Stores hashes of layer tarballs for reuse between the export and cache steps.
 }
 
 type Layer struct {
@@ -40,7 +39,7 @@ type Layer struct {
 }
 
 func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.NormalizingTarWriter) error) (layer Layer, err error) {
-	f.ctx = context.TODO()
+	f.Ctx = context.TODO()
 	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
 
 	if f.tarHashes == nil {
