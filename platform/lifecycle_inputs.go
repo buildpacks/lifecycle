@@ -132,6 +132,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		KanikoDir:      "/kaniko",
 		LaunchCacheDir: os.Getenv(EnvLaunchCacheDir),
 		SkipLayers:     skipLayers,
+                ParallelExport: boolEnv(EnvParallelExport),
 
 		// Images used by the lifecycle during the build
 
