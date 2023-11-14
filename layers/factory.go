@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
@@ -24,7 +23,7 @@ const (
 	ProcessTypesLayerName   = "Buildpacks Process Types"
 	SBOMLayerName           = "Software Bill-of-Materials"
 	SliceLayerName          = "Application Slice: %d"
-	processing              = "processing"
+	// processing              = "processing"
 )
 
 type Factory struct {
@@ -53,21 +52,7 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 			select {
 			case <-f.Ctx.Done():
 				return nil, errors.New("layer factory context canceled")
-			default:
-				shaString := sha.(string)
-				if shaString == processing {
-					// another goroutine is processing this layer, wait and try again
-					time.Sleep(time.Duration(500 * time.Millisecond))
-					continue
-				}
 
-				f.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", id, shaString)
-				return Layer{
-					ID:      id,
-					TarPath: tarPath,
-					Digest:  shaString,
-					History: v1.History{CreatedBy: createdBy},
-				}, nil
 			}
 		}
 		break
