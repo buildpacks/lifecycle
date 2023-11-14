@@ -2,6 +2,7 @@ package layers
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +41,15 @@ type Layer struct {
 }
 
 func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.NormalizingTarWriter) error) (layer Layer, err error) {
+	select {
+	case <-f.ctx.Done():
+		return nil, fmt.Errorf("stopped")
+	default:
+		f.Logger.Debugf("Reusing")
+	}
+
 	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
+
 	if f.tarHashes == nil {
 		f.tarHashes = make(map[string]string)
 	}
