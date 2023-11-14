@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -72,6 +74,7 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagLaunchCacheDir(&e.LaunchCacheDir)
 	cli.FlagLauncherPath(&e.LauncherPath)
 	cli.FlagLayersDir(&e.LayersDir)
+	cli.FlagParallelExport(&e.ParallelExport)
 	cli.FlagProcessType(&e.DefaultProcessType)
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
 	cli.FlagReportPath(&e.ReportPath)
@@ -170,6 +173,12 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 		return err
 	}
 
+	g := new(errgroup.Group)
+	var ctx context.Context
+
+	if e.ParallelExport {
+		g, ctx = errgroup.WithContext(context.Background())
+	}
 	exporter := &phase.Exporter{
 		Buildpacks: group.Group,
 		LayerFactory: &layers.Factory{
@@ -177,6 +186,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 			UID:          e.UID,
 			GID:          e.GID,
 			Logger:       cmd.DefaultLogger,
+			Ctx:          ctx,
 		},
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: e.PlatformAPI,
@@ -203,31 +213,48 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 		return err
 	}
 
-	report, err := exporter.Export(phase.ExportOptions{
-		AdditionalNames:    e.AdditionalTags,
-		AppDir:             e.AppDir,
-		DefaultProcessType: e.DefaultProcessType,
-		ExtendedDir:        e.ExtendedDir,
-		LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
-		LayersDir:          e.LayersDir,
-		OrigMetadata:       analyzedMD.LayersMetadata,
-		Project:            projectMD,
-		RunImageRef:        runImageID,
-		RunImageForExport:  runImageForExport,
-		WorkingImage:       appImage,
+	g.Go(func() error {
+		report, err := exporter.Export(phase.ExportOptions{
+			AdditionalNames:    e.AdditionalTags,
+			AppDir:             e.AppDir,
+			DefaultProcessType: e.DefaultProcessType,
+			ExtendedDir:        e.ExtendedDir,
+			LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
+			LayersDir:          e.LayersDir,
+			OrigMetadata:       analyzedMD.LayersMetadata,
+			Project:            projectMD,
+			RunImageRef:        runImageID,
+			RunImageForExport:  runImageForExport,
+			WorkingImage:       appImage,
+		})
+		if err != nil {
+			return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "export")
+		}
+		if err = files.Handler.WriteReport(e.ReportPath, &report); err != nil {
+			return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "write export report")
+		}
+		return nil
 	})
-	if err != nil {
-		return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "export")
-	}
-	if err = files.Handler.WriteReport(e.ReportPath, &report); err != nil {
-		return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "write export report")
-	}
 
-	if cacheStore != nil {
-		if cacheErr := exporter.Cache(e.LayersDir, cacheStore); cacheErr != nil {
-			cmd.DefaultLogger.Warnf("Failed to export cache: %v\n", cacheErr)
+	if !e.ParallelExport {
+		if err := g.Wait(); err != nil {
+			return err
 		}
 	}
+
+	g.Go(func() error {
+		if cacheStore != nil {
+			if cacheErr := exporter.Cache(e.LayersDir, cacheStore); cacheErr != nil {
+				cmd.DefaultLogger.Warnf("Failed to export cache: %v\n", cacheErr)
+			}
+		}
+		return nil
+	})
+
+	if err = g.Wait(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
