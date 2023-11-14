@@ -51,7 +51,7 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 		if loaded {
 			select {
 			case <-f.Ctx.Done():
-				return nil, f.Ctx.Err()
+				return layer{}, f.Ctx.Err()
 			default:
 				shaString := sha.(string)
 				if shaString == "processing" {
