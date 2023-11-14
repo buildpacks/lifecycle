@@ -71,31 +71,37 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 		}
 		break
 	}
-	lw, err := newFileLayerWriter(tarPath)
-	if err != nil {
-		return Layer{}, err
-	}
-	defer func() {
-		if closeErr := lw.Close(); err == nil {
-			err = closeErr
-		}
-	}()
-	tw := tarWriter(lw)
-	if err := addEntries(tw); err != nil {
-		return Layer{}, err
-	}
 
-	if err := tw.Close(); err != nil {
-		return Layer{}, err
+	select {
+	case <-f.Ctx.Done():
+		return Layer{}, f.Ctx.Err()
+	default:
+		lw, err := newFileLayerWriter(tarPath)
+		if err != nil {
+			return Layer{}, err
+		}
+		defer func() {
+			if closeErr := lw.Close(); err == nil {
+				err = closeErr
+			}
+		}()
+		tw := tarWriter(lw)
+		if err := addEntries(tw); err != nil {
+			return Layer{}, err
+		}
+
+		if err := tw.Close(); err != nil {
+			return Layer{}, err
+		}
+		digest := lw.Digest()
+		f.tarHashes.Store(tarPath, digest)
+		return Layer{
+			ID:      id,
+			Digest:  digest,
+			TarPath: tarPath,
+			History: v1.History{CreatedBy: createdBy},
+		}, err
 	}
-	digest := lw.Digest()
-	f.tarHashes.Store(tarPath, digest)
-	return Layer{
-		ID:      id,
-		Digest:  digest,
-		TarPath: tarPath,
-		History: v1.History{CreatedBy: createdBy},
-	}, err
 }
 
 func escape(id string) string {
