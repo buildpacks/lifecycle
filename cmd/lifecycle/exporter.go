@@ -173,7 +173,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 		return err
 	}
 
-	g, gCtx := errgroup.WithContext(context.Background())
+	_, gCtx := errgroup.WithContext(context.Background())
 	exporter := &phase.Exporter{
 		Buildpacks: group.Group,
 		LayerFactory: &layers.Factory{
@@ -208,48 +208,6 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 		return err
 	}
 
-	g.Go(func() error {
-		report, err := exporter.Export(phase.ExportOptions{
-			AdditionalNames:    e.AdditionalTags,
-			AppDir:             e.AppDir,
-			DefaultProcessType: e.DefaultProcessType,
-			ExtendedDir:        e.ExtendedDir,
-			LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
-			LayersDir:          e.LayersDir,
-			OrigMetadata:       analyzedMD.LayersMetadata,
-			Project:            projectMD,
-			RunImageRef:        runImageID,
-			RunImageForExport:  runImageForExport,
-			WorkingImage:       appImage,
-		})
-		if err != nil {
-			return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "export")
-		}
-		if err = files.Handler.WriteReport(e.ReportPath, &report); err != nil {
-			return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "write export report")
-		}
-		return nil
-	})
-
-	//if !e.ParallelExport {
-	//gCtx = nil
-	if err := g.Wait(); err != nil {
-		return err
-	}
-	//}
-
-	g.Go(func() error {
-		if cacheStore != nil {
-			if cacheErr := exporter.Cache(e.LayersDir, cacheStore); cacheErr != nil {
-				cmd.DefaultLogger.Warnf("Failed to export cache: %v\n", cacheErr)
-			}
-		}
-		return nil
-	})
-
-	if err := g.Wait(); err != nil {
-		return err
-	}
 	return nil
 }
 
