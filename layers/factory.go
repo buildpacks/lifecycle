@@ -1,11 +1,16 @@
 package layers
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+
+	"sync"
 
 	"github.com/buildpacks/lifecycle/archive"
 	"github.com/buildpacks/lifecycle/log"
@@ -27,7 +32,9 @@ type Factory struct {
 	UID, GID     int    // UID and GID are used to normalize layer entries
 	Logger       log.Logger
 
-	tarHashes map[string]string // tarHases Stores hashes of layer tarballs for reuse between the export and cache steps.
+	// tarHashes stores hashes of layer tarballs for reuse between the export and cache steps.
+	tarHashes sync.Map
+	ctx       context.Context
 }
 
 type Layer struct {
@@ -38,38 +45,62 @@ type Layer struct {
 }
 
 func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.NormalizingTarWriter) error) (layer Layer, err error) {
-	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
-	if f.tarHashes == nil {
-		f.tarHashes = make(map[string]string)
-	}
-	if sha, ok := f.tarHashes[tarPath]; ok {
-		f.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", id, sha)
-		return Layer{
-			ID:      id,
-			TarPath: tarPath,
-			Digest:  sha,
-			History: v1.History{CreatedBy: createdBy},
-		}, nil
-	}
-	lw, err := newFileLayerWriter(tarPath)
-	if err != nil {
-		return Layer{}, err
-	}
-	defer func() {
-		if closeErr := lw.Close(); err == nil {
-			err = closeErr
-		}
-	}()
-	tw := tarWriter(lw)
-	if err := addEntries(tw); err != nil {
-		return Layer{}, err
+	if f.ctx == nil {
+		f.ctx = context.TODO()
 	}
 
-	if err := tw.Close(); err != nil {
-		return Layer{}, err
+	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
+	const processing = "processing"
+	for {
+		sha, loaded := f.tarHashes.LoadOrStore(tarPath, processing)
+		if loaded {
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("layer factory context canceled")
+			default:
+				shaString := sha.(string)
+				if shaString == processing {
+					// another goroutine is processing this layer, wait and try again
+					time.Sleep(time.Duration(500 * time.Millisecond))
+					continue
+				}
+
+				f.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", id, shaString)
+				return Layer{
+					ID:      id,
+					TarPath: tarPath,
+					Digest:  shaString,
+					History: v1.History{CreatedBy: createdBy},
+				}, nil
+			}
+		}
+		break
 	}
-	digest := lw.Digest()
-	f.tarHashes[tarPath] = digest
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("layer factory context canceled")
+	default:
+		lw, err := newFileLayerWriter(tarPath)
+		if err != nil {
+			return Layer{}, err
+		}
+		defer func() {
+			if closeErr := lw.Close(); err == nil {
+				err = closeErr
+			}
+		}()
+		tw := tarWriter(lw)
+		if err := addEntries(tw); err != nil {
+			return Layer{}, err
+		}
+
+		if err := tw.Close(); err != nil {
+			return Layer{}, err
+		}
+		digest := lw.Digest()
+		f.tarHashes[tarPath] = digest
+	}
 	return Layer{
 		ID:      id,
 		Digest:  digest,
