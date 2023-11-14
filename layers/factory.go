@@ -47,11 +47,13 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 	}
 	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
 	for {
-		sha, loaded := f.tarHashes.LoadOrStore(tarPath, processing)
+		sha, loaded := f.tarHashes.LoadOrStore(tarPath, "processin")
 		if loaded {
 			select {
 			case <-f.Ctx.Done():
 				return nil, errors.New("layer factory context canceled")
+			default:
+				return nil, nil
 
 			}
 		}
