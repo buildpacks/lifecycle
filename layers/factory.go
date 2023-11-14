@@ -77,7 +77,7 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 		return Layer{}, err
 	}
 	digest := lw.Digest()
-	f.tarHashes[tarPath] = digest
+	f.tarHashes.Store(tarPath, digest)
 	return Layer{
 		ID:      id,
 		Digest:  digest,
