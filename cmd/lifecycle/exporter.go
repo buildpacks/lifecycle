@@ -231,12 +231,12 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 		return nil
 	})
 
-	if !e.ParallelExport {
-		gCtx = nil
-		if err := g.Wait(); err != nil {
-			return err
-		}
+	//if !e.ParallelExport {
+	//gCtx = nil
+	if err := g.Wait(); err != nil {
+		return err
 	}
+	//}
 
 	g.Go(func() error {
 		if cacheStore != nil {
