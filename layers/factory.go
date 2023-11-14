@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 
@@ -45,6 +46,26 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 		f.Ctx = context.TODO()
 	}
 	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
+	for {
+		sha, loaded := f.tarHashes.LoadOrStore(tarPath, "processing")
+		if loaded {
+			shaString := sha.(string)
+			if shaString == "processing" {
+				// another goroutine is processing this layer, wait and try again
+				time.Sleep(time.Duration(500 * time.Millisecond))
+				continue
+			}
+
+			f.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", id, shaString)
+			return Layer{
+				ID:      id,
+				TarPath: tarPath,
+				Digest:  shaString,
+				History: v1.History{CreatedBy: createdBy},
+			}, nil
+		}
+		break
+	}
 	lw, err := newFileLayerWriter(tarPath)
 	if err != nil {
 		return Layer{}, err
