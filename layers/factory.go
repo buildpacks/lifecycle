@@ -1,6 +1,7 @@
 package layers
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,7 @@ type Factory struct {
 	Logger       log.Logger
 
 	tarHashes map[string]string // tarHases Stores hashes of layer tarballs for reuse between the export and cache steps.
+	ctx       context.Context
 }
 
 type Layer struct {

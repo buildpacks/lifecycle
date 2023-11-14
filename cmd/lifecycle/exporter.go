@@ -173,7 +173,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 		return err
 	}
 
-	g, ctx := errgroup.WithContext(context.Background())
+	g, gCtx := errgroup.WithContext(context.Background())
 	exporter := &phase.Exporter{
 		Buildpacks: group.Group,
 		LayerFactory: &layers.Factory{
@@ -181,6 +181,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 			UID:          e.UID,
 			GID:          e.GID,
 			Logger:       cmd.DefaultLogger,
+			ctx:          gCtx,
 		},
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: e.PlatformAPI,
@@ -231,7 +232,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 	})
 
 	if !e.ParallelExport {
-		ctx = nil
+		gCtx = nil
 		if err := g.Wait(); err != nil {
 			return err
 		}
