@@ -24,6 +24,7 @@ const (
 	ProcessTypesLayerName   = "Buildpacks Process Types"
 	SBOMLayerName           = "Software Bill-of-Materials"
 	SliceLayerName          = "Application Slice: %d"
+	processing              = "processing"
 )
 
 type Factory struct {
@@ -46,7 +47,6 @@ func (f *Factory) writeLayer(id, createdBy string, addEntries func(tw *archive.N
 		f.Ctx = context.TODO()
 	}
 	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
-	const processing = "processing"
 	for {
 		sha, loaded := f.tarHashes.LoadOrStore(tarPath, processing)
 		if loaded {
