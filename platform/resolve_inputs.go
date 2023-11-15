@@ -231,7 +231,7 @@ func ValidateRebaseRunImage(i *LifecycleInputs, _ log.Logger) error {
 // CheckParallelExport will warn when parallel export is enabled without a cache.
 func CheckParallelExport(i *LifecycleInputs, logger log.Logger) error {
 	if i.ParallelExport && (i.CacheImageRef == "" && i.CacheDir == "") {
-		logger.Warn("parallel export has been enabled, but it has not taken effect because no cache has been specified.")
+		logger.Warn("Parallel export has been enabled, but it has not taken effect because no cache has been specified.")
 	}
 	return nil
 }

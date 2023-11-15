@@ -49,9 +49,10 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 				it("warns", func() {
 					inputs.ParallelExport = true
 					inputs.CacheImageRef = ""
+					inputs.CacheDir = ""
 					err := platform.ResolveInputs(platform.Create, inputs, logger)
 					h.AssertNil(t, err)
-					expected := "parallel export has been enabled, but it has not taken effect because cache image (-cache-image) has not been specified."
+					expected := "No cached data will be used, no cache specified. parallel export has been enabled, but it has not taken effect because no cache has been specified."
 					h.AssertLogEntry(t, logHandler, expected)
 				})
 			})
