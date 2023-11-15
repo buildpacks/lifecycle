@@ -1,0 +1,9 @@
+[[order]]
+[[order.group]]
+id = "samples/hello-world"
+version = "0.0.1"
+
+[[order-extensions]]
+[[order-extensions.group]]
+id = "samples/hello-world"
+version = "0.0.1"

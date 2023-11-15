@@ -111,7 +111,7 @@ func (c *createCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	dirStore := platform.NewDirStore(c.BuildpacksDir, "")
+	dirStore := platform.NewDirStore(c.BuildpacksDir, c.ExtensionsDir)
 	if err != nil {
 		return err
 	}
@@ -158,6 +158,13 @@ func (c *createCmd) Exec() error {
 	group, plan, err = doDetect(detector, c.Platform)
 	if err != nil {
 		return err // pass through error
+	}
+	if group.HasExtensions() {
+		return cmd.FailErrCode(
+			errors.New("detected order contains extensions which is not supported by the creator"),
+			c.CodeFor(platform.DetectError),
+			"detect",
+		)
 	}
 
 	// Restore
