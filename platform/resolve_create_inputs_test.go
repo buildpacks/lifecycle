@@ -52,7 +52,7 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 					inputs.CacheDir = ""
 					err := platform.ResolveInputs(platform.Create, inputs, logger)
 					h.AssertNil(t, err)
-					expected := "No cached data will be used, no cache specified. Parallel export has been enabled, but it has not taken effect because no cache has been specified."
+					expected := "Parallel export has been enabled, but it has not taken effect because no cache has been specified."
 					h.AssertLogEntry(t, logHandler, expected)
 				})
 			})
