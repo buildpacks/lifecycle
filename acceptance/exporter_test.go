@@ -325,6 +325,29 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.Run(t, exec.Command("docker", "pull", cacheImageName))
 						})
 
+						it("is created with parallel export enabled", func() {
+							cacheImageName := exportTest.RegRepoName("some-cache-image-" + h.RandString(10))
+							exportFlags := []string{"-cache-image", cacheImageName, "-parallel"}
+							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+							exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
+							exportArgs = append(exportArgs, exportedImageName)
+
+							output := h.DockerRun(t,
+								exportImage,
+								h.WithFlags(
+									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
+									"--network", exportRegNetwork,
+								),
+								h.WithArgs(exportArgs...),
+							)
+							h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+							h.Run(t, exec.Command("docker", "pull", exportedImageName))
+							assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
+							h.Run(t, exec.Command("docker", "pull", cacheImageName))
+						})
+
 						it("is created with empty layer", func() {
 							cacheImageName := exportTest.RegRepoName("some-empty-cache-image-" + h.RandString(10))
 							exportFlags := []string{"-cache-image", cacheImageName, "-layers", "/other_layers"}
