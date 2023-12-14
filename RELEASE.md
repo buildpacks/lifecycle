@@ -1,5 +1,9 @@
 ## Release Finalization
 
+Determine base base:
+1. If you are responding to CVEs - consider using the most recent patch as your base.
+1. Look at any commits on `main` since the past patch. If any look like they should be ported onto this release, cherry pick them to your release branch.
+
 To cut a pre-release:
 1. If applicable, ensure the README is updated with the latest supported apis (example PR: https://github.com/buildpacks/lifecycle/pull/550).
 1. Create a release branch in the format `release/0.99.0-rc.1`. New commits to this branch will trigger the `build` workflow and produce a lifecycle image: `buildpacksio/lifecycle:<commit sha>`.
