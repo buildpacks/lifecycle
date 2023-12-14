@@ -45,6 +45,18 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
 			})
 
+			when("parallel export is enabled and cache image ref is blank", func() {
+				it("warns", func() {
+					inputs.ParallelExport = true
+					inputs.CacheImageRef = ""
+					inputs.CacheDir = ""
+					err := platform.ResolveInputs(platform.Create, inputs, logger)
+					h.AssertNil(t, err)
+					expected := "Parallel export has been enabled, but it has not taken effect because no cache has been specified."
+					h.AssertLogEntry(t, logHandler, expected)
+				})
+			})
+
 			when("run image", func() {
 				when("not provided", func() {
 					it.Before(func() {

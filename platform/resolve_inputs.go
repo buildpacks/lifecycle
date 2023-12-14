@@ -36,6 +36,7 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 			CheckLaunchCache,
 			ValidateImageRefs,
 			ValidateTargetsAreSameRegistry,
+			CheckParallelExport,
 		)
 	case Build:
 		// nop
@@ -47,6 +48,7 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 			CheckLaunchCache,
 			ValidateImageRefs,
 			ValidateTargetsAreSameRegistry,
+			CheckParallelExport,
 		)
 	case Detect:
 		// nop
@@ -224,6 +226,14 @@ func ValidateRebaseRunImage(i *LifecycleInputs, _ log.Logger) error {
 	default:
 		return nil
 	}
+}
+
+// CheckParallelExport will warn when parallel export is enabled without a cache.
+func CheckParallelExport(i *LifecycleInputs, logger log.Logger) error {
+	if i.ParallelExport && (i.CacheImageRef == "" && i.CacheDir == "") {
+		logger.Warn("Parallel export has been enabled, but it has not taken effect because no cache has been specified.")
+	}
+	return nil
 }
 
 // ValidateTargetsAreSameRegistry ensures all output images are on the same registry.
