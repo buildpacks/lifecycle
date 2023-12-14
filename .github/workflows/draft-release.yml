@@ -6,6 +6,8 @@ on:
 jobs:
   draft-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v2
       - name: Install jq
