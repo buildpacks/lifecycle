@@ -128,7 +128,7 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 )
 
-go 1.20
+go 1.21
 
 // Ensure we only pull in the latest version of containerd
 replace github.com/containerd/containerd => github.com/containerd/containerd v1.7.7
