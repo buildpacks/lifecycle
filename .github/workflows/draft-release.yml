@@ -128,7 +128,7 @@ jobs:
                 return result.data.tag_name
             })
       - name: Setup go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           check-latest: true
       - name: Get go version
