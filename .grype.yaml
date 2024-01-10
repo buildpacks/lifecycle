@@ -3,3 +3,4 @@ ignore:
   - vulnerability: CVE-2021-22570 # false positive, see https://github.com/anchore/grype/issues/558
   - vulnerability: GHSA-vpvm-3wq2-2wvm # unpatched as of 3/28/23, non-impactful as the lifecycle doesn't create containers
   - vulnerability: GHSA-hqxw-f8mx-cpmw # unpatched in this release line, non-impactful because the lifecycle is not an http server
+  - vulnerability: GHSA-jq35-85cj-fj4p # unpatched in this release line, non-impactful because the lifecycle doesn't create containers
