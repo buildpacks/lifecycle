@@ -3,6 +3,8 @@ package launch
 import (
 	"fmt"
 
+	"runtime"
+
 	"github.com/pkg/errors"
 )
 
@@ -32,7 +34,11 @@ func (b *BashShell) Launch(proc ShellProcess) error {
 		bashCommand = bashCommandWithTokens(len(proc.Args) + 1)
 	}
 	launcher += bashCommand
-	if err := b.Exec("/bin/bash", append([]string{
+	bashPath := "/bin/bash"
+	if runtime.GOOS == "freebsd" {
+		bashPath = "/usr/local/bin/bash"
+	}
+	if err := b.Exec(bashPath, append([]string{
 		"bash", "-c",
 		launcher, proc.Caller, proc.Command,
 	}, proc.Args...), proc.Env); err != nil {
