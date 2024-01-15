@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// GetUmask determines the current umask
 func GetUmask(t *testing.T) int {
 	cmd := exec.Command("umask") // #nosec G204
 	output, err := cmd.CombinedOutput()

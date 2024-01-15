@@ -1,3 +1,4 @@
+// Package testhelpers contains various functions useful for tests
 package testhelpers
 
 import (
