@@ -1,6 +1,7 @@
 //go:build freebsd
 // +build freebsd
 
+// Package priv deals with OS-level privileges
 package priv
 
 import (
@@ -8,6 +9,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -51,6 +53,7 @@ func canWrite(uid, gid int, stat *unix.Stat_t) bool {
 	return false
 }
 
+// IsPrivileged returns true iff the UID is 0 (root)
 func IsPrivileged() bool {
 	return os.Getuid() == 0
 }
@@ -94,6 +97,7 @@ func RunAs(uid, gid int) error {
 	return nil
 }
 
+// SetEnvironmentForUser sets the HOME and USER environment variables for the given uid
 func SetEnvironmentForUser(uid int) error {
 	user, err := user.LookupId(strconv.Itoa(uid))
 	if err != nil {
