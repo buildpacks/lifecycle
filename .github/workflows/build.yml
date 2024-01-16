@@ -77,7 +77,7 @@ jobs:
           run: |
             export GOROOT=/usr/local/go
             export GOPATH=/usr/local/gopath
-            export PATH=$PATH:$GOPATH/bin
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             gmake format || true
             gmake test
   test-windows:
