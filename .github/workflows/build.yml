@@ -67,8 +67,12 @@ jobs:
           usesh: true
           prepare: |
             pkg install -y wget gmake
-            wget https://go.dev/dl/go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz -q
-            tar -C /usr/local -xzf go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz
+            GOARCHIVE_BASENAME="go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz"
+            GOARCHIVE_URL="https://go.dev/dl/$GOARCHIVE_BASENAME"
+            echo "downloading go from $GOARCHIVE_URL"
+            wget "$GOARCHIVE_URL"
+            ls -la "$GOARCHIVE_BASENAME"
+            tar -C /usr/local -xzf "$GOARCHIVE_BASENAME"
           run: |
             export GOROOT=/usr/local/go
             export GOPATH=/usr/local/gopath
