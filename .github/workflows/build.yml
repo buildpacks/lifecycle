@@ -71,10 +71,11 @@ jobs:
             jq -r '.[0].files[] | select(.os == "freebsd") | select(.arch == "amd64") | select(.kind == "archive") | .filename')
             GOARCHIVE_URL="https://go.dev/dl/$GOARCHIVE_BASENAME"
             echo "downloading go from $GOARCHIVE_URL"
-            wget "$GOARCHIVE_URL"
+            wget -q "$GOARCHIVE_URL"
             ls -la "$GOARCHIVE_BASENAME"
             tar -C /usr/local -xzf "$GOARCHIVE_BASENAME"
           run: |
+            git config --global --add safe.directory '*'
             export GOROOT=/usr/local/go
             export GOPATH=/usr/local/gopath
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
