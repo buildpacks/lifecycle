@@ -66,8 +66,9 @@ jobs:
         with:
           usesh: true
           prepare: |
-            pkg install -y wget gmake
-            GOARCHIVE_BASENAME="go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz"
+            pkg install -y wget gmake curl jq
+            curl -sSL 'https://go.dev/dl/?mode=json' | \
+            GOARCHIVE_BASENAME=$(jq -r '.[0].files[] | select(.os == "freebsd") | select(.arch == "amd64") | select(.kind == "archive")')
             GOARCHIVE_URL="https://go.dev/dl/$GOARCHIVE_BASENAME"
             echo "downloading go from $GOARCHIVE_URL"
             wget "$GOARCHIVE_URL"
