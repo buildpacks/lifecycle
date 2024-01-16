@@ -66,7 +66,7 @@ jobs:
         with:
           usesh: true
           prepare: |
-            pkg install -y wget gmake curl jq
+            pkg install -y wget gmake curl jq git
             GOARCHIVE_BASENAME=$(curl -sSL 'https://go.dev/dl/?mode=json' | \
             jq -r '.[0].files[] | select(.os == "freebsd") | select(.arch == "amd64") | select(.kind == "archive")')
             GOARCHIVE_URL="https://go.dev/dl/$GOARCHIVE_BASENAME"
