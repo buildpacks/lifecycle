@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -12,7 +13,12 @@ func MakeAndCopyLifecycle(t *testing.T, goos, goarch, destDir string, envs ...st
 	outParentDir, err := filepath.Abs(filepath.Join("..", "out"))
 	AssertNil(t, err)
 
-	cmd := exec.Command("make", fmt.Sprintf("build-%s-%s", goos, goarch)) // #nosec G204
+	makeCmd := "make"
+	if runtime.GOOS == "freebsd" {
+		makeCmd = "gmake"
+	}
+
+	cmd := exec.Command(makeCmd, fmt.Sprintf("build-%s-%s", goos, goarch)) // #nosec G204
 
 	wd, err := os.Getwd()
 	AssertNil(t, err)
