@@ -1,5 +1,5 @@
-//go:build windows || darwin || freebsd
-// +build windows darwin freebsd
+//go:build windows || darwin
+// +build windows darwin
 
 package fsutil_test
 
