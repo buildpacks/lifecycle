@@ -49,15 +49,14 @@ func testExecD(t *testing.T, when spec.G, it spec.S) {
 			path = filepath.Join(tmpDir, "execd"+exe)
 
 			//#nosec G204
-			cmd := exec.Command("go", "build", "-v",
+			cmd := exec.Command("go", "build",
 				"-o", path,
 				filepath.Join(wd, "testdata", "cmd", "execd"),
 			)
 			output, err := cmd.Output()
 			if err != nil {
-				t.Fatalf("Failed to build test execd binary\n output: %s\n package: %s\n error: %s",
+				t.Fatalf("Failed to build test execd binary\n output: %s\n error: %s",
 					output,
-					wd,
 					err)
 			}
 			runner = launch.ExecDRunner{
