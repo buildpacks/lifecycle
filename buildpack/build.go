@@ -83,7 +83,7 @@ func (e *DefaultBuildExecutor) Build(d BpDescriptor, inputs BuildInputs, logger 
 
 	logger.Debug("Running build command")
 	if err := runBuildCmd(d, bpLayersDir, planPath, inputs, inputs.Env); err != nil {
-		return BuildOutputs{}, err
+		return BuildOutputs{}, fmt.Errorf("failed to run build command: %w", err)
 	}
 
 	logger.Debug("Processing layers")
@@ -130,6 +130,7 @@ func runBuildCmd(d BpDescriptor, bpLayersDir, planPath string, inputs BuildInput
 		inputs.PlatformDir,
 		planPath,
 	) // #nosec G204
+	fmt.Printf("running build cmd: %v", cmd.String())
 	cmd.Dir = inputs.AppDir
 	cmd.Stdout = inputs.Out
 	cmd.Stderr = inputs.Err

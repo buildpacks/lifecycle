@@ -386,7 +386,7 @@ unit: out
 unit: UNIT_PACKAGES=$(shell $(GOCMD) list ./... | grep -v acceptance)
 unit: format lint tidy install-yj
 	@echo "> Running unit tests..."
-	$(GOTEST) $(GOTESTFLAGS) -count=1 $(UNIT_PACKAGES) # -v
+	$(GOTEST) $(GOTESTFLAGS) -count=1 $(UNIT_PACKAGES) -v
 
 out:
 	@mkdir out || (exit 0)
