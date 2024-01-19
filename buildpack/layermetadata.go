@@ -51,6 +51,7 @@ func DecodeLayerMetadataFile(path string, buildpackAPI string, logger log.Logger
 			if str != "" {
 				// instead of returning an error string , used the logger to print a warning
 				logger.Warnf("Warning while decoding layer metadata file at %s: %s", path, str)
+
 			}
 			return lmf, err
 		}
