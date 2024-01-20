@@ -115,8 +115,10 @@ func PushImage(ref string, auth string) error {
 		}
 	}
 	// Append the new DOCKER_CONFIG to the filtered environment
+	newEnv := append(filteredEnv, "DOCKER_CONFIG="+auth)
+
 	cmd := exec.Command("docker", "push", ref)
-	cmd.Env = append(filteredEnv, "DOCKER_CONFIG="+auth)
+	cmd.Env = newEnv
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
