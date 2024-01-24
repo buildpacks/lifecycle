@@ -262,10 +262,10 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		return nil, err
 	}
 	workingHistory = configFile.History
-	buildOptions := e.extendOptions()
 	userID, groupID := userFrom(*configFile)
 	origUserID := userID
 	for _, dockerfile := range dockerfiles {
+		buildOptions := e.extendOptions(dockerfile)
 		dockerfile.Args = append([]extend.Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
 			{Name: argUserID, Value: userID},
@@ -366,12 +366,12 @@ func (e *Extender) dockerfilesFor(kind string, logger log.Logger) ([]extend.Dock
 }
 
 func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error) {
-	dockerfilePath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "Dockerfile")
+	dockerfilePath := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), fmt.Sprintf("%s.Dockerfile", kind))
 	if _, err := os.Stat(dockerfilePath); err != nil {
 		return nil, nil
 	}
 
-	configPath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "extend-config.toml")
+	configPath := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), "extend-config.toml")
 	var config extend.Config
 	_, err := toml.DecodeFile(configPath, &config)
 	if err != nil {
@@ -387,16 +387,35 @@ func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error)
 		args = config.Run.Args
 	}
 
+	contextDir, err := e.contextDirFor(kind, extID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &extend.Dockerfile{
 		ExtensionID: extID,
 		Path:        dockerfilePath,
 		Args:        args,
+		ContextDir:  contextDir,
 	}, nil
 }
 
-func (e *Extender) extendOptions() extend.Options {
+func (e *Extender) contextDirFor(kind, extID string) (string, error) {
+	sharedContextDir := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), buildpack.SharedContextDir)
+	kindContextDir := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), fmt.Sprintf("%s.%s", buildpack.SharedContextDir, kind))
+
+	for _, dir := range []string{kindContextDir, sharedContextDir} {
+		if s, err := os.Stat(dir); err == nil && s.IsDir() {
+			return dir, nil
+		}
+	}
+
+	return e.AppDir, nil
+}
+
+func (e *Extender) extendOptions(dockerfile extend.Dockerfile) extend.Options {
 	return extend.Options{
-		BuildContext: e.AppDir,
+		BuildContext: dockerfile.ContextDir,
 		CacheTTL:     e.CacheTTL,
 		IgnorePaths:  []string{e.AppDir, e.LayersDir, e.PlatformDir},
 	}

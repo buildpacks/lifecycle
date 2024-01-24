@@ -79,6 +79,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	inputs.OutputDir = extensionOutputParentDir
 
 	var dockerfiles []buildpack.DockerfileInfo
+	var contexts []buildpack.ContextInfo
 	filteredPlan := g.Plan
 	for _, ext := range g.Extensions {
 		g.Logger.Debugf("Running generate for extension %s", ext)
@@ -103,6 +104,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 
 		// aggregate build results
 		dockerfiles = append(dockerfiles, result.Dockerfiles...)
+		contexts = append(contexts, result.Contexts...)
 		filteredPlan = filteredPlan.Filter(result.MetRequires)
 
 		g.Logger.Debugf("Finished running generate for extension %s", ext)
@@ -134,6 +136,11 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		return GenerateResult{}, err
 	}
 
+	g.Logger.Debug("Copying Context directories")
+	if err = g.copyContexts(contexts); err != nil {
+		return GenerateResult{}, err
+	}
+
 	return GenerateResult{
 		AnalyzedMD: finalAnalyzedMD,
 		Plan:       filteredPlan,
@@ -153,8 +160,8 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 
 func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
 	for _, dockerfile := range dockerfiles {
-		targetDir := filepath.Join(g.GeneratedDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
-		var targetPath = filepath.Join(targetDir, "Dockerfile")
+		targetDir := filepath.Join(g.GeneratedDir, launch.EscapeID(dockerfile.ExtensionID))
+		var targetPath = filepath.Join(targetDir, filepath.Base(dockerfile.Path))
 		if dockerfile.Kind == buildpack.DockerfileKindRun && dockerfile.Ignore {
 			targetPath += ".ignore"
 		}
@@ -173,6 +180,19 @@ func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) erro
 			}
 		}
 	}
+	return nil
+}
+
+func (g *Generator) copyContexts(contexts []buildpack.ContextInfo) error {
+	for _, contextDir := range contexts {
+		targetPath := filepath.Join(g.GeneratedDir, launch.EscapeID(contextDir.ExtensionID), filepath.Base(contextDir.Path))
+
+		g.Logger.Debugf("Copying %s to %s", contextDir.Path, targetPath)
+		if err := fsutil.Copy(contextDir.Path, targetPath); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

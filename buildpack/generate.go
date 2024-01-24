@@ -31,6 +31,7 @@ type GenerateInputs struct {
 
 type GenerateOutputs struct {
 	Dockerfiles []DockerfileInfo
+	Contexts    []ContextInfo
 	MetRequires []string
 }
 
@@ -114,6 +115,7 @@ func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, lo
 	var err error
 	var dfInfo DockerfileInfo
 	var found bool
+	var contexts []ContextInfo
 
 	// set MetRequires
 	gr.MetRequires = names(extPlanIn.Entries)
@@ -134,9 +136,15 @@ func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, lo
 		return GenerateOutputs{}, err
 	} else if found {
 		gr.Dockerfiles = append(gr.Dockerfiles, dfInfo)
+		logger.Debugf("Found '%d' Dockerfiles for processing", len(gr.Dockerfiles))
 	}
 
-	logger.Debugf("Found '%d' Dockerfiles for processing", len(gr.Dockerfiles))
+	if contexts, err = findContexts(d, extOutputDir, logger); err != nil {
+		return GenerateOutputs{}, err
+	}
+
+	gr.Contexts = contexts
+	logger.Debugf("Found '%d' Build Contexts for processing", len(gr.Contexts))
 
 	return gr, nil
 }

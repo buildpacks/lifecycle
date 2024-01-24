@@ -199,26 +199,29 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 		when("build base image", func() {
 			it("applies the Dockerfile with the expected args and opts", func() {
 				expectedDockerfileA := extend.Dockerfile{
-					Path: filepath.Join(generatedDir, "build", "A", "Dockerfile"),
+					Path: filepath.Join(generatedDir, "A", "build.Dockerfile"),
 					Args: []extend.Arg{{Name: "argA", Value: "valueA"}},
 				}
-				h.Mkdir(t, filepath.Join(generatedDir, "build", "A"))
-				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "build", "A", "Dockerfile"))
+				h.Mkdir(t, filepath.Join(generatedDir, "A"))
+				h.Mkdir(t, filepath.Join(generatedDir, "A", "context.build"))
+				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "A", "build.Dockerfile"))
 				buf := new(bytes.Buffer)
 				data := extend.Config{Build: extend.BuildConfig{Args: expectedDockerfileA.Args}}
 				h.AssertNil(t, toml.NewEncoder(buf).Encode(data))
-				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "build", "A", "extend-config.toml"))
+				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "A", "extend-config.toml"))
 
 				expectedDockerfileB := extend.Dockerfile{
-					Path: filepath.Join(generatedDir, "build", "B", "Dockerfile"),
-					Args: []extend.Arg{{Name: "argB", Value: "valueB"}},
+					Path:       filepath.Join(generatedDir, "B", "build.Dockerfile"),
+					Args:       []extend.Arg{{Name: "argB", Value: "valueB"}},
+					ContextDir: "dirB",
 				}
-				h.Mkdir(t, filepath.Join(generatedDir, "build", "B"))
-				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "build", "B", "Dockerfile"))
+				h.Mkdir(t, filepath.Join(generatedDir, "B"))
+				h.Mkdir(t, filepath.Join(generatedDir, "B", "context"))
+				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "B", "build.Dockerfile"))
 				buf = new(bytes.Buffer)
 				data = extend.Config{Build: extend.BuildConfig{Args: expectedDockerfileB.Args}}
 				h.AssertNil(t, toml.NewEncoder(buf).Encode(data))
-				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "build", "B", "extend-config.toml"))
+				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "B", "extend-config.toml"))
 
 				fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
 				someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
@@ -233,7 +236,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 					gomock.Any(),
 					gomock.Any(), // we mutate the provided image so we can't expect the fake image
 					extend.Options{
-						BuildContext: "some-app-dir",
+						BuildContext: filepath.Join(generatedDir, "A", "context.build"),
 						IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
 						CacheTTL:     7 * (24 * time.Hour),
 					},
@@ -266,7 +269,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 					gomock.Any(),
 					someFakeImage,
 					extend.Options{
-						BuildContext: "some-app-dir",
+						BuildContext: filepath.Join(generatedDir, "B", "context"),
 						IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
 						CacheTTL:     7 * (24 * time.Hour),
 					},
@@ -339,26 +342,26 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				when(fmt.Sprintf("first Dockerfile is %s, second Dockerfile is %s", desc(tc.firstDockerfileRebasable), desc(tc.secondDockerfileRebasable)), func() {
 					it("applies the Dockerfile with the expected args and opts", func() {
 						expectedDockerfileA := extend.Dockerfile{
-							Path: filepath.Join(generatedDir, "run", "A", "Dockerfile"),
+							Path: filepath.Join(generatedDir, "A", "run.Dockerfile"),
 							Args: []extend.Arg{{Name: "argA", Value: "valueA"}},
 						}
-						h.Mkdir(t, filepath.Join(generatedDir, "run", "A"))
-						h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "run", "A", "Dockerfile"))
+						h.Mkdir(t, filepath.Join(generatedDir, "A"))
+						h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "A", "run.Dockerfile"))
 						buf := new(bytes.Buffer)
 						data := extend.Config{Run: extend.BuildConfig{Args: expectedDockerfileA.Args}}
 						h.AssertNil(t, toml.NewEncoder(buf).Encode(data))
-						h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "run", "A", "extend-config.toml"))
+						h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "A", "extend-config.toml"))
 
 						expectedDockerfileB := extend.Dockerfile{
-							Path: filepath.Join(generatedDir, "run", "B", "Dockerfile"),
+							Path: filepath.Join(generatedDir, "B", "run.Dockerfile"),
 							Args: []extend.Arg{{Name: "argB", Value: "valueB"}},
 						}
-						h.Mkdir(t, filepath.Join(generatedDir, "run", "B"))
-						h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "run", "B", "Dockerfile"))
+						h.Mkdir(t, filepath.Join(generatedDir, "B"))
+						h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "B", "run.Dockerfile"))
 						buf = new(bytes.Buffer)
 						data = extend.Config{Run: extend.BuildConfig{Args: expectedDockerfileB.Args}}
 						h.AssertNil(t, toml.NewEncoder(buf).Encode(data))
-						h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "run", "B", "extend-config.toml"))
+						h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "B", "extend-config.toml"))
 
 						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
 						someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
@@ -455,15 +458,15 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 			it("errors if the last extension leaves the user as root", func() {
 				expectedDockerfileA := extend.Dockerfile{
-					Path: filepath.Join(generatedDir, "run", "A", "Dockerfile"),
+					Path: filepath.Join(generatedDir, "A", "run.Dockerfile"),
 					Args: []extend.Arg{{Name: "argA", Value: "valueA"}},
 				}
-				h.Mkdir(t, filepath.Join(generatedDir, "run", "A"))
-				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "run", "A", "Dockerfile"))
+				h.Mkdir(t, filepath.Join(generatedDir, "A"))
+				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "A", "run.Dockerfile"))
 				buf := new(bytes.Buffer)
 				data := extend.Config{Run: extend.BuildConfig{Args: expectedDockerfileA.Args}}
 				h.AssertNil(t, toml.NewEncoder(buf).Encode(data))
-				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "run", "A", "extend-config.toml"))
+				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "A", "extend-config.toml"))
 
 				fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
 				firstConfig := &v1.ConfigFile{Config: v1.Config{

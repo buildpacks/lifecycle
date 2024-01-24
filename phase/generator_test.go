@@ -320,7 +320,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
 			// extension B has a run.Dockerfile
 			h.Mkdir(t, filepath.Join(tmpDir, "B"))
-			runDockerfilePathB := filepath.Join(tmpDir, "B", "build.Dockerfile")
+			runDockerfilePathB := filepath.Join(tmpDir, "B", "run.Dockerfile")
 			h.Mkfile(t, "some-run.Dockerfile-content-B", runDockerfilePathB)
 			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
 				Dockerfiles: []buildpack.DockerfileInfo{
@@ -364,28 +364,22 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			t.Log("copies Dockerfiles")
-			contents := h.MustReadFile(t, filepath.Join(generatedDir, "build", "A", "Dockerfile"))
+			contents := h.MustReadFile(t, filepath.Join(generatedDir, "A", "build.Dockerfile"))
 			h.AssertEq(t, string(contents), "some-build.Dockerfile-content-A")
-			contents = h.MustReadFile(t, filepath.Join(generatedDir, "run", "B", "Dockerfile"))
+			contents = h.MustReadFile(t, filepath.Join(generatedDir, "B", "run.Dockerfile"))
 			h.AssertEq(t, string(contents), "some-run.Dockerfile-content-B")
-			contents = h.MustReadFile(t, filepath.Join(generatedDir, "build", "C", "Dockerfile"))
+			contents = h.MustReadFile(t, filepath.Join(generatedDir, "C", "build.Dockerfile"))
 			h.AssertEq(t, string(contents), "some-build.Dockerfile-content-C")
-			contents = h.MustReadFile(t, filepath.Join(generatedDir, "run", "C", "Dockerfile"))
+			contents = h.MustReadFile(t, filepath.Join(generatedDir, "C", "run.Dockerfile"))
 			h.AssertEq(t, string(contents), "some-run.Dockerfile-content-C")
 
 			t.Log("copies extend-config.toml files if they exist")
-			contents = h.MustReadFile(t, filepath.Join(generatedDir, "build", "A", "extend-config.toml"))
+			contents = h.MustReadFile(t, filepath.Join(generatedDir, "A", "extend-config.toml"))
 			h.AssertEq(t, string(contents), "some-extend-config.toml-content-A")
-			contents = h.MustReadFile(t, filepath.Join(generatedDir, "build", "C", "extend-config.toml"))
+			contents = h.MustReadFile(t, filepath.Join(generatedDir, "C", "extend-config.toml"))
 			h.AssertEq(t, string(contents), "some-extend-config.toml-content-C")
-			contents = h.MustReadFile(t, filepath.Join(generatedDir, "run", "C", "extend-config.toml"))
+			contents = h.MustReadFile(t, filepath.Join(generatedDir, "C", "extend-config.toml"))
 			h.AssertEq(t, string(contents), "some-extend-config.toml-content-C")
-
-			t.Log("does not pollute the output directory")
-			h.AssertPathDoesNotExist(t, filepath.Join(generatedDir, "A", "run.Dockerfile"))
-			h.AssertPathDoesNotExist(t, filepath.Join(generatedDir, "B", "build.Dockerfile"))
-			h.AssertPathDoesNotExist(t, filepath.Join(generatedDir, "C", "run.Dockerfile"))
-			h.AssertPathDoesNotExist(t, filepath.Join(generatedDir, "C", "build.Dockerfile"))
 		})
 
 		when("returning run image metadata", func() {
@@ -492,9 +486,9 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					assertAfter: func() {
 						t.Log("copies Dockerfiles to the correct locations")
 						t.Log("renames earlier run.Dockerfiles to Dockerfile.ignore in the output directory")
-						aContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "A", "Dockerfile.ignore"))
+						aContents := h.MustReadFile(t, filepath.Join(generatedDir, "A", "run.Dockerfile.A.ignore"))
 						h.AssertEq(t, string(aContents), `some-dockerfile-content-A`)
-						BContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "B", "Dockerfile"))
+						BContents := h.MustReadFile(t, filepath.Join(generatedDir, "B", "run.Dockerfile.B"))
 						h.AssertEq(t, string(BContents), `some-dockerfile-content-B`)
 					},
 				},
