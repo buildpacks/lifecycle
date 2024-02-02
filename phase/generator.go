@@ -71,12 +71,17 @@ type GenerateResult struct {
 func (g *Generator) Generate() (GenerateResult, error) {
 	defer log.NewMeasurement("Generator", g.Logger)()
 	inputs := g.getGenerateInputs()
-	extensionOutputParentDir, err := os.MkdirTemp("", "cnb-extensions-generated.")
-	if err != nil {
-		return GenerateResult{}, err
+
+	if g.PlatformAPI.LessThan("0.13") {
+		extensionOutputParentDir, err := os.MkdirTemp("", "cnb-extensions-generated.")
+		if err != nil {
+			return GenerateResult{}, err
+		}
+		defer os.RemoveAll(extensionOutputParentDir)
+		inputs.OutputDir = extensionOutputParentDir
+	} else {
+		inputs.OutputDir = g.GeneratedDir
 	}
-	defer os.RemoveAll(extensionOutputParentDir)
-	inputs.OutputDir = extensionOutputParentDir
 
 	var dockerfiles []buildpack.DockerfileInfo
 	var contexts []buildpack.ContextInfo
@@ -132,12 +137,12 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}
 
 	g.Logger.Debug("Copying Dockerfiles")
-	if err = g.copyDockerfiles(dockerfiles); err != nil {
+	if err := g.copyDockerfiles(dockerfiles); err != nil {
 		return GenerateResult{}, err
 	}
 
 	g.Logger.Debug("Copying Context directories")
-	if err = g.copyContexts(contexts); err != nil {
+	if err := g.copyContexts(contexts); err != nil {
 		return GenerateResult{}, err
 	}
 
@@ -160,8 +165,14 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 
 func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
 	for _, dockerfile := range dockerfiles {
-		targetDir := filepath.Join(g.GeneratedDir, launch.EscapeID(dockerfile.ExtensionID))
-		var targetPath = filepath.Join(targetDir, filepath.Base(dockerfile.Path))
+		targetDir := filepath.Join(g.GeneratedDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
+		targetPath := filepath.Join(targetDir, "Dockerfile")
+
+		if g.PlatformAPI.AtLeast("0.13") {
+			targetDir = filepath.Join(g.GeneratedDir, launch.EscapeID(dockerfile.ExtensionID))
+			targetPath = filepath.Join(targetDir, filepath.Base(dockerfile.Path))
+		}
+
 		if dockerfile.Kind == buildpack.DockerfileKindRun && dockerfile.Ignore {
 			targetPath += ".ignore"
 		}

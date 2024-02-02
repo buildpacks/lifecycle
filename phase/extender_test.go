@@ -185,6 +185,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				CacheTTL:          7 * (24 * time.Hour),
 				DockerfileApplier: fakeDockerfileApplier,
 				Extensions:        providedExtensions,
+				PlatformAPI:       api.MustParse("0.13"),
 			}
 
 			logger = &log.Logger{Handler: &discard.Handler{}}

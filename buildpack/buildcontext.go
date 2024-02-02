@@ -10,6 +10,10 @@ import (
 )
 
 const (
+	// BuildContextDir defines the context for build-image extensions
+	BuildContextDir = "context.build"
+	// RunContextDir defines the context for run-image extensions
+	RunContextDir = "context.run"
 	// SharedContextDir defines a shared context for build- and run-image extensions
 	SharedContextDir = "context"
 )
@@ -36,7 +40,7 @@ func findContexts(d ExtDescriptor, extOutputDir string, logger log.Logger) ([]Co
 		return nil, err
 	}
 
-	for _, dir := range []string{DockerfileKindRun, DockerfileKindBuild} {
+	for _, dir := range []string{BuildContextDir, RunContextDir} {
 		contextDir := filepath.Join(extOutputDir, dir)
 
 		if s, err := os.Stat(contextDir); err == nil && s.IsDir() {

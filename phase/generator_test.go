@@ -159,7 +159,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			Logger:       &log.Logger{Handler: logHandler},
 			GeneratedDir: generatedDir,
 			Plan:         files.Plan{},
-			PlatformAPI:  api.Platform.Latest(),
+			PlatformAPI:  api.MustParse("0.13"),
 			PlatformDir:  platformDir,
 			Err:          stderr,
 			Out:          stdout,

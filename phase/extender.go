@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
@@ -37,6 +38,8 @@ type Extender struct {
 	CacheTTL          time.Duration            // a platform input
 	DockerfileApplier DockerfileApplier        // uses kaniko, BuildKit, or other to apply the provided Dockerfile to the provided image
 	Extensions        []buildpack.GroupElement // extensions are ordered from group.toml
+
+	PlatformAPI *api.Version
 }
 
 // DockerfileApplier given a base image and a `build.Dockerfile` or `run.Dockerfile` will apply it to the base image
@@ -60,6 +63,7 @@ func (f *HermeticFactory) NewExtender(inputs platform.LifecycleInputs, dockerfil
 		PlatformDir:       inputs.PlatformDir,
 		CacheTTL:          inputs.KanikoCacheTTL,
 		DockerfileApplier: dockerfileApplier,
+		PlatformAPI:       f.platformAPI,
 	}
 	var err error
 	if extender.ImageRef, err = f.getExtendImageRef(inputs, logger); err != nil {
@@ -366,14 +370,27 @@ func (e *Extender) dockerfilesFor(kind string, logger log.Logger) ([]extend.Dock
 }
 
 func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error) {
-	dockerfilePath := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), fmt.Sprintf("%s.Dockerfile", kind))
+	var err error
+	dockerfilePath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "Dockerfile")
+	configPath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "extend-config.toml")
+	contextDir := e.AppDir
+
+	if e.PlatformAPI.AtLeast("0.13") {
+		configPath = filepath.Join(e.GeneratedDir, launch.EscapeID(extID), "extend-config.toml")
+		dockerfilePath = filepath.Join(e.GeneratedDir, launch.EscapeID(extID), fmt.Sprintf("%s.Dockerfile", kind))
+
+		contextDir, err = e.contextDirFor(kind, extID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if _, err := os.Stat(dockerfilePath); err != nil {
 		return nil, nil
 	}
 
-	configPath := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), "extend-config.toml")
 	var config extend.Config
-	_, err := toml.DecodeFile(configPath, &config)
+	_, err = toml.DecodeFile(configPath, &config)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -385,11 +402,6 @@ func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error)
 		args = config.Build.Args
 	} else {
 		args = config.Run.Args
-	}
-
-	contextDir, err := e.contextDirFor(kind, extID)
-	if err != nil {
-		return nil, err
 	}
 
 	return &extend.Dockerfile{
