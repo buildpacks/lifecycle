@@ -72,12 +72,15 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	defer log.NewMeasurement("Generator", g.Logger)()
 	inputs := g.getGenerateInputs()
 
+	var err error
 	if g.PlatformAPI.LessThan("0.13") {
 		extensionOutputParentDir, err := os.MkdirTemp("", "cnb-extensions-generated.")
 		if err != nil {
 			return GenerateResult{}, err
 		}
-		defer os.RemoveAll(extensionOutputParentDir)
+		defer func() {
+			err = os.RemoveAll(extensionOutputParentDir)
+		}()
 		inputs.OutputDir = extensionOutputParentDir
 	} else {
 		inputs.OutputDir = g.GeneratedDir
@@ -149,7 +152,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	return GenerateResult{
 		AnalyzedMD: finalAnalyzedMD,
 		Plan:       filteredPlan,
-	}, nil
+	}, err
 }
 
 func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
