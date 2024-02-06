@@ -435,7 +435,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
 						someFakeImage.ConfigFileReturnsOnCall(4, secondConfig, nil)
 
-						// save selective
+						// save without base layers
 
 						imageHash := v1.Hash{Algorithm: "sha256", Hex: "some-image-hex"}
 						someFakeImage.DigestReturns(imageHash, nil)

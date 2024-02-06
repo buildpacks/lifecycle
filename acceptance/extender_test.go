@@ -11,9 +11,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/google/go-containerregistry/pkg/authn"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
@@ -22,7 +22,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -105,9 +104,10 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
 				h.AssertNil(t, os.MkdirAll(baseCacheDir, 0755))
 
-				layoutPath, err := selective.Write(filepath.Join(baseCacheDir, baseImageDigest), empty.Index)
+				// write sparse image
+				layoutImage, err := sparse.NewImage(filepath.Join(baseCacheDir, baseImageDigest), remoteImage)
 				h.AssertNil(t, err)
-				h.AssertNil(t, layoutPath.AppendImage(remoteImage))
+				h.AssertNil(t, layoutImage.Save())
 
 				// write image reference in analyzed.toml
 				analyzedMD := files.Analyzed{
