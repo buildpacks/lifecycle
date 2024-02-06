@@ -12,15 +12,14 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/layout/sparse"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/extend"
-	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
@@ -147,8 +146,8 @@ func (e *Extender) extendRun(logger log.Logger) error {
 		return fmt.Errorf("extending run image: %w", err)
 	}
 
-	if err = e.saveSelective(extendedImage, origTopLayer); err != nil {
-		return fmt.Errorf("copying selective image to output directory: %w", err)
+	if err = e.saveSparse(extendedImage, origTopLayer); err != nil {
+		return fmt.Errorf("copying extended image to output directory: %w", err)
 	}
 	return e.DockerfileApplier.Cleanup()
 }
@@ -166,22 +165,23 @@ func topLayer(image v1.Image) (string, error) {
 	return layer.Digest.String(), nil
 }
 
-func (e *Extender) saveSelective(image v1.Image, origTopLayerHash string) error {
+func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string) error {
 	// save sparse image (manifest and config)
 	imageHash, err := image.Digest()
 	if err != nil {
 		return fmt.Errorf("getting image hash: %w", err)
 	}
 	toPath := filepath.Join(e.ExtendedDir, "run", imageHash.String())
-	layoutPath, err := selective.Write(toPath, empty.Index) // FIXME: this should use the imgutil layout/sparse package instead, but for some reason sparse.NewImage().Save() fails when the provided base image is already sparse
+	layoutImage, err := sparse.NewImage(toPath, image)
 	if err != nil {
-		return fmt.Errorf("initializing selective image: %w", err)
+		return fmt.Errorf("failed to initialize image: %w", err)
 	}
-	if err = layoutPath.AppendImage(image); err != nil {
-		return fmt.Errorf("saving selective image: %w", err)
+	if err := layoutImage.Save(); err != nil {
+		return fmt.Errorf("failed to save image: %w", err)
 	}
-	// get all image layers (we will only copy those following the original top layer)
-	layers, err := image.Layers()
+	// copy only the extended layers (those following the original top layer) to the layout path
+	// FIXME: it would be nice if this were supported natively in imgutil
+	allLayers, err := image.Layers()
 	if err != nil {
 		return fmt.Errorf("getting image layers: %w", err)
 	}
@@ -193,7 +193,7 @@ func (e *Extender) saveSelective(image v1.Image, origTopLayerHash string) error 
 		needsCopying = true
 	}
 	group, _ := errgroup.WithContext(context.TODO())
-	for _, currentLayer := range layers {
+	for _, currentLayer := range allLayers {
 		currentHash, err = currentLayer.Digest()
 		if err != nil {
 			return fmt.Errorf("getting layer hash: %w", err)
