@@ -219,7 +219,7 @@ func (r *restoreCmd) supportsBuildImageExtension() bool {
 }
 
 func (r *restoreCmd) supportsRunImageExtension() bool {
-	return r.PlatformAPI.AtLeast("0.12") && !r.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1057
+	return r.PlatformAPI.AtLeast("0.12") && !r.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1102
 }
 
 func (r *restoreCmd) supportsTargetData() bool {
