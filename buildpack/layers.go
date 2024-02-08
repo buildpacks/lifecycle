@@ -122,7 +122,7 @@ type Layer struct { // FIXME: need to refactor so api and logger won't be part o
 }
 
 type layerDir struct {
-	// identifier takes the form "bp-id:bp-version" and is used for
+	// identifier takes the form "buildpack-id:layer-name" and is used for
 	// sorting layers,
 	// logging information about a layer, and
 	// creating the temporary tar file that is the basis of the layer.
