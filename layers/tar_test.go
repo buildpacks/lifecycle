@@ -45,7 +45,7 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				assertTimestamps(t, layer.TarPath, imgutil.NormalizedDateTime)
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
-				h.AssertEq(t, layer.Digest, "sha256:b3fe551e475c67de98decc610589739691fbb829fdd437107a964924ca3acae8") // from fixture
+				h.AssertEq(t, layer.Digest, "sha256:8e5285b9d3821c21698e4f28b3f45032270418862944dca3f17024c7aa79733b") // from fixture
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
 			})
 		})
@@ -60,7 +60,7 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				assertTimestamps(t, layer.TarPath, imgutil.NormalizedDateTime)
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
-				h.AssertEq(t, layer.Digest, "sha256:b3fe551e475c67de98decc610589739691fbb829fdd437107a964924ca3acae8") // from fixture
+				h.AssertEq(t, layer.Digest, "sha256:8e5285b9d3821c21698e4f28b3f45032270418862944dca3f17024c7aa79733b") // from fixture
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
 			})
 		})
