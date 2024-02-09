@@ -31,9 +31,8 @@ func (f *Factory) TarLayer(withID string, fromTarPath string, createdBy string) 
 		defer layerReader.Close() // nolint
 		tarReader = tar.NewReader(layerReader)
 	}
-	normalizingReader := archive.NewNormalizingTarReader(tarReader)
 	return f.writeLayer(withID, createdBy, func(tw *archive.NormalizingTarWriter) error {
-		return copyTar(tw, normalizingReader)
+		return copyTar(tw, tarReader)
 	})
 }
 
