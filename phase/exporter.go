@@ -285,6 +285,7 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions) error {
 			return fmt.Errorf("failed to get layer info: %w", err)
 		}
 		if !blobExists {
+		// the referenced blob is a run image (base image) layer, not an extension-provided layer
 			continue
 		}
 		h := getHistoryForNonEmptyLayerAtIndex(history, idx)
