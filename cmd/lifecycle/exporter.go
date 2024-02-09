@@ -504,7 +504,7 @@ func (e *exportCmd) customSourceDateEpoch() time.Time {
 }
 
 func (e *exportCmd) supportsRunImageExtension() bool {
-	return e.PlatformAPI.AtLeast("0.12") && !e.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1057
+	return e.PlatformAPI.AtLeast("0.12") && !e.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1102
 }
 
 func (e *exportCmd) supportsHistory() bool {
