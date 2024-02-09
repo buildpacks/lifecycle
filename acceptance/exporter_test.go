@@ -167,10 +167,10 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						t.Log("bases the exported image on the extended run image")
 						inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName)
 						h.AssertNil(t, err)
-						h.AssertEq(t, inspect.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
+						h.AssertEq(t, inspect.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<sha>/blobs/sha256/<config>
 						t.Log("Adds extension layers")
-						diffIDFromExt1 := "sha256:60600f423214c27fd184ebc96ae765bf2b4703c9981fb4205d28dd35e7eec4ae"
-						diffIDFromExt2 := "sha256:1d811b70500e2e9a5e5b8ca7429ef02e091cdf4657b02e456ec54dd1baea0a66"
+						diffIDFromExt1 := "sha256:b2929a2680ce82320debc2fdde18dd6f45f563277545dbf105ca3d0e760057ce" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/<482346d1> after un-compressing and zeroing timestamps
+						diffIDFromExt2 := "sha256:c97b5a2894deb8380b078f68563a9683d968a8e0c5c092d187bc34e1c56bf6f3" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/<0c5f7a6f> after un-compressing and zeroing timestamps
 						var foundFromExt1, foundFromExt2 bool
 						for _, layer := range inspect.RootFS.Layers {
 							if layer == diffIDFromExt1 {
@@ -432,12 +432,12 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, err)
 						configFile, err := remoteImage.ConfigFile()
 						h.AssertNil(t, err)
-						h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
+						h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<sha>/blobs/sha256/<config>
 						t.Log("Adds extension layers")
 						layers, err = remoteImage.Layers()
 						h.AssertNil(t, err)
-						digestFromExt1 := "sha256:0c5f7a6fe14dbd19670f39e7466051cbd40b3a534c0812659740fb03e2137c1a"
-						digestFromExt2 := "sha256:482346d1e0c7afa2514ec366d2e000e0667d0a6664690aab3c8ad51c81915b91"
+						digestFromExt1 := "sha256:9b04cc97d8d2d204ccf30e3519c36b2f09dd7873803aafbc6badf7ce3d0687eb" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/<482346d1> after un-compressing, zeroing timestamps, and re-compressing
+						digestFromExt2 := "sha256:21bbb316bf28192b4c980b65a3c27b033994a74ca281ccef94a83df2fa3d666b" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/<0c5f7a6f> after un-compressing, zeroing timestamps, and re-compressing
 						var foundFromExt1, foundFromExt2 bool
 						for _, layer := range layers {
 							digest, err := layer.Digest()
