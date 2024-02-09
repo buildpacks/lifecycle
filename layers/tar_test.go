@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/imgutil"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -43,7 +42,7 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				layer, err := factory.TarLayer("some-extension-id:some-layer-name", fromPath, "some-created-by")
 				h.AssertNil(t, err)
 
-				assertTimestamps(t, layer.TarPath, imgutil.NormalizedDateTime)
+				assertTimestamps(t, layer.TarPath, time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC))
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
@@ -61,7 +60,7 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				layer, err := factory.TarLayer("some-extension-id:some-layer-name", fromPath, "some-created-by")
 				h.AssertNil(t, err)
 
-				assertTimestamps(t, layer.TarPath, imgutil.NormalizedDateTime)
+				assertTimestamps(t, layer.TarPath, time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC))
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
