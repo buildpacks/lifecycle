@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -45,8 +46,11 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				assertTimestamps(t, layer.TarPath, imgutil.NormalizedDateTime)
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
-				h.AssertEq(t, layer.Digest, "sha256:8e5285b9d3821c21698e4f28b3f45032270418862944dca3f17024c7aa79733b") // from fixture
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
+				if runtime.GOOS != "windows" {
+					// normalizing tar writer mutates the filepath separator
+					h.AssertEq(t, layer.Digest, "sha256:fb54d2566824d6630d94db0b008d9a544a94d3547a424f52e2fd282b648c0601") // from fixture
+				}
 			})
 		})
 
@@ -60,8 +64,11 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				assertTimestamps(t, layer.TarPath, imgutil.NormalizedDateTime)
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
-				h.AssertEq(t, layer.Digest, "sha256:8e5285b9d3821c21698e4f28b3f45032270418862944dca3f17024c7aa79733b") // from fixture
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
+				if runtime.GOOS != "windows" {
+					// normalizing tar writer mutates the filepath separator
+					h.AssertEq(t, layer.Digest, "sha256:fb54d2566824d6630d94db0b008d9a544a94d3547a424f52e2fd282b648c0601") // from fixture
+				}
 			})
 		})
 	})
