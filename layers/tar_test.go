@@ -42,11 +42,12 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				layer, err := factory.TarLayer("some-extension-id:some-layer-name", fromPath, "some-created-by")
 				h.AssertNil(t, err)
 
-				assertTimestamps(t, layer.TarPath, time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC))
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
 				if runtime.GOOS != "windows" {
+					// windows reports zeroed timestamps as `1970-01-01 00:00:00 +0000 UTC`
+					assertTimestamps(t, layer.TarPath, time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC))
 					// normalizing tar writer mutates the filepath separator
 					h.AssertEq(t, layer.Digest, "sha256:fb54d2566824d6630d94db0b008d9a544a94d3547a424f52e2fd282b648c0601") // from fixture
 				}
@@ -60,11 +61,12 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				layer, err := factory.TarLayer("some-extension-id:some-layer-name", fromPath, "some-created-by")
 				h.AssertNil(t, err)
 
-				assertTimestamps(t, layer.TarPath, time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC))
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
 				if runtime.GOOS != "windows" {
+					// windows reports zeroed timestamps as `1970-01-01 00:00:00 +0000 UTC`
+					assertTimestamps(t, layer.TarPath, time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC))
 					// normalizing tar writer mutates the filepath separator
 					h.AssertEq(t, layer.Digest, "sha256:fb54d2566824d6630d94db0b008d9a544a94d3547a424f52e2fd282b648c0601") // from fixture
 				}
