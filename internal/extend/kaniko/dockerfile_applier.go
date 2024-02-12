@@ -75,6 +75,7 @@ func createOptions(baseImageRef string, dockerfile extend.Dockerfile, options ex
 		Cache:             true,
 		CacheOptions:      config.CacheOptions{CacheTTL: options.CacheTTL},
 		CacheRunLayers:    true,
+		CacheCopyLayers:   true,
 		CacheRepo:         kanikoCacheImageRef,
 		Cleanup:           false,
 		CustomPlatform:    platforms.DefaultString(),
