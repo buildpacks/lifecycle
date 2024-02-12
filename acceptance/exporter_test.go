@@ -141,11 +141,16 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						runImageFixtureTopLayerSHA := layers[len(layers)-1]
 						runImageFixtureSHA := inspect.ID
 
+						experimentalMode := "warn"
+						if api.MustParse(platformAPI).AtLeast("0.13") {
+							experimentalMode = "error"
+						}
+
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(append(
 								dockerSocketMount,
-								"--env", "CNB_EXPERIMENTAL_MODE=warn",
+								"--env", "CNB_EXPERIMENTAL_MODE="+experimentalMode,
 								"--env", "CNB_PLATFORM_API="+platformAPI,
 							)...),
 							h.WithArgs(exportArgs...),
@@ -411,10 +416,15 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						runImageFixtureSHA, err := remoteImage.Digest()
 						h.AssertNil(t, err)
 
+						experimentalMode := "warn"
+						if api.MustParse(platformAPI).AtLeast("0.13") {
+							experimentalMode = "error"
+						}
+
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(
-								"--env", "CNB_EXPERIMENTAL_MODE=warn",
+								"--env", "CNB_EXPERIMENTAL_MODE="+experimentalMode,
 								"--env", "CNB_PLATFORM_API="+platformAPI,
 								"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
 								"--network", exportRegNetwork,

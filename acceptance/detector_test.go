@@ -359,7 +359,7 @@ fail: fail_detect_buildpack@some_version
 					"--user", userID,
 					"--volume", orderPath+":/layers/order.toml",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_EXPERIMENTAL_MODE=warn", // required as the default is `error` if unset
+					"--env", "CNB_EXPERIMENTAL_MODE=error",
 				),
 				h.WithArgs(
 					"-analyzed=/layers/analyzed.toml",
