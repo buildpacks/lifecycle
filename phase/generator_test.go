@@ -174,9 +174,9 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "ext/B", Version: "v1"}}}
 		extC := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "C", Version: "v1"}}}
 
-		when("using latest platform API", func() {
+		when("using the platform API 0.12", func() {
 			it.Before(func() {
-				generator.PlatformAPI = api.Platform.Latest()
+				generator.PlatformAPI = api.MustParse("0.12")
 			})
 
 			it("provides a subset of the build plan to each extension", func() {
@@ -642,103 +642,22 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("using platform API 0.13", func() {
+		when("using the platform API 0.13", func() {
 			it.Before(func() {
 				generator.PlatformAPI = api.MustParse("0.13")
 			})
 
-			it("copies Dockerfiles and extend-config.toml files to the correct locations", func() {
-				// mock generate for extension A
-				dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
-				// extension A has a build.Dockerfile and an extend-config.toml
-				h.Mkdir(t, filepath.Join(tmpDir, "A"))
-				buildDockerfilePathA := filepath.Join(tmpDir, "A", "build.Dockerfile")
-				h.Mkfile(t, "some-build.Dockerfile-content-A", buildDockerfilePathA)
-				extendConfigPathA := filepath.Join(tmpDir, "A", "extend-config.toml")
-				h.Mkfile(t, "some-extend-config.toml-content-A", extendConfigPathA)
-				executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-					Dockerfiles: []buildpack.DockerfileInfo{
-						{
-							ExtensionID: "A",
-							Kind:        "build",
-							Path:        buildDockerfilePathA,
-						},
-					},
-				}, nil)
-
-				// mock generate for extension B
-				dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
-				// extension B has a run.Dockerfile
-				h.Mkdir(t, filepath.Join(tmpDir, "B"))
-				runDockerfilePathB := filepath.Join(tmpDir, "B", "run.Dockerfile")
-				h.Mkfile(t, "some-run.Dockerfile-content-B", runDockerfilePathB)
-				executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-					Dockerfiles: []buildpack.DockerfileInfo{
-						{
-							ExtensionID: "B",
-							Kind:        "run",
-							Path:        runDockerfilePathB,
-						},
-					},
-				}, nil)
-
-				// mock generate for extension C
-				dirStore.EXPECT().LookupExt("C", "v1").Return(&extC, nil)
-				// extension C has a build.Dockerfile, run.Dockerfile, and extend-config.toml
-				h.Mkdir(t, filepath.Join(tmpDir, "C"))
-				buildDockerfilePathC := filepath.Join(tmpDir, "C", "build.Dockerfile")
-				h.Mkfile(t, "some-build.Dockerfile-content-C", buildDockerfilePathC)
-				runDockerfilePathC := filepath.Join(tmpDir, "C", "run.Dockerfile")
-				h.Mkfile(t, "some-run.Dockerfile-content-C", runDockerfilePathC)
-				extendConfigPathC := filepath.Join(tmpDir, "C", "extend-config.toml")
-				h.Mkfile(t, "some-extend-config.toml-content-C", extendConfigPathC)
-				executor.EXPECT().Generate(extC, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-					Dockerfiles: []buildpack.DockerfileInfo{
-						{
-							ExtensionID: "C",
-							Kind:        "build",
-							Path:        buildDockerfilePathC,
-						},
-						{
-							ExtensionID: "C",
-							Kind:        "run",
-							Path:        runDockerfilePathC,
-						},
-					},
-				}, nil)
-
-				// add extension C to the group
-				generator.Extensions = append(generator.Extensions, buildpack.GroupElement{ID: "C", Version: "v1", API: api.Buildpack.Latest().String()})
-				// do generate
-				_, err := generator.Generate()
-				h.AssertNil(t, err)
-
-				t.Log("copies Dockerfiles")
-				contents := h.MustReadFile(t, filepath.Join(generatedDir, "A", "build.Dockerfile"))
-				h.AssertEq(t, string(contents), "some-build.Dockerfile-content-A")
-				contents = h.MustReadFile(t, filepath.Join(generatedDir, "B", "run.Dockerfile"))
-				h.AssertEq(t, string(contents), "some-run.Dockerfile-content-B")
-				contents = h.MustReadFile(t, filepath.Join(generatedDir, "C", "build.Dockerfile"))
-				h.AssertEq(t, string(contents), "some-build.Dockerfile-content-C")
-				contents = h.MustReadFile(t, filepath.Join(generatedDir, "C", "run.Dockerfile"))
-				h.AssertEq(t, string(contents), "some-run.Dockerfile-content-C")
-
-				t.Log("copies extend-config.toml files if they exist")
-				contents = h.MustReadFile(t, filepath.Join(generatedDir, "A", "extend-config.toml"))
-				h.AssertEq(t, string(contents), "some-extend-config.toml-content-A")
-				contents = h.MustReadFile(t, filepath.Join(generatedDir, "C", "extend-config.toml"))
-				h.AssertEq(t, string(contents), "some-extend-config.toml-content-C")
-				contents = h.MustReadFile(t, filepath.Join(generatedDir, "C", "extend-config.toml"))
-				h.AssertEq(t, string(contents), "some-extend-config.toml-content-C")
-			})
-
 			when("returning run image metadata", func() {
 				var (
-					runDockerfilePathA = filepath.Join(tmpDir, "run.Dockerfile.A")
-					runDockerfilePathB = filepath.Join(tmpDir, "run.Dockerfile.B")
+					runDockerfilePathA string
+					runDockerfilePathB string
 				)
 
 				it.Before(func() {
+					runDockerfilePathA = filepath.Join(generatedDir, "A", "run.Dockerfile.A")
+					runDockerfilePathB = filepath.Join(generatedDir, "B", "run.Dockerfile.B")
+
+					h.Mkdir(t, filepath.Join(generatedDir, "A"), filepath.Join(generatedDir, "B"))
 					h.Mkfile(t, "some-dockerfile-content-A", runDockerfilePathA)
 					h.Mkfile(t, "some-dockerfile-content-B", runDockerfilePathB)
 
@@ -769,14 +688,12 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						aDockerfiles: []buildpack.DockerfileInfo{{
 							ExtensionID: "A",
 							Kind:        "run",
-							Path:        runDockerfilePathA,
 							WithBase:    "",
 							Extend:      true,
 						}},
 						bDockerfiles: []buildpack.DockerfileInfo{{
 							ExtensionID: "B",
 							Kind:        "run",
-							Path:        runDockerfilePathB,
 							WithBase:    "",
 							Extend:      true,
 						}},
@@ -791,7 +708,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							{
 								ExtensionID: "A",
 								Kind:        "run",
-								Path:        runDockerfilePathA,
 								WithBase:    "some-new-run-image",
 								Extend:      false,
 							},
@@ -800,7 +716,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							{
 								ExtensionID: "B",
 								Kind:        "run",
-								Path:        runDockerfilePathB,
 								WithBase:    "",
 								Extend:      true,
 							},
@@ -816,7 +731,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							{
 								ExtensionID: "A",
 								Kind:        "run",
-								Path:        runDockerfilePathA,
 								WithBase:    "some-new-run-image",
 								Extend:      true,
 							},
@@ -825,7 +739,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							{
 								ExtensionID: "B",
 								Kind:        "run",
-								Path:        runDockerfilePathB,
 								WithBase:    "some-other-base-image",
 								Extend:      false,
 							},
@@ -834,7 +747,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						expectedRunImageReference: "some-other-base-image",
 						expectedRunImageExtend:    false,
 						assertAfter: func() {
-							t.Log("copies Dockerfiles to the correct locations")
 							t.Log("renames earlier run.Dockerfiles to Dockerfile.ignore in the output directory")
 							aContents := h.MustReadFile(t, filepath.Join(generatedDir, "A", "run.Dockerfile.A.ignore"))
 							h.AssertEq(t, string(aContents), `some-dockerfile-content-A`)
@@ -849,7 +761,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							{
 								ExtensionID: "A",
 								Kind:        "run",
-								Path:        runDockerfilePathA,
 								WithBase:    "some-new-run-image",
 								Extend:      true,
 							},
@@ -873,7 +784,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							{
 								ExtensionID: "A",
 								Kind:        "run",
-								Path:        runDockerfilePathA,
 								WithBase:    "some-new-run-image",
 								Extend:      false,
 							},
@@ -897,7 +807,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							{
 								ExtensionID: "A",
 								Kind:        "run",
-								Path:        runDockerfilePathA,
 								WithBase:    "some-other-run-image",
 								Extend:      false,
 							},
@@ -918,6 +827,14 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						}
 
 						it(tc.descResult, func() {
+							for i := range tc.aDockerfiles {
+								tc.aDockerfiles[i].Path = runDockerfilePathA
+							}
+
+							for i := range tc.bDockerfiles {
+								tc.bDockerfiles[i].Path = runDockerfilePathB
+							}
+
 							// mock generate for extension A
 							dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
 							executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{

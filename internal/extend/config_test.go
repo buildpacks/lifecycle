@@ -12,8 +12,8 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-func TestGenerate(t *testing.T) {
-	spec.Run(t, "unit-extend", testConfig, spec.Report(report.Terminal{}))
+func TestConfig(t *testing.T) {
+	spec.Run(t, "unit-config", testConfig, spec.Report(report.Terminal{}))
 }
 
 func testConfig(t *testing.T, when spec.G, it spec.S) {

@@ -413,8 +413,8 @@ func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error)
 }
 
 func (e *Extender) contextDirFor(kind, extID string) (string, error) {
-	sharedContextDir := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), buildpack.SharedContextDir)
-	kindContextDir := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), fmt.Sprintf("%s.%s", buildpack.SharedContextDir, kind))
+	sharedContextDir := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), extend.SharedContextDir)
+	kindContextDir := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), fmt.Sprintf("%s.%s", extend.SharedContextDir, kind))
 
 	for _, dir := range []string{kindContextDir, sharedContextDir} {
 		if s, err := os.Stat(dir); err == nil && s.IsDir() {

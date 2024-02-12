@@ -196,9 +196,9 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 			mockCtrl.Finish()
 		})
 
-		when("using latest platform API", func() {
+		when("using the platform API 0.12", func() {
 			it.Before(func() {
-				extender.PlatformAPI = api.Platform.Latest()
+				extender.PlatformAPI = api.MustParse("0.12")
 			})
 
 			when("build base image", func() {
@@ -244,7 +244,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						},
 						logger,
 					).DoAndReturn(
-						func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+						func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 							h.AssertEq(t, dockerfile.Path, expectedDockerfileA.Path)
 							h.AssertEq(t, len(dockerfile.Args), 4)
 							h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
@@ -277,7 +277,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						},
 						logger,
 					).DoAndReturn(
-						func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+						func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 							h.AssertEq(t, dockerfile.Path, expectedDockerfileB.Path)
 							h.AssertEq(t, len(dockerfile.Args), 4)
 							h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
@@ -383,7 +383,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 								},
 								logger,
 							).DoAndReturn(
-								func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+								func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 									h.AssertEq(t, dockerfile.Path, expectedDockerfileA.Path)
 									h.AssertEq(t, len(dockerfile.Args), 4) // build_id, user_id, group_id
 									h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
@@ -415,7 +415,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 								},
 								logger,
 							).DoAndReturn(
-								func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+								func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 									h.AssertEq(t, dockerfile.Path, expectedDockerfileB.Path)
 									h.AssertEq(t, len(dockerfile.Args), 4) // build_id, user_id, group_id
 									h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
@@ -483,7 +483,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						gomock.Any(),
 						logger,
 					).DoAndReturn(
-						func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+						func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 							h.AssertEq(t, dockerfile.Path, expectedDockerfileA.Path)
 							h.AssertEq(t, len(dockerfile.Args), 4)
 							h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
@@ -555,7 +555,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						},
 						logger,
 					).DoAndReturn(
-						func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+						func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 							h.AssertEq(t, dockerfile.Path, expectedDockerfileA.Path)
 							h.AssertEq(t, len(dockerfile.Args), 4)
 							h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
@@ -588,7 +588,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						},
 						logger,
 					).DoAndReturn(
-						func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+						func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 							h.AssertEq(t, dockerfile.Path, expectedDockerfileB.Path)
 							h.AssertEq(t, len(dockerfile.Args), 4)
 							h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
@@ -694,7 +694,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 								},
 								logger,
 							).DoAndReturn(
-								func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+								func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 									h.AssertEq(t, dockerfile.Path, expectedDockerfileA.Path)
 									h.AssertEq(t, len(dockerfile.Args), 4) // build_id, user_id, group_id
 									h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
@@ -726,7 +726,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 								},
 								logger,
 							).DoAndReturn(
-								func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+								func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 									h.AssertEq(t, dockerfile.Path, expectedDockerfileB.Path)
 									h.AssertEq(t, len(dockerfile.Args), 4) // build_id, user_id, group_id
 									h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
@@ -794,7 +794,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						gomock.Any(),
 						logger,
 					).DoAndReturn(
-						func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+						func(dockerfile extend.Dockerfile, _ v1.Image, _ extend.Options, _ llog.Logger) (v1.Image, error) {
 							h.AssertEq(t, dockerfile.Path, expectedDockerfileA.Path)
 							h.AssertEq(t, len(dockerfile.Args), 4)
 							h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
