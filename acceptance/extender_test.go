@@ -11,9 +11,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/google/go-containerregistry/pkg/authn"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
@@ -22,7 +22,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -71,8 +70,13 @@ func TestExtender(t *testing.T) {
 
 func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
+		var generatedDir = "/layers/generated"
+
 		it.Before(func() {
 			h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.10"), "")
+			if api.MustParse(platformAPI).AtLeast("0.13") {
+				generatedDir = "/layers/generated-with-contexts"
+			}
 		})
 
 		when("kaniko case", func() {
@@ -105,9 +109,10 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
 				h.AssertNil(t, os.MkdirAll(baseCacheDir, 0755))
 
-				layoutPath, err := selective.Write(filepath.Join(baseCacheDir, baseImageDigest), empty.Index)
+				// write sparse image
+				layoutImage, err := sparse.NewImage(filepath.Join(baseCacheDir, baseImageDigest), remoteImage)
 				h.AssertNil(t, err)
-				h.AssertNil(t, layoutPath.AppendImage(remoteImage))
+				h.AssertNil(t, layoutImage.Save())
 
 				// write image reference in analyzed.toml
 				analyzedMD := files.Analyzed{
@@ -133,7 +138,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					extendArgs := []string{
 						ctrPath(extenderPath),
 						"-analyzed", "/layers/analyzed.toml",
-						"-generated", "/layers/generated",
+						"-generated", generatedDir,
 						"-log-level", "debug",
 						"-gid", "1000",
 						"-uid", "1234",
@@ -186,7 +191,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						ctrPath(extenderPath),
 						"-analyzed", "/layers/analyzed.toml",
 						"-extended", "/layers/extended",
-						"-generated", "/layers/generated",
+						"-generated", generatedDir,
 						"-kind", "run",
 						"-log-level", "debug",
 						"-gid", "1000",
@@ -255,10 +260,16 @@ func assertExpectedImage(t *testing.T, imagePath, platformAPI string) {
 	h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false")
 	layers, err := image.Layers()
 	h.AssertNil(t, err)
-	h.AssertEq(t, len(layers), 5) // base (3), curl (1), tree (1)
-	if api.MustParse(platformAPI).AtLeast("0.12") {
-		history := configFile.History
-		h.AssertEq(t, len(history), len(configFile.RootFS.DiffIDs))
+	history := configFile.History
+	h.AssertEq(t, len(history), len(configFile.RootFS.DiffIDs))
+	if api.MustParse(platformAPI).AtLeast("0.13") {
+		h.AssertEq(t, len(layers), 7) // base (3), curl (2), tree (2)
+		h.AssertEq(t, history[3].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl")
+		h.AssertEq(t, history[4].CreatedBy, "Layer: 'COPY run-file /', Created by extension: curl")
+		h.AssertEq(t, history[5].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree")
+		h.AssertEq(t, history[6].CreatedBy, "Layer: 'COPY shared-file /shared-run', Created by extension: tree")
+	} else {
+		h.AssertEq(t, len(layers), 5) // base (3), curl (1), tree (1)
 		h.AssertEq(t, history[3].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl")
 		h.AssertEq(t, history[4].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree")
 	}

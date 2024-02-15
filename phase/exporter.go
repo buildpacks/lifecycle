@@ -1,9 +1,6 @@
 package phase
 
 import (
-	"compress/gzip"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -56,6 +53,7 @@ type LayerFactory interface {
 	LauncherLayer(path string) (layers.Layer, error)
 	ProcessTypesLayer(metadata launch.Metadata) (layers.Layer, error)
 	SliceLayers(dir string, slices []layers.Slice) ([]layers.Layer, error)
+	TarLayer(withID string, fromTarPath string, createdBy string) (layer layers.Layer, err error)
 }
 
 type LauncherConfig struct {
@@ -272,7 +270,7 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions) error {
 	if extendedRunImage == nil {
 		return nil
 	}
-	extendedLayers, err := extendedRunImage.Layers()
+	allLayers, err := extendedRunImage.Layers()
 	if err != nil {
 		return err
 	}
@@ -281,52 +279,50 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions) error {
 		return err
 	}
 	history := configFile.History
-	var (
-		localImage   bool
-		artifactsDir string
-	)
-	if isLocalImage(opts.WorkingImage) {
-		localImage = true
-		if artifactsDir, err = os.MkdirTemp("", "lifecycle.exporter.layer"); err != nil {
-			return err
-		}
-	}
-	for idx, l := range extendedLayers {
-		layerHex, err := l.DiffID()
+	for idx, l := range allLayers {
+		layerDigest, blobExists, err := getLayerInfo(l, extendedRunImagePath)
 		if err != nil {
-			if _, ok := err.(*fs.PathError); ok {
-				continue // failed to get the diffID because the blob doesn't exist
-			}
-			return err
+			return fmt.Errorf("failed to get layer info: %w", err)
 		}
-		digest, err := l.Digest()
-		if err != nil {
-			return err
-		}
-		layerPath := filepath.Join(extendedRunImagePath, "blobs", digest.Algorithm, digest.Hex)
-		if localImage {
-			var calculatedDiffID string
-			if calculatedDiffID, err = uncompressLayerAt(layerPath, artifactsDir); err != nil {
-				return err
-			}
-			if calculatedDiffID != layerHex.String() {
-				return fmt.Errorf("digest of uncompressed layer from %s does not match expected value; found %q, expected %q", layerPath, calculatedDiffID, layerHex.String())
-			}
-			layerPath = filepath.Join(artifactsDir, calculatedDiffID)
+		if !blobExists {
+			// the referenced blob is a run image (base image) layer, not an extension-provided layer
+			continue
 		}
 		h := getHistoryForNonEmptyLayerAtIndex(history, idx)
 		_, extID := parseHistory(h)
-		layer := layers.Layer{
-			ID:      extID,
-			TarPath: layerPath,
-			Digest:  layerHex.String(),
-			History: h,
+		withID := fmt.Sprintf("%s:extended-layer-%d", extID, idx)
+		fromTarPath := filepath.Join(extendedRunImagePath, "blobs", layerDigest.Algorithm, layerDigest.Hex)
+		layer, err := e.LayerFactory.TarLayer(withID, fromTarPath, h.CreatedBy)
+		if err != nil {
+			return fmt.Errorf("failed to create layer from tar path %s: %w", fromTarPath, err)
 		}
 		if _, err = e.addOrReuseExtensionLayer(opts.WorkingImage, layer); err != nil {
-			return err
+			return fmt.Errorf("failed to add or reuse extension layer: %w", err)
 		}
 	}
 	return nil
+}
+
+func getLayerInfo(layer v1.Layer, parentDir string) (v1.Hash, bool, error) {
+	_, err := layer.DiffID()
+	if err != nil {
+		if _, ok := err.(*fs.PathError); ok {
+			return v1.Hash{}, false, nil // the blob doesn't exist
+		}
+		return v1.Hash{}, false, err
+	}
+	layerDigest, err := layer.Digest()
+	if err != nil {
+		return v1.Hash{}, false, err
+	}
+	layerPath := filepath.Join(parentDir, "blobs", layerDigest.Algorithm, layerDigest.Hex)
+	if _, err := os.Stat(layerPath); err != nil {
+		if os.IsNotExist(err) {
+			return v1.Hash{}, false, nil // the blob doesn't exist
+		}
+		return v1.Hash{}, false, err
+	}
+	return layerDigest, true, nil
 }
 
 func getHistoryForNonEmptyLayerAtIndex(history []v1.History, idx int) v1.History {
@@ -360,34 +356,6 @@ func isLocalImage(workingImage imgutil.Image) bool {
 		return true
 	}
 	return false
-}
-
-func uncompressLayerAt(layerPath string, toArtifactsDir string) (string, error) {
-	sourceLayer, err := os.Open(layerPath)
-	if err != nil {
-		return "", err
-	}
-	zr, err := gzip.NewReader(sourceLayer)
-	if err != nil {
-		return "", err
-	}
-	tmpLayerPath := filepath.Join(toArtifactsDir, filepath.Base(layerPath)) // for now, used the compressed digest to uniquely identify the layer as we may be writing concurrently to this directory
-	targetLayer, err := os.Create(tmpLayerPath)
-	if err != nil {
-		return "", err
-	}
-	hasher := sha256.New()
-	mw := io.MultiWriter(targetLayer, hasher) // calculate the sha256 while writing to file
-	_, err = io.Copy(mw, zr)                  //nolint
-	if err != nil {
-		return "", err
-	}
-	diffID := hex.EncodeToString(hasher.Sum(nil))
-
-	if err = os.Rename(tmpLayerPath, filepath.Join(toArtifactsDir, fmt.Sprintf("sha256:%s", diffID))); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("sha256:%s", diffID), nil
 }
 
 func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *files.LayersMetadata) error {

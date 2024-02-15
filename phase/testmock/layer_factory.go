@@ -95,3 +95,18 @@ func (mr *MockLayerFactoryMockRecorder) SliceLayers(arg0, arg1 interface{}) *gom
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SliceLayers", reflect.TypeOf((*MockLayerFactory)(nil).SliceLayers), arg0, arg1)
 }
+
+// TarLayer mocks base method.
+func (m *MockLayerFactory) TarLayer(arg0, arg1, arg2 string) (layers.Layer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TarLayer", arg0, arg1, arg2)
+	ret0, _ := ret[0].(layers.Layer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TarLayer indicates an expected call of TarLayer.
+func (mr *MockLayerFactoryMockRecorder) TarLayer(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TarLayer", reflect.TypeOf((*MockLayerFactory)(nil).TarLayer), arg0, arg1, arg2)
+}

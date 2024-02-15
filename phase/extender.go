@@ -12,15 +12,15 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/layout/sparse"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/extend"
-	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
@@ -38,6 +38,8 @@ type Extender struct {
 	CacheTTL          time.Duration            // a platform input
 	DockerfileApplier DockerfileApplier        // uses kaniko, BuildKit, or other to apply the provided Dockerfile to the provided image
 	Extensions        []buildpack.GroupElement // extensions are ordered from group.toml
+
+	PlatformAPI *api.Version
 }
 
 // DockerfileApplier given a base image and a `build.Dockerfile` or `run.Dockerfile` will apply it to the base image
@@ -61,6 +63,7 @@ func (f *HermeticFactory) NewExtender(inputs platform.LifecycleInputs, dockerfil
 		PlatformDir:       inputs.PlatformDir,
 		CacheTTL:          inputs.KanikoCacheTTL,
 		DockerfileApplier: dockerfileApplier,
+		PlatformAPI:       f.platformAPI,
 	}
 	var err error
 	if extender.ImageRef, err = f.getExtendImageRef(inputs, logger); err != nil {
@@ -147,8 +150,8 @@ func (e *Extender) extendRun(logger log.Logger) error {
 		return fmt.Errorf("extending run image: %w", err)
 	}
 
-	if err = e.saveSelective(extendedImage, origTopLayer); err != nil {
-		return fmt.Errorf("copying selective image to output directory: %w", err)
+	if err = e.saveSparse(extendedImage, origTopLayer); err != nil {
+		return fmt.Errorf("copying extended image to output directory: %w", err)
 	}
 	return e.DockerfileApplier.Cleanup()
 }
@@ -166,22 +169,23 @@ func topLayer(image v1.Image) (string, error) {
 	return layer.Digest.String(), nil
 }
 
-func (e *Extender) saveSelective(image v1.Image, origTopLayerHash string) error {
+func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string) error {
 	// save sparse image (manifest and config)
 	imageHash, err := image.Digest()
 	if err != nil {
 		return fmt.Errorf("getting image hash: %w", err)
 	}
 	toPath := filepath.Join(e.ExtendedDir, "run", imageHash.String())
-	layoutPath, err := selective.Write(toPath, empty.Index) // FIXME: this should use the imgutil layout/sparse package instead, but for some reason sparse.NewImage().Save() fails when the provided base image is already sparse
+	layoutImage, err := sparse.NewImage(toPath, image)
 	if err != nil {
-		return fmt.Errorf("initializing selective image: %w", err)
+		return fmt.Errorf("failed to initialize image: %w", err)
 	}
-	if err = layoutPath.AppendImage(image); err != nil {
-		return fmt.Errorf("saving selective image: %w", err)
+	if err := layoutImage.Save(); err != nil {
+		return fmt.Errorf("failed to save image: %w", err)
 	}
-	// get all image layers (we will only copy those following the original top layer)
-	layers, err := image.Layers()
+	// copy only the extended layers (those following the original top layer) to the layout path
+	// FIXME: it would be nice if this were supported natively in imgutil
+	allLayers, err := image.Layers()
 	if err != nil {
 		return fmt.Errorf("getting image layers: %w", err)
 	}
@@ -193,7 +197,7 @@ func (e *Extender) saveSelective(image v1.Image, origTopLayerHash string) error 
 		needsCopying = true
 	}
 	group, _ := errgroup.WithContext(context.TODO())
-	for _, currentLayer := range layers {
+	for _, currentLayer := range allLayers {
 		currentHash, err = currentLayer.Digest()
 		if err != nil {
 			return fmt.Errorf("getting layer hash: %w", err)
@@ -262,10 +266,10 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		return nil, err
 	}
 	workingHistory = configFile.History
-	buildOptions := e.extendOptions()
 	userID, groupID := userFrom(*configFile)
 	origUserID := userID
 	for _, dockerfile := range dockerfiles {
+		buildOptions := e.extendOptions(dockerfile)
 		dockerfile.Args = append([]extend.Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
 			{Name: argUserID, Value: userID},
@@ -366,14 +370,27 @@ func (e *Extender) dockerfilesFor(kind string, logger log.Logger) ([]extend.Dock
 }
 
 func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error) {
+	var err error
 	dockerfilePath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "Dockerfile")
+	configPath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "extend-config.toml")
+	contextDir := e.AppDir
+
+	if e.PlatformAPI.AtLeast("0.13") {
+		configPath = filepath.Join(e.GeneratedDir, launch.EscapeID(extID), "extend-config.toml")
+		dockerfilePath = filepath.Join(e.GeneratedDir, launch.EscapeID(extID), fmt.Sprintf("%s.Dockerfile", kind))
+
+		contextDir, err = e.contextDirFor(kind, extID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if _, err := os.Stat(dockerfilePath); err != nil {
 		return nil, nil
 	}
 
-	configPath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "extend-config.toml")
 	var config extend.Config
-	_, err := toml.DecodeFile(configPath, &config)
+	_, err = toml.DecodeFile(configPath, &config)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -391,12 +408,26 @@ func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error)
 		ExtensionID: extID,
 		Path:        dockerfilePath,
 		Args:        args,
+		ContextDir:  contextDir,
 	}, nil
 }
 
-func (e *Extender) extendOptions() extend.Options {
+func (e *Extender) contextDirFor(kind, extID string) (string, error) {
+	sharedContextDir := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), extend.SharedContextDir)
+	kindContextDir := filepath.Join(e.GeneratedDir, launch.EscapeID(extID), fmt.Sprintf("%s.%s", extend.SharedContextDir, kind))
+
+	for _, dir := range []string{kindContextDir, sharedContextDir} {
+		if s, err := os.Stat(dir); err == nil && s.IsDir() {
+			return dir, nil
+		}
+	}
+
+	return e.AppDir, nil
+}
+
+func (e *Extender) extendOptions(dockerfile extend.Dockerfile) extend.Options {
 	return extend.Options{
-		BuildContext: e.AppDir,
+		BuildContext: dockerfile.ContextDir,
 		CacheTTL:     e.CacheTTL,
 		IgnorePaths:  []string{e.AppDir, e.LayersDir, e.PlatformDir},
 	}
