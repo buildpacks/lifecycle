@@ -161,13 +161,7 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 
 func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
 	for _, dockerfile := range dockerfiles {
-		targetDir := filepath.Join(g.GeneratedDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
-		targetPath := filepath.Join(targetDir, "Dockerfile")
-
 		ignoreDockerfile := dockerfile.Kind == buildpack.DockerfileKindRun && dockerfile.Ignore
-		if ignoreDockerfile {
-			targetPath += ".ignore"
-		}
 
 		if g.PlatformAPI.AtLeast("0.13") {
 			if ignoreDockerfile {
@@ -177,6 +171,12 @@ func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) erro
 			}
 
 			continue
+		}
+
+		targetDir := filepath.Join(g.GeneratedDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
+		targetPath := filepath.Join(targetDir, "Dockerfile")
+		if ignoreDockerfile {
+			targetPath += ".ignore"
 		}
 
 		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {

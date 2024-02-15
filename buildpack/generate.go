@@ -130,13 +130,14 @@ func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, lo
 		return GenerateOutputs{}, err
 	} else if found {
 		gr.Dockerfiles = append(gr.Dockerfiles, dfInfo)
+		logger.Debugf("Found run.Dockerfile for processing")
 	}
 
 	if dfInfo, found, err = findDockerfileFor(d, extOutputDir, DockerfileKindBuild, logger); err != nil {
 		return GenerateOutputs{}, err
 	} else if found {
 		gr.Dockerfiles = append(gr.Dockerfiles, dfInfo)
-		logger.Debugf("Found '%d' Dockerfiles for processing", len(gr.Dockerfiles))
+		logger.Debugf("Found build.Dockerfile for processing")
 	}
 
 	if contexts, err = extend.FindContexts(d.Extension.ID, extOutputDir, logger); err != nil {
