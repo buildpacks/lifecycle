@@ -356,6 +356,11 @@ fail: fail_detect_buildpack@some_version`
 			})
 
 			it("processes the provided order.toml", func() {
+				experimentalMode := "warn"
+				if api.MustParse(platformAPI).AtLeast("0.13") {
+					experimentalMode = "error"
+				}
+
 				output := h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -365,7 +370,7 @@ fail: fail_detect_buildpack@some_version`
 						"--user", userID,
 						"--volume", orderPath+":/layers/order.toml",
 						"--env", "CNB_PLATFORM_API="+platformAPI,
-						"--env", "CNB_EXPERIMENTAL_MODE=warn", // required as the default is `error` if unset
+						"--env", "CNB_EXPERIMENTAL_MODE="+experimentalMode,
 					),
 					h.WithArgs(
 						"-analyzed=/layers/analyzed.toml",
@@ -377,7 +382,9 @@ fail: fail_detect_buildpack@some_version`
 				)
 
 				t.Log("runs /bin/detect for buildpacks and extensions")
-				h.AssertStringContains(t, output, "Platform requested experimental feature 'Dockerfiles'")
+				if api.MustParse(platformAPI).LessThan("0.13") {
+					h.AssertStringContains(t, output, "Platform requested experimental feature 'Dockerfiles'")
+				}
 				h.AssertStringContains(t, output, "FOO=val-from-build-config")
 				h.AssertStringContains(t, output, "simple_extension: output from /bin/detect")
 				t.Log("writes group.toml")

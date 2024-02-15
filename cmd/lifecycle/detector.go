@@ -72,7 +72,7 @@ func (d *detectCmd) Exec() error {
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}
-	if detector.HasExtensions {
+	if detector.HasExtensions && detector.PlatformAPI.LessThan("0.13") {
 		if err = platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
 			return err
 		}

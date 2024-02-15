@@ -143,7 +143,7 @@ func (e *exportCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	if e.hasExtendedLayers() {
+	if e.hasExtendedLayers() && e.PlatformAPI.LessThan("0.13") {
 		if err := platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
 			return err
 		}
