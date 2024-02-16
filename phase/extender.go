@@ -347,10 +347,21 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	if userID != origUserID {
 		logger.Warnf("The original user ID was %s but the final extension left the user ID set to %s.", origUserID, userID)
 	}
+	// build images don't mutate the config
 	if kind == buildpack.DockerfileKindBuild {
 		return baseImage, nil
 	}
-	return mutate.ConfigFile(baseImage, configFile)
+	// run images mutate the config
+	baseImage, err = mutate.ConfigFile(baseImage, configFile)
+	if err != nil {
+		return nil, err
+	}
+	digest, err = baseImage.Digest()
+	if err != nil {
+		return nil, err
+	}
+	logger.Debugf("Final extended image has digest: %s", digest)
+	return baseImage, nil
 }
 
 func userFrom(config v1.ConfigFile) (string, string) {
