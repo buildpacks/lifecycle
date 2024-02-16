@@ -271,6 +271,12 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		rebasable      = true // we don't require the initial base image to have io.buildpacks.rebasable=true
 		workingHistory []v1.History
 	)
+	digest, err := baseImage.Digest()
+	if err != nil {
+		return nil, err
+	}
+	logger.Debugf("Original image has digest: %s", digest)
+
 	// get config
 	baseImage, err = imgutil.OverrideHistoryIfNeeded(baseImage)
 	if err != nil {
@@ -299,6 +305,12 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		); err != nil {
 			return nil, fmt.Errorf("applying Dockerfile to image: %w", err)
 		}
+		digest, err = baseImage.Digest()
+		if err != nil {
+			return nil, err
+		}
+		logger.Debugf("Intermediate image has digest: %s", digest)
+
 		// update rebasable, history in config, and user/group IDs
 		configFile, err = baseImage.ConfigFile()
 		if err != nil || configFile == nil {
