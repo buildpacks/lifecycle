@@ -217,7 +217,7 @@ func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string, logger lo
 		switch {
 		case needsCopying:
 			currentLayer := currentLayer // allow use in closure
-			logger.Debugf("Copying top layer with digest: %s", currentHash)
+			logger.Debugf("Copying layer with digest: %s", currentHash)
 			group.Go(func() error {
 				return copyLayer(currentLayer, toPath)
 			})
