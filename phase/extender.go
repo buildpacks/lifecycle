@@ -140,36 +140,46 @@ func (e *Extender) extendRun(logger log.Logger) error {
 		return fmt.Errorf("getting run image to extend: %w", err)
 	}
 
-	origTopLayer, err := topLayer(origBaseImage)
+	origTopLayer, err := topLayerDigest(origBaseImage, logger)
 	if err != nil {
 		return fmt.Errorf("getting original run image top layer: %w", err)
 	}
+	logger.Debugf("Original image top layer digest: %s", origTopLayer)
 
 	extendedImage, err := e.extend(buildpack.DockerfileKindRun, origBaseImage, logger)
 	if err != nil {
 		return fmt.Errorf("extending run image: %w", err)
 	}
 
-	if err = e.saveSparse(extendedImage, origTopLayer); err != nil {
-		return fmt.Errorf("copying extended image to output directory: %w", err)
+	if err = e.saveSparse(extendedImage, origTopLayer, logger); err != nil {
+		return fmt.Errorf("failed to copy extended image to output directory: %w", err)
 	}
 	return e.DockerfileApplier.Cleanup()
 }
 
-func topLayer(image v1.Image) (string, error) {
+func topLayerDigest(image v1.Image, logger log.Logger) (string, error) {
+	imageHash, err := image.Digest()
+	if err != nil {
+		return "", err
+	}
+
 	manifest, err := image.Manifest()
 	if err != nil {
 		return "", fmt.Errorf("getting image manifest: %w", err)
 	}
-	layers := manifest.Layers
-	if len(layers) == 0 {
+
+	allLayers := manifest.Layers
+	logger.Debugf("Found %d layers in original image with digest: %s", len(allLayers), imageHash)
+
+	if len(allLayers) == 0 {
 		return "", nil
 	}
-	layer := layers[len(layers)-1]
+
+	layer := allLayers[len(allLayers)-1]
 	return layer.Digest.String(), nil
 }
 
-func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string) error {
+func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string, logger log.Logger) error {
 	// save sparse image (manifest and config)
 	imageHash, err := image.Digest()
 	if err != nil {
@@ -189,6 +199,8 @@ func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string) error {
 	if err != nil {
 		return fmt.Errorf("getting image layers: %w", err)
 	}
+	logger.Debugf("Found %d layers in extended image with digest: %s", len(allLayers), imageHash)
+
 	var (
 		currentHash  v1.Hash
 		needsCopying bool
@@ -205,13 +217,16 @@ func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string) error {
 		switch {
 		case needsCopying:
 			currentLayer := currentLayer // allow use in closure
+			logger.Debugf("Copying top layer with digest: %s", currentHash)
 			group.Go(func() error {
 				return copyLayer(currentLayer, toPath)
 			})
 		case currentHash.String() == origTopLayerHash:
+			logger.Debugf("Found original top layer with digest: %s", currentHash)
 			needsCopying = true
 			continue
 		default:
+			logger.Debugf("Skipping base layer with digest: %s", currentHash)
 			continue
 		}
 	}
