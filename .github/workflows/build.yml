@@ -54,6 +54,35 @@ jobs:
         run: |
           make format || true
           make test
+  test-freebsd-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read Go version
+        run: sed -En 's/^go (.*)$/GO_VERSION=\1/p' go.mod >> $GITHUB_OUTPUT
+        id: version
+      - name: Test
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y wget gmake curl jq git bash
+            GOARCHIVE_BASENAME=$(curl -sSL 'https://go.dev/dl/?mode=json' | \
+            jq -r '.[0].files[] | select(.os == "freebsd") | select(.arch == "amd64") | select(.kind == "archive") | .filename')
+            GOARCHIVE_URL="https://go.dev/dl/$GOARCHIVE_BASENAME"
+            echo "downloading go from $GOARCHIVE_URL"
+            wget -q "$GOARCHIVE_URL"
+            ls -la "$GOARCHIVE_BASENAME"
+            tar -C /usr/local -xzf "$GOARCHIVE_BASENAME"
+          run: |
+            git config --global --add safe.directory '*'
+            export GOROOT=/usr/local/go
+            export GOPATH=/usr/local/gopath
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            gmake format || true
+            gmake test
   test-windows:
     runs-on: windows-2019
     steps:
@@ -109,6 +138,7 @@ jobs:
     needs:
       - test-linux-amd64
       - test-linux-arm64
+      - test-freebsd-amd64
       - test-windows
     runs-on: ubuntu-latest
     permissions:
@@ -169,6 +199,14 @@ jobs:
           path: out/lifecycle-v*+linux.s390x.tgz.sha256
       - uses: actions/upload-artifact@v3
         with:
+          name: lifecycle-freebsd-x86-64
+          path: out/lifecycle-v*+freebsd.x86-64.tgz
+      - uses: actions/upload-artifact@v3
+        with:
+          name: lifecycle-freebsd-x86-64-sha256
+          path: out/lifecycle-v*+freebsd.x86-64.tgz.sha256
+      - uses: actions/upload-artifact@v3
+        with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
       - uses: actions/upload-artifact@v3
@@ -217,6 +255,9 @@ jobs:
           LINUX_S390X_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.s390x.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x -arch s390x | awk '{print $NF}')
           echo "LINUX_S390X_SHA: $LINUX_S390X_SHA"
 
+          FREEBSD_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+freebsd.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-freebsd-x86-64 -os freebsd | awk '{print $NF}')
+          echo "FREEBSD_AMD64_SHA: $FREEBSD_AMD64_SHA"
+
           WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
@@ -224,6 +265,7 @@ jobs:
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x@${LINUX_S390X_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-freebsd-x86-64@${FREEBSD_AMD64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
@@ -276,6 +318,42 @@ jobs:
           cd pack
           git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
           LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
+          LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
+          make acceptance
+  pack-acceptance-freebsd:
+    if: github.event_name == 'push'
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: 'buildpacks/pack'
+          path: 'pack'
+          ref: 'main'
+          fetch-depth: 0 # fetch all history for all branches and tags
+      - name: Set up go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'pack/go.mod'
+      - uses: actions/download-artifact@v3
+        with:
+          name: version
+      - uses: actions/download-artifact@v3
+        with:
+          name: tag
+      - name: Set env
+        run: |
+          cat version.txt >> $GITHUB_ENV
+          cat tag.txt >> $GITHUB_ENV
+      - uses: actions/download-artifact@v3
+        with:
+          name: lifecycle-freebsd-x86-64
+          path: pack
+      - name: Run pack acceptance
+        run: |
+          cd pack
+          git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
+          LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+freebsd.x86-64.tgz" \
           LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
           make acceptance
   pack-acceptance-windows:

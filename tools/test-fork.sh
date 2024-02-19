@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # $1 - registry repo name
 # $2 - enable tests

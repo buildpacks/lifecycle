@@ -45,6 +45,7 @@ build-linux-amd64: build-linux-amd64-lifecycle build-linux-amd64-symlinks build-
 build-linux-arm64: build-linux-arm64-lifecycle build-linux-arm64-symlinks build-linux-arm64-launcher
 build-windows-amd64: build-windows-amd64-lifecycle build-windows-amd64-symlinks build-windows-amd64-launcher
 build-linux-s390x: build-linux-s390x-lifecycle build-linux-s390x-symlinks build-linux-s390x-launcher
+build-freebsd-amd64: build-freebsd-amd64-lifecycle build-freebsd-amd64-symlinks build-freebsd-amd64-launcher
 
 build-image-linux-amd64: build-linux-amd64 package-linux-amd64
 build-image-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64.tgz
@@ -66,11 +67,18 @@ build-image-linux-s390x: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSIO
 build-image-linux-s390x:
 	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -arch s390x -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
 
+build-image-freebsd-amd64: build-freebsd-amd64 package-freebsd-amd64
+build-image-freebsd-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+freebsd.x86-64.tgz
+build-image-freebsd-amd64:
+	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os freebsd -arch amd64 -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
+
 build-linux-amd64-lifecycle: $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle
 
 build-linux-arm64-lifecycle: $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle
 
 build-linux-s390x-lifecycle: $(BUILD_DIR)/linux-s390x/lifecycle/lifecycle
+
+build-freebsd-amd64-lifecycle: $(BUILD_DIR)/freebsd-amd64/lifecycle/lifecycle
 
 $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: export GOARCH:=amd64
@@ -95,6 +103,15 @@ $(BUILD_DIR)/linux-s390x/lifecycle/lifecycle: export GOARCH:=s390x
 $(BUILD_DIR)/linux-s390x/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
 $(BUILD_DIR)/linux-s390x/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux-s390x/lifecycle/lifecycle:
+	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+
+$(BUILD_DIR)/freebsd-amd64/lifecycle/lifecycle: export GOOS:=freebsd
+$(BUILD_DIR)/freebsd-amd64/lifecycle/lifecycle: export GOARCH:=amd64
+$(BUILD_DIR)/freebsd-amd64/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+$(BUILD_DIR)/freebsd-amd64/lifecycle/lifecycle: $(GOFILES)
+$(BUILD_DIR)/freebsd-amd64/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
@@ -135,6 +152,18 @@ $(BUILD_DIR)/linux-s390x/lifecycle/launcher:
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
 
+build-freebsd-amd64-launcher: $(BUILD_DIR)/freebsd-amd64/lifecycle/launcher
+
+$(BUILD_DIR)/freebsd-amd64/lifecycle/launcher: export GOOS:=freebsd
+$(BUILD_DIR)/freebsd-amd64/lifecycle/launcher: export GOARCH:=amd64
+$(BUILD_DIR)/freebsd-amd64/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+$(BUILD_DIR)/freebsd-amd64/lifecycle/launcher: $(GOFILES)
+$(BUILD_DIR)/freebsd-amd64/lifecycle/launcher:
+	@echo "> Building lifecycle/launcher for $(GOOS)/$(GOARCH)..."
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
+
 build-linux-amd64-symlinks: export GOOS:=linux
 build-linux-amd64-symlinks: export GOARCH:=amd64
 build-linux-amd64-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
@@ -167,6 +196,20 @@ build-linux-s390x-symlinks: export GOOS:=linux
 build-linux-s390x-symlinks: export GOARCH:=s390x
 build-linux-s390x-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
 build-linux-s390x-symlinks:
+	@echo "> Creating phase symlinks for $(GOOS)/$(GOARCH)..."
+	ln -sf lifecycle $(OUT_DIR)/detector
+	ln -sf lifecycle $(OUT_DIR)/analyzer
+	ln -sf lifecycle $(OUT_DIR)/restorer
+	ln -sf lifecycle $(OUT_DIR)/builder
+	ln -sf lifecycle $(OUT_DIR)/exporter
+	ln -sf lifecycle $(OUT_DIR)/rebaser
+	ln -sf lifecycle $(OUT_DIR)/creator
+	ln -sf lifecycle $(OUT_DIR)/extender
+
+build-freebsd-amd64-symlinks: export GOOS:=freebsd
+build-freebsd-amd64-symlinks: export GOARCH:=amd64
+build-freebsd-amd64-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+build-freebsd-amd64-symlinks:
 	@echo "> Creating phase symlinks for $(GOOS)/$(GOARCH)..."
 	ln -sf lifecycle $(OUT_DIR)/detector
 	ln -sf lifecycle $(OUT_DIR)/analyzer
@@ -288,6 +331,14 @@ run-syft-linux-s390x:
 	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
 	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
 
+run-syft-freebsd-amd64: install-syft
+run-syft-freebsd-amd64: export GOOS:=freebsd
+run-syft-freebsd-amd64: export GOARCH:=amd64
+run-syft-freebsd-amd64:
+	@echo "> Running syft..."
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
+
 install-syft:
 	@echo "> Installing syft..."
 	curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
@@ -335,7 +386,7 @@ unit: out
 unit: UNIT_PACKAGES=$(shell $(GOCMD) list ./... | grep -v acceptance)
 unit: format lint tidy install-yj
 	@echo "> Running unit tests..."
-	$(GOTEST) $(GOTESTFLAGS) -v -count=1 $(UNIT_PACKAGES)
+	$(GOTEST) $(GOTESTFLAGS) -count=1 $(UNIT_PACKAGES) -v
 
 out:
 	@mkdir out || (exit 0)
@@ -349,7 +400,7 @@ clean:
 	@echo "> Cleaning workspace..."
 	rm -rf $(BUILD_DIR)
 
-package:  generate-sbom package-linux-amd64 package-linux-arm64 package-windows-amd64 package-linux-s390x
+package:  generate-sbom package-linux-amd64 package-linux-arm64 package-windows-amd64 package-linux-s390x package-freebsd-amd64
 
 package-linux-amd64: GOOS:=linux
 package-linux-amd64: GOARCH:=amd64
@@ -375,6 +426,15 @@ package-linux-s390x: INPUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
 package-linux-s390x: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).s390x.tgz
 package-linux-s390x: PACKAGER=./tools/packager/main.go
 package-linux-s390x:
+	@echo "> Packaging lifecycle for $(GOOS)/$(GOARCH)..."
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH) -version $(LIFECYCLE_VERSION)
+
+package-freebsd-amd64: GOOS:=freebsd
+package-freebsd-amd64: GOARCH:=amd64
+package-freebsd-amd64: INPUT_DIR:=$(BUILD_DIR)$/$(GOOS)-$(GOARCH)$/lifecycle
+package-freebsd-amd64: ARCHIVE_PATH=$(BUILD_DIR)$/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64.tgz
+package-freebsd-amd64: PACKAGER=.$/tools$/packager$/main.go
+package-freebsd-amd64:
 	@echo "> Packaging lifecycle for $(GOOS)/$(GOARCH)..."
 	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH) -version $(LIFECYCLE_VERSION)
 

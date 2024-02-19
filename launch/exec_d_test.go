@@ -55,7 +55,9 @@ func testExecD(t *testing.T, when spec.G, it spec.S) {
 			)
 			output, err := cmd.Output()
 			if err != nil {
-				t.Fatalf("Failed to build test execd binary\n output: %s\n error: %s", output, err)
+				t.Fatalf("Failed to build test execd binary\n output: %s\n error: %s",
+					output,
+					err)
 			}
 			runner = launch.ExecDRunner{
 				Out: &out,
