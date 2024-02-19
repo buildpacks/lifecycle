@@ -196,6 +196,9 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 			mockCtrl.Finish()
 		})
 
+		// prepares fixtures and expected data for extensions
+		// On older platforms, the extender looks for Dockerfiles in <generated>/<kind>/<extension-id>/Dockerfile.
+		// On newer platforms, it looks for Dockerfiles in <generated>/<extension-id>/kind.Dockerfile, and context directories are allowed.
 		prepareDockerfile := func(id, kind, contextDir string) extend.Dockerfile {
 			basePath := filepath.Join(generatedDir, kind, id)
 			dockerfilePath := filepath.Join(basePath, "Dockerfile")
@@ -203,6 +206,17 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 			if extender.PlatformAPI.AtLeast("0.13") {
 				basePath = filepath.Join(generatedDir, id)
 				dockerfilePath = filepath.Join(basePath, fmt.Sprintf("%s.Dockerfile", kind))
+
+				switch contextDir {
+				case "specific":
+					h.Mkdir(t, filepath.Join(basePath, fmt.Sprintf("context.%s", kind)))
+				case "shared":
+					h.Mkdir(t, filepath.Join(basePath, "context"))
+				case "app":
+					// nothing to do
+				default:
+					t.Fail()
+				}
 			} else {
 				h.AssertEq(t, contextDir, "app")
 			}
@@ -221,16 +235,6 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				data = extend.Config{Run: extend.BuildConfig{Args: expectedDockerfile.Args}}
 			case "build":
 				data = extend.Config{Build: extend.BuildConfig{Args: expectedDockerfile.Args}}
-			default:
-				t.Fail()
-			}
-			switch contextDir {
-			case "specific":
-				h.Mkdir(t, filepath.Join(basePath, fmt.Sprintf("context.%s", kind)))
-			case "shared":
-				h.Mkdir(t, filepath.Join(basePath, "context"))
-			case "app":
-				// nothing to do
 			default:
 				t.Fail()
 			}
