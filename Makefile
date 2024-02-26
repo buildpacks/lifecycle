@@ -39,11 +39,12 @@ GOFILES := $(shell $(GOCMD) run tools$/lister$/main.go)
 
 all: test build package
 
-build: build-linux-amd64 build-linux-arm64 build-windows-amd64 build-linux-s390x
+build: build-linux-amd64 build-linux-arm64 build-windows-amd64 build-linux-ppc64le build-linux-s390x
 
 build-linux-amd64: build-linux-amd64-lifecycle build-linux-amd64-symlinks build-linux-amd64-launcher
 build-linux-arm64: build-linux-arm64-lifecycle build-linux-arm64-symlinks build-linux-arm64-launcher
 build-windows-amd64: build-windows-amd64-lifecycle build-windows-amd64-symlinks build-windows-amd64-launcher
+build-linux-ppc64le: build-linux-ppc64le-lifecycle build-linux-ppc64le-symlinks build-linux-ppc64le-launcher
 build-linux-s390x: build-linux-s390x-lifecycle build-linux-s390x-symlinks build-linux-s390x-launcher
 
 build-image-linux-amd64: build-linux-amd64 package-linux-amd64
@@ -61,6 +62,11 @@ build-image-windows-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERS
 build-image-windows-amd64:
 	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os windows -arch amd64 -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
 
+build-image-linux-ppc64le: build-linux-ppc64le package-linux-ppc64le
+build-image-linux-ppc64le: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.ppc64le.tgz
+build-image-linux-ppc64le:
+	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -arch ppc64le -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
+
 build-image-linux-s390x: build-linux-s390x package-linux-s390x
 build-image-linux-s390x: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.s390x.tgz
 build-image-linux-s390x:
@@ -69,6 +75,8 @@ build-image-linux-s390x:
 build-linux-amd64-lifecycle: $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle
 
 build-linux-arm64-lifecycle: $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle
+
+build-linux-ppc64le-lifecycle: $(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle
 
 build-linux-s390x-lifecycle: $(BUILD_DIR)/linux-s390x/lifecycle/lifecycle
 
@@ -86,6 +94,15 @@ $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: export GOARCH:=arm64
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle:
+	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+
+$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle: export GOOS:=linux
+$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle: export GOARCH:=ppc64le
+$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle: $(GOFILES)
+$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
@@ -123,6 +140,18 @@ $(BUILD_DIR)/linux-arm64/lifecycle/launcher:
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
 
+build-linux-ppc64le-launcher: $(BUILD_DIR)/linux-ppc64le/lifecycle/launcher
+
+$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher: export GOOS:=linux
+$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher: export GOARCH:=ppc64le
+$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher: $(GOFILES)
+$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher:
+	@echo "> Building lifecycle/launcher for $(GOOS)/$(GOARCH)..."
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
+
 build-linux-s390x-launcher: $(BUILD_DIR)/linux-s390x/lifecycle/launcher
 
 $(BUILD_DIR)/linux-s390x/lifecycle/launcher: export GOOS:=linux
@@ -153,6 +182,20 @@ build-linux-arm64-symlinks: export GOOS:=linux
 build-linux-arm64-symlinks: export GOARCH:=arm64
 build-linux-arm64-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
 build-linux-arm64-symlinks:
+	@echo "> Creating phase symlinks for $(GOOS)/$(GOARCH)..."
+	ln -sf lifecycle $(OUT_DIR)/detector
+	ln -sf lifecycle $(OUT_DIR)/analyzer
+	ln -sf lifecycle $(OUT_DIR)/restorer
+	ln -sf lifecycle $(OUT_DIR)/builder
+	ln -sf lifecycle $(OUT_DIR)/exporter
+	ln -sf lifecycle $(OUT_DIR)/rebaser
+	ln -sf lifecycle $(OUT_DIR)/creator
+	ln -sf lifecycle $(OUT_DIR)/extender
+
+build-linux-ppc64le-symlinks: export GOOS:=linux
+build-linux-ppc64le-symlinks: export GOARCH:=ppc64le
+build-linux-ppc64le-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+build-linux-ppc64le-symlinks:
 	@echo "> Creating phase symlinks for $(GOOS)/$(GOARCH)..."
 	ln -sf lifecycle $(OUT_DIR)/detector
 	ln -sf lifecycle $(OUT_DIR)/analyzer
@@ -254,7 +297,7 @@ build-darwin-amd64-launcher:
 	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
 	$(call build_launcher)
 
-generate-sbom: run-syft-windows run-syft-linux-amd64 run-syft-linux-arm64 run-syft-linux-s390x
+generate-sbom: run-syft-windows run-syft-linux-amd64 run-syft-linux-arm64 run-syft-linux-ppc64le run-syft-linux-s390x
 
 run-syft-windows: install-syft
 run-syft-windows: export GOOS:=windows
@@ -276,6 +319,14 @@ run-syft-linux-arm64: install-syft
 run-syft-linux-arm64: export GOOS:=linux
 run-syft-linux-arm64: export GOARCH:=arm64
 run-syft-linux-arm64:
+	@echo "> Running syft..."
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
+
+run-syft-linux-ppc64le: install-syft
+run-syft-linux-ppc64le: export GOOS:=linux
+run-syft-linux-ppc64le: export GOARCH:=ppc64le
+run-syft-linux-ppc64le:
 	@echo "> Running syft..."
 	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
 	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
@@ -349,7 +400,7 @@ clean:
 	@echo "> Cleaning workspace..."
 	rm -rf $(BUILD_DIR)
 
-package:  generate-sbom package-linux-amd64 package-linux-arm64 package-windows-amd64 package-linux-s390x
+package:  generate-sbom package-linux-amd64 package-linux-arm64 package-windows-amd64 package-linux-ppc64le package-linux-s390x
 
 package-linux-amd64: GOOS:=linux
 package-linux-amd64: GOARCH:=amd64
@@ -366,6 +417,15 @@ package-linux-arm64: INPUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
 package-linux-arm64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).arm64.tgz
 package-linux-arm64: PACKAGER=./tools/packager/main.go
 package-linux-arm64:
+	@echo "> Packaging lifecycle for $(GOOS)/$(GOARCH)..."
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH) -version $(LIFECYCLE_VERSION)
+
+package-linux-ppc64le: GOOS:=linux
+package-linux-ppc64le: GOARCH:=ppc64le
+package-linux-ppc64le: INPUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+package-linux-ppc64le: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).ppc64le.tgz
+package-linux-ppc64le: PACKAGER=./tools/packager/main.go
+package-linux-ppc64le:
 	@echo "> Packaging lifecycle for $(GOOS)/$(GOARCH)..."
 	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH) -version $(LIFECYCLE_VERSION)
 
