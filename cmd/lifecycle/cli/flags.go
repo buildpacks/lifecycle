@@ -181,7 +181,7 @@ func FlagInsecureRegistries(insecureRegistries *str.Slice) {
 // deprecated
 
 func DeprecatedFlagRunImage(deprecatedRunImage *string) {
-	flagSet.StringVar(deprecatedRunImage, "image", "", "reference to run image")
+	flagSet.StringVar(deprecatedRunImage, "image", "", "[deprecated] reference to run image")
 }
 
 // helpers
