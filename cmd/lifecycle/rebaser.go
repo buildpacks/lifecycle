@@ -192,13 +192,14 @@ func (r *rebaseCmd) setAppImage() error {
 
 	if r.RunImageRef == "" {
 		var runImage files.RunImageForExport
-		if r.PlatformAPI.AtLeast("0.12") && md.RunImage.RunImageForExport.Image != "" {
+		switch {
+		case r.PlatformAPI.AtLeast("0.12") && md.RunImage.RunImageForExport.Image != "":
 			runImage = md.RunImage.RunImageForExport
-		} else if md.Stack != nil && md.Stack.RunImage.Image != "" {
+		case md.Stack != nil && md.Stack.RunImage.Image != "":
 			// for backwards compatibility, we need to fallback to the stack metadata
 			// fail if there is no run image metadata available from either location
 			runImage = md.Stack.RunImage
-		} else {
+		default:
 			return cmd.FailErrCode(errors.New("-run-image is required when there is no run image metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
 		}
 
