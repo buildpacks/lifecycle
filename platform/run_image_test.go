@@ -147,6 +147,60 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when(".GetRunImageFromMetadata", func() {
+		var inputs = platform.LifecycleInputs{
+			PlatformAPI: api.Platform.Latest(),
+		}
+
+		var md = files.LayersMetadata{}
+
+		when("run image not set in metadata", func() {
+			it("errors", func() {
+				result, err := platform.GetRunImageFromMetadata(inputs, md)
+				h.AssertNotNil(t, err)
+				h.AssertEq(t, result.Image, "")
+			})
+		})
+
+		when("run image set in runImage metadata", func() {
+			md.RunImage.RunImageForExport.Image = "run-image-in-metadata"
+
+			it("returns the run image from runImage metadata", func() {
+				result, err := platform.GetRunImageFromMetadata(inputs, md)
+				h.AssertNil(t, err)
+				h.AssertEq(t, result, files.RunImageForExport{Image: "run-image-in-metadata"})
+			})
+		})
+
+		when("run image set in stack metadata", func() {
+			md.Stack = &files.Stack{
+				RunImage: files.RunImageForExport{
+					Image: "run-image-in-stack-metadata",
+				},
+			}
+
+			it("returns the run image from stack metadata", func() {
+				result, err := platform.GetRunImageFromMetadata(inputs, md)
+				h.AssertNil(t, err)
+				h.AssertEq(t, result, files.RunImageForExport{Image: "run-image-in-stack-metadata"})
+			})
+		})
+
+		when("platform api < 0.12", func() {
+			inputs.PlatformAPI = api.MustParse("0.11")
+
+			when("run image set in runImage metadata", func() {
+				md.RunImage.RunImageForExport.Image = "run-image-in-metadata"
+
+				it("fails to return at this platform version", func() {
+					result, err := platform.GetRunImageFromMetadata(inputs, md)
+					h.AssertNotNil(t, err)
+					h.AssertEq(t, result.Image, "")
+				})
+			})
+		})
+	})
+
 	when(".EnvVarsFor", func() {
 		it("returns the right thing", func() {
 			tm := files.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distro: &files.OSDistro{Name: "nix", Version: "22.11"}}
