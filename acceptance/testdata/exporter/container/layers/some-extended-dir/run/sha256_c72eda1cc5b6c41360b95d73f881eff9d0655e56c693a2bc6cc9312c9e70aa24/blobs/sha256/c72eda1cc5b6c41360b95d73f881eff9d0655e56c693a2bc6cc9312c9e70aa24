@@ -25,12 +25,12 @@
     {
       "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
       "size": 38445484,
-      "digest": "sha256:482346d1e0c7afa2514ec366d2e000e0667d0a6664690aab3c8ad51c81915b91"
+      "digest": "sha256:65c2873d397056a5cb4169790654d787579b005f18b903082b177d4d9b4aecf5"
     },
     {
       "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
       "size": 146545,
-      "digest": "sha256:0c5f7a6fe14dbd19670f39e7466051cbd40b3a534c0812659740fb03e2137c1a"
+      "digest": "sha256:0fb9b88c9cbe9f11b4c8da645f390df59f5949632985a0bfc2a842ef17b2ad18"
     }
   ]
 }

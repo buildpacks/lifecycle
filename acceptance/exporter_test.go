@@ -174,8 +174,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, err)
 						h.AssertEq(t, inspect.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<sha>/blobs/sha256/<config>
 						t.Log("Adds extension layers")
-						diffIDFromExt1 := "sha256:b2929a2680ce82320debc2fdde18dd6f45f563277545dbf105ca3d0e760057ce" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/<482346d1> after un-compressing and zeroing timestamps
-						diffIDFromExt2 := "sha256:c97b5a2894deb8380b078f68563a9683d968a8e0c5c092d187bc34e1c56bf6f3" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/<0c5f7a6f> after un-compressing and zeroing timestamps
+						diffIDFromExt1 := "sha256:c63774c879ea64bf2f123e1f921d6cfe9050e060cc063a39ae005fada3527052" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/65c2873d397056a5cb4169790654d787579b005f18b903082b177d4d9b4aecf5 after un-compressing and zeroing timestamps
+						diffIDFromExt2 := "sha256:79871ae5a9fa6d786629bb0a96202685d482c224e6746cef2adf6ac9570b566b" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/0fb9b88c9cbe9f11b4c8da645f390df59f5949632985a0bfc2a842ef17b2ad18 after un-compressing and zeroing timestamps
 						var foundFromExt1, foundFromExt2 bool
 						for _, layer := range inspect.RootFS.Layers {
 							if layer == diffIDFromExt1 {
@@ -446,8 +446,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						t.Log("Adds extension layers")
 						layers, err = remoteImage.Layers()
 						h.AssertNil(t, err)
-						digestFromExt1 := "sha256:9b04cc97d8d2d204ccf30e3519c36b2f09dd7873803aafbc6badf7ce3d0687eb" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/<482346d1> after un-compressing, zeroing timestamps, and re-compressing
-						digestFromExt2 := "sha256:21bbb316bf28192b4c980b65a3c27b033994a74ca281ccef94a83df2fa3d666b" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/<0c5f7a6f> after un-compressing, zeroing timestamps, and re-compressing
+						digestFromExt1 := "sha256:603238a641e7726340839425a6893f8742642628e67294a69b2ffc8f6d0c6145" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/65c2873d397056a5cb4169790654d787579b005f18b903082b177d4d9b4aecf5 after un-compressing, zeroing timestamps, and re-compressing
+						digestFromExt2 := "sha256:ad97d03e1cce65af7a5c605248c0e31b4f0fad58d694065d1c22783d8f5897d5" // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/0fb9b88c9cbe9f11b4c8da645f390df59f5949632985a0bfc2a842ef17b2ad18 after un-compressing, zeroing timestamps, and re-compressing
 						var foundFromExt1, foundFromExt2 bool
 						for _, layer := range layers {
 							digest, err := layer.Digest()
