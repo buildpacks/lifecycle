@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -18,6 +19,8 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 const (
@@ -82,7 +85,7 @@ func (e *DefaultBuildExecutor) Build(d BpDescriptor, inputs BuildInputs, logger 
 	}
 
 	logger.Debug("Running build command")
-	if err := runBuildCmd(d, bpLayersDir, planPath, inputs, inputs.Env); err != nil {
+	if err := runBuildCmd(d, bpLayersDir, planPath, inputs, inputs.Env, logger); err != nil {
 		return BuildOutputs{}, err
 	}
 
@@ -123,7 +126,7 @@ func prepareInputPaths(bpID string, plan Plan, layersDir, parentPlanDir string) 
 	return bpLayersDir, planPath, nil
 }
 
-func runBuildCmd(d BpDescriptor, bpLayersDir, planPath string, inputs BuildInputs, buildEnv BuildEnv) error {
+func runBuildCmd(d BpDescriptor, bpLayersDir, planPath string, inputs BuildInputs, buildEnv BuildEnv, logger log.Logger) error {
 	cmd := exec.Command(
 		filepath.Join(d.WithRootDir, "bin", "build"),
 		bpLayersDir,
@@ -150,6 +153,18 @@ func runBuildCmd(d BpDescriptor, bpLayersDir, planPath string, inputs BuildInput
 			EnvBpPlanPath+"="+planPath,
 			EnvLayersDir+"="+bpLayersDir,
 		)
+	}
+
+	if api.MustParse(d.WithAPI).AtLeast("0.10") {
+		// buildpack api version 0.10 and later require CNB_TARGET_OS and CNB_TARGET_ARCH to be set
+		// earlier Platform API versions (< 0.12) do not write this to analyzed.toml
+		// check if CNB_TARGET_OS and CNB_TARGET_ARCH are set in cmd.Env
+		// if not, set them based on the filesystem
+		if !slices.Contains(cmd.Env, "CNB_TARGET_OS=") || !slices.Contains(cmd.Env, "CNB_TARGET_ARCH=") {
+			tmd := files.TargetMetadata{}
+			platform.GetTargetOSFromFileSystem(&fsutil.Detect{}, &tmd, logger)
+			cmd.Env = append(cmd.Env, platform.EnvVarsFor(tmd)...)
+		}
 	}
 
 	if err = cmd.Run(); err != nil {
