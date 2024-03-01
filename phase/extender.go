@@ -140,7 +140,7 @@ func (e *Extender) extendRun(logger log.Logger) error {
 		return fmt.Errorf("getting run image to extend: %w", err)
 	}
 
-	origTopLayer, err := topLayerDigest(origBaseImage, logger)
+	origTopLayer, origNumLayers, err := topLayerDigest(origBaseImage, logger)
 	if err != nil {
 		return fmt.Errorf("getting original run image top layer: %w", err)
 	}
@@ -151,35 +151,35 @@ func (e *Extender) extendRun(logger log.Logger) error {
 		return fmt.Errorf("extending run image: %w", err)
 	}
 
-	if err = e.saveSparse(extendedImage, origTopLayer, logger); err != nil {
+	if err = e.saveSparse(extendedImage, origTopLayer, origNumLayers, logger); err != nil {
 		return fmt.Errorf("failed to copy extended image to output directory: %w", err)
 	}
 	return e.DockerfileApplier.Cleanup()
 }
 
-func topLayerDigest(image v1.Image, logger log.Logger) (string, error) {
+func topLayerDigest(image v1.Image, logger log.Logger) (string, int, error) {
 	imageHash, err := image.Digest()
 	if err != nil {
-		return "", err
+		return "", -1, err
 	}
 
 	manifest, err := image.Manifest()
 	if err != nil {
-		return "", fmt.Errorf("getting image manifest: %w", err)
+		return "", -1, fmt.Errorf("getting image manifest: %w", err)
 	}
 
 	allLayers := manifest.Layers
 	logger.Debugf("Found %d layers in original image with digest: %s", len(allLayers), imageHash)
 
 	if len(allLayers) == 0 {
-		return "", nil
+		return "", 0, nil
 	}
 
 	layer := allLayers[len(allLayers)-1]
-	return layer.Digest.String(), nil
+	return layer.Digest.String(), len(allLayers), nil
 }
 
-func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string, logger log.Logger) error {
+func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string, origNumLayers int, logger log.Logger) error {
 	// save sparse image (manifest and config)
 	imageHash, err := image.Digest()
 	if err != nil {
@@ -209,7 +209,7 @@ func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string, logger lo
 		needsCopying = true
 	}
 	group, _ := errgroup.WithContext(context.TODO())
-	for _, currentLayer := range allLayers {
+	for idx, currentLayer := range allLayers {
 		currentHash, err = currentLayer.Digest()
 		if err != nil {
 			return fmt.Errorf("getting layer hash: %w", err)
@@ -221,9 +221,12 @@ func (e *Extender) saveSparse(image v1.Image, origTopLayerHash string, logger lo
 			group.Go(func() error {
 				return copyLayer(currentLayer, toPath)
 			})
-		case currentHash.String() == origTopLayerHash:
+		case currentHash.String() == origTopLayerHash && idx+1 == origNumLayers:
 			logger.Debugf("Found original top layer with digest: %s", currentHash)
 			needsCopying = true
+			continue
+		case currentHash.String() == origTopLayerHash:
+			logger.Warnf("Original run image has duplicated top layer with digest: %s", currentHash)
 			continue
 		default:
 			logger.Debugf("Skipping base layer with digest: %s", currentHash)
