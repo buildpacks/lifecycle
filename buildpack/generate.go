@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
@@ -25,6 +26,7 @@ type GenerateInputs struct {
 	OutputDir      string // a temp directory provided by the lifecycle to capture extensions output
 	PlatformDir    string
 	Env            BuildEnv
+	TargetEnv      []string
 	Out, Err       io.Writer
 	Plan           Plan
 }
@@ -103,6 +105,9 @@ func runGenerateCmd(d ExtDescriptor, extOutputDir, planPath string, inputs Gener
 		EnvOutputDir+"="+extOutputDir,
 		EnvPlatformDir+"="+inputs.PlatformDir,
 	)
+	if api.MustParse(d.API()).AtLeast("0.10") {
+		cmd.Env = append(cmd.Env, inputs.TargetEnv...)
+	}
 
 	if err := cmd.Run(); err != nil {
 		return NewError(err, ErrTypeBuildpack)
