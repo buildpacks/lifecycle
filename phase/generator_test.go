@@ -281,7 +281,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					h.Mkfile(t, "some-build.Dockerfile-content-A", buildDockerfilePathA)
 					executor.EXPECT().Generate(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 						func(d buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ *log.Logger) (buildpack.GenerateOutputs, error) {
-							h.AssertContains(t, inputs.Env.List(),
+							h.AssertContains(t, inputs.TargetEnv,
 								"CNB_TARGET_ARCH=amd64",
 								"CNB_TARGET_ARCH_VARIANT=",
 								"CNB_TARGET_DISTRO_NAME=",
@@ -293,7 +293,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						})
 					executor.EXPECT().Generate(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 						func(d buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ *log.Logger) (buildpack.GenerateOutputs, error) {
-							h.AssertContains(t, inputs.Env.List(),
+							h.AssertContains(t, inputs.TargetEnv,
 								"CNB_TARGET_ARCH=amd64",
 								"CNB_TARGET_ARCH_VARIANT=",
 								"CNB_TARGET_DISTRO_NAME=",
