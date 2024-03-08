@@ -32,11 +32,9 @@ func Run(c Command, withPhaseName string, asSubcommand bool) {
 
 	var printVersion bool
 	FlagVersion(&printVersion)
-	if printVersion {
-		cmd.ExitWithVersion()
-	}
 
-	// DefineFlags defines the flags that are considered valid and reads their values (if provided)
+	// DefineFlags along with any function FlagXXX defines the flags that are considered valid
+	// `flagSet.Parse` reads their values (if provided)
 	// The command `c` (e.g., detectCmd) is at this point already populated with platform inputs from the environment and/or default values
 	c.DefineFlags()
 	if asSubcommand {
@@ -50,6 +48,11 @@ func Run(c Command, withPhaseName string, asSubcommand bool) {
 			cmd.Exit(err)
 		}
 	}
+
+	if printVersion {
+		cmd.ExitWithVersion()
+	}
+
 	for _, arg := range flagSet.Args() {
 		if arg[0:1] == "-" {
 			cmd.DefaultLogger.Warnf("Warning: unconsumed flag-like positional arg: \n\t%s\n\t This will not be interpreted as a flag.\n\t Did you mean to put this before the first positional argument?", arg)
