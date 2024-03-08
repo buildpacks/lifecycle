@@ -58,6 +58,7 @@ type LifecycleInputs struct {
 	ParallelExport        bool
 	UseDaemon             bool
 	UseLayout             bool
+	NoColor               bool
 	AdditionalTags        str.Slice // str.Slice satisfies the `Value` interface required by the `flag` package
 	KanikoCacheTTL        time.Duration
 	InsecureRegistries    str.Slice
@@ -88,6 +89,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		// Operator config
 
 		LogLevel:           envOrDefault(EnvLogLevel, DefaultLogLevel),
+		NoColor:            boolEnv(EnvNoColor),
 		PlatformAPI:        platformAPI,
 		ExtendKind:         envOrDefault(EnvExtendKind, DefaultExtendKind),
 		UseDaemon:          boolEnv(EnvUseDaemon),

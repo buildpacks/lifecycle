@@ -22,6 +22,9 @@ type Command interface {
 
 	// Exec executes the command
 	Exec() error
+
+	// Platform returns the platform
+	Inputs() platform.LifecycleInputs
 }
 
 func Run(c Command, withPhaseName string, asSubcommand bool) {
@@ -33,7 +36,9 @@ func Run(c Command, withPhaseName string, asSubcommand bool) {
 
 	log.SetOutput(io.Discard)
 	FlagVersion(&printVersion)
+	logLevel = c.Inputs().LogLevel
 	FlagLogLevel(&logLevel)
+	noColor = c.Inputs().NoColor
 	FlagNoColor(&noColor)
 	c.DefineFlags()
 	if asSubcommand {

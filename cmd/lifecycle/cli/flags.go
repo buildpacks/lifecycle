@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/buildpacks/lifecycle/internal/str"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -93,11 +92,11 @@ func FlagLayersDir(layersDir *string) {
 }
 
 func FlagLogLevel(logLevel *string) {
-	flagSet.StringVar(logLevel, "log-level", platform.DefaultLogLevel, "logging level")
+	flagSet.StringVar(logLevel, "log-level", *logLevel, "logging level")
 }
 
 func FlagNoColor(noColor *bool) {
-	flagSet.BoolVar(noColor, "no-color", boolEnv(platform.EnvNoColor), "disable color output")
+	flagSet.BoolVar(noColor, "no-color", *noColor, "disable color output")
 }
 
 func FlagOrderPath(orderPath *string) {
