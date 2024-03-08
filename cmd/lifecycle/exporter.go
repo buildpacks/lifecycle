@@ -49,19 +49,15 @@ type exportData struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
+	if e.PlatformAPI.AtLeast("0.13") {
+		cli.FlagInsecureRegistries(&e.InsecureRegistries)
+	}
 	if e.PlatformAPI.AtLeast("0.12") {
 		cli.FlagExtendedDir(&e.ExtendedDir)
 		cli.FlagLayoutDir(&e.LayoutDir)
 		cli.FlagRunPath(&e.RunPath)
 		cli.FlagUseLayout(&e.UseLayout)
-	} else {
-		cli.FlagStackPath(&e.StackPath)
 	}
-
-	if e.PlatformAPI.AtLeast("0.13") {
-		cli.FlagInsecureRegistries(&e.InsecureRegistries)
-	}
-
 	if e.PlatformAPI.AtLeast("0.11") {
 		cli.FlagLauncherSBOMDir(&e.LauncherSBOMDir)
 	}
@@ -74,6 +70,8 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagLaunchCacheDir(&e.LaunchCacheDir)
 	cli.FlagLauncherPath(&e.LauncherPath)
 	cli.FlagLayersDir(&e.LayersDir)
+	cli.FlagLogLevel(&e.LogLevel)
+	cli.FlagNoColor(&e.NoColor)
 	cli.FlagParallelExport(&e.ParallelExport)
 	cli.FlagProcessType(&e.DefaultProcessType)
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
@@ -82,7 +80,11 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagUID(&e.UID)
 	cli.FlagUseDaemon(&e.UseDaemon)
 
+	// deprecated
 	cli.DeprecatedFlagRunImage(&e.DeprecatedRunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
+	if e.PlatformAPI.LessThan("0.12") {
+		cli.FlagStackPath(&e.StackPath)
+	}
 }
 
 // Args validates arguments and flags, and fills in default values.

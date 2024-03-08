@@ -33,6 +33,8 @@ func (d *detectCmd) DefineFlags() {
 	cli.FlagBuildpacksDir(&d.BuildpacksDir)
 	cli.FlagGroupPath(&d.GroupPath)
 	cli.FlagLayersDir(&d.LayersDir)
+	cli.FlagLogLevel(&d.LogLevel)
+	cli.FlagNoColor(&d.NoColor)
 	cli.FlagOrderPath(&d.OrderPath)
 	cli.FlagPlanPath(&d.PlanPath)
 	cli.FlagPlatformDir(&d.PlatformDir)

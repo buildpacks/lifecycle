@@ -32,6 +32,8 @@ func (e *extendCmd) DefineFlags() {
 	cli.FlagGroupPath(&e.GroupPath)
 	cli.FlagKanikoCacheTTL(&e.KanikoCacheTTL)
 	cli.FlagLayersDir(&e.LayersDir)
+	cli.FlagLogLevel(&e.LogLevel)
+	cli.FlagNoColor(&e.NoColor)
 	cli.FlagPlanPath(&e.PlanPath)
 	cli.FlagPlatformDir(&e.PlatformDir)
 	cli.FlagUID(&e.UID)
