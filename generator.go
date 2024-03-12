@@ -141,9 +141,6 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		g.Logger.Debug("Finding plan")
 		inputs.Plan = filteredPlan.Find(buildpack.KindExtension, ext.ID)
 
-		if g.AnalyzedMD.RunImage != nil && g.AnalyzedMD.RunImage.TargetMetadata != nil && g.PlatformAPI.AtLeast("0.12") {
-			inputs.Env = env.NewBuildEnv(append(inputs.Env.List(), platform.EnvVarsFor(*g.AnalyzedMD.RunImage.TargetMetadata)...))
-		}
 		g.Logger.Debug("Invoking command")
 		result, err := g.Executor.Generate(*descriptor, inputs, g.Logger)
 		if err != nil {
@@ -195,6 +192,7 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 		BuildConfigDir: g.BuildConfigDir,
 		PlatformDir:    g.PlatformDir,
 		Env:            env.NewBuildEnv(os.Environ()),
+		TargetEnv:      platform.EnvVarsFor(g.AnalyzedMD.RunImageTarget(), g.Logger),
 		Out:            g.Out,
 		Err:            g.Err,
 	}

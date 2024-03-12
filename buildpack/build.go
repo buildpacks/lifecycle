@@ -35,6 +35,7 @@ type BuildInputs struct {
 	LayersDir      string
 	PlatformDir    string
 	Env            BuildEnv
+	TargetEnv      []string
 	Out, Err       io.Writer
 	Plan           Plan
 }
@@ -153,6 +154,9 @@ func runBuildCmd(d BpDescriptor, bpLayersDir, planPath string, inputs BuildInput
 			EnvBpPlanPath+"="+planPath,
 			EnvLayersDir+"="+bpLayersDir,
 		)
+	}
+	if api.MustParse(d.API()).AtLeast("0.10") {
+		cmd.Env = append(cmd.Env, inputs.TargetEnv...)
 	}
 
 	if err = cmd.Run(); err != nil {
