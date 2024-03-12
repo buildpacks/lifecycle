@@ -65,11 +65,6 @@ func (b *Builder) Build() (*files.BuildMetadata, error) {
 	)
 	processMap := newProcessMap()
 	inputs := b.getBuildInputs()
-	if b.AnalyzeMD.RunImage != nil && b.AnalyzeMD.RunImage.TargetMetadata != nil && b.PlatformAPI.AtLeast("0.12") {
-		inputs.Env = env.NewBuildEnv(append(os.Environ(), platform.EnvVarsFor(*b.AnalyzeMD.RunImage.TargetMetadata)...))
-	} else {
-		inputs.Env = env.NewBuildEnv(os.Environ())
-	}
 
 	filteredPlan := b.Plan
 
@@ -159,6 +154,8 @@ func (b *Builder) getBuildInputs() buildpack.BuildInputs {
 		BuildConfigDir: b.BuildConfigDir,
 		LayersDir:      b.LayersDir,
 		PlatformDir:    b.PlatformDir,
+		Env:            env.NewBuildEnv(os.Environ()),
+		TargetEnv:      platform.EnvVarsFor(b.AnalyzeMD.RunImageTarget(), b.Logger),
 		Out:            b.Out,
 		Err:            b.Err,
 	}

@@ -285,11 +285,8 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 					AppDir:         d.AppDir,
 					BuildConfigDir: d.BuildConfigDir,
 					PlatformDir:    d.PlatformDir,
-				}
-				if d.AnalyzeMD.RunImage != nil && d.AnalyzeMD.RunImage.TargetMetadata != nil && d.PlatformAPI.AtLeast("0.12") {
-					inputs.Env = env.NewBuildEnv(append(os.Environ(), platform.EnvVarsFor(*d.AnalyzeMD.RunImage.TargetMetadata)...))
-				} else {
-					inputs.Env = env.NewBuildEnv(os.Environ())
+					Env:            env.NewBuildEnv(os.Environ()),
+					TargetEnv:      platform.EnvVarsFor(d.AnalyzeMD.RunImageTarget(), d.Logger),
 				}
 				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger)) // this is where we finally invoke bin/detect
 			}
