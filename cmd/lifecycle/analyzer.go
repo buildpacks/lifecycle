@@ -25,17 +25,14 @@ type analyzeCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (a *analyzeCmd) DefineFlags() {
-	if a.PlatformAPI.LessThan("0.12") {
-		cli.FlagStackPath(&a.StackPath)
-	}
 	switch {
 	case a.PlatformAPI.AtLeast("0.13"):
 		cli.FlagInsecureRegistries(&a.InsecureRegistries)
 		fallthrough
 	case a.PlatformAPI.AtLeast("0.12"):
 		cli.FlagLayoutDir(&a.LayoutDir)
-		cli.FlagUseLayout(&a.UseLayout)
 		cli.FlagRunPath(&a.RunPath)
+		cli.FlagUseLayout(&a.UseLayout)
 		fallthrough
 	case a.PlatformAPI.AtLeast("0.9"):
 		cli.FlagLaunchCacheDir(&a.LaunchCacheDir)
@@ -46,11 +43,17 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
 		cli.FlagLayersDir(&a.LayersDir)
+		cli.FlagLogLevel(&a.LogLevel)
+		cli.FlagNoColor(&a.NoColor)
 		cli.FlagPreviousImage(&a.PreviousImageRef)
 		cli.FlagRunImage(&a.RunImageRef)
 		cli.FlagTags(&a.AdditionalTags)
 		cli.FlagUID(&a.UID)
 		cli.FlagUseDaemon(&a.UseDaemon)
+	}
+	// deprecated
+	if a.PlatformAPI.LessThan("0.12") {
+		cli.FlagStackPath(&a.StackPath)
 	}
 }
 

@@ -2,12 +2,9 @@ package cli
 
 import (
 	"flag"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/buildpacks/lifecycle/internal/str"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -93,11 +90,11 @@ func FlagLayersDir(layersDir *string) {
 }
 
 func FlagLogLevel(logLevel *string) {
-	flagSet.StringVar(logLevel, "log-level", platform.DefaultLogLevel, "logging level")
+	flagSet.StringVar(logLevel, "log-level", *logLevel, "logging level")
 }
 
 func FlagNoColor(noColor *bool) {
-	flagSet.BoolVar(noColor, "no-color", boolEnv(platform.EnvNoColor), "disable color output")
+	flagSet.BoolVar(noColor, "no-color", *noColor, "disable color output")
 }
 
 func FlagOrderPath(orderPath *string) {
@@ -180,17 +177,7 @@ func FlagInsecureRegistries(insecureRegistries *str.Slice) {
 
 // deprecated
 
+// DeprecatedFlagRunImage sets the run image
 func DeprecatedFlagRunImage(deprecatedRunImage *string) {
 	flagSet.StringVar(deprecatedRunImage, "image", "", "[deprecated] reference to run image")
-}
-
-// helpers
-
-func boolEnv(k string) bool {
-	v := os.Getenv(k)
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return false
-	}
-	return b
 }

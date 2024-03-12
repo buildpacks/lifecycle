@@ -54,8 +54,9 @@ type LifecycleInputs struct {
 	UID                   int
 	GID                   int
 	ForceRebase           bool
-	SkipLayers            bool
+	NoColor               bool
 	ParallelExport        bool
+	SkipLayers            bool
 	UseDaemon             bool
 	UseLayout             bool
 	AdditionalTags        str.Slice // str.Slice satisfies the `Value` interface required by the `flag` package
@@ -88,6 +89,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		// Operator config
 
 		LogLevel:           envOrDefault(EnvLogLevel, DefaultLogLevel),
+		NoColor:            boolEnv(EnvNoColor),
 		PlatformAPI:        platformAPI,
 		ExtendKind:         envOrDefault(EnvExtendKind, DefaultExtendKind),
 		UseDaemon:          boolEnv(EnvUseDaemon),
