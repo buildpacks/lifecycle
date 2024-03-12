@@ -33,9 +33,10 @@ func Run(c Command, withPhaseName string, asSubcommand bool) {
 	var printVersion bool
 	FlagVersion(&printVersion)
 
-	// DefineFlags along with any function FlagXXX defines the flags that are considered valid
-	// `flagSet.Parse` reads their values (if provided)
-	// The command `c` (e.g., detectCmd) is at this point already populated with platform inputs from the environment and/or default values
+	// DefineFlags (along with any function FlagXXX) defines the flags that are considered valid,
+	// but does not read the provided values; this is done by `flagSet.Parse`.
+	// The command `c` (e.g., detectCmd) is at this point already populated with platform inputs from the environment and/or default values,
+	// so command-line flags always take precedence.
 	c.DefineFlags()
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
@@ -53,16 +54,18 @@ func Run(c Command, withPhaseName string, asSubcommand bool) {
 		cmd.ExitWithVersion()
 	}
 
+	cmd.DisableColor(c.Inputs().NoColor)
+	if err := cmd.DefaultLogger.SetLevel(c.Inputs().LogLevel); err != nil {
+		cmd.Exit(err)
+	}
+
+	// We print a warning here, so we should disable color if needed and set the log level before exercising this logic.
 	for _, arg := range flagSet.Args() {
 		if arg[0:1] == "-" {
 			cmd.DefaultLogger.Warnf("Warning: unconsumed flag-like positional arg: \n\t%s\n\t This will not be interpreted as a flag.\n\t Did you mean to put this before the first positional argument?", arg)
 		}
 	}
 
-	cmd.DisableColor(c.Inputs().NoColor)
-	if err := cmd.DefaultLogger.SetLevel(c.Inputs().LogLevel); err != nil {
-		cmd.Exit(err)
-	}
 	cmd.DefaultLogger.Debugf("Starting %s...", withPhaseName)
 
 	// Warn when CNB_PLATFORM_API is unset
