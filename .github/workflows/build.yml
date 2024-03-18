@@ -33,7 +33,7 @@ jobs:
           TEST_COVERAGE: 1
         run: make test
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_linux
