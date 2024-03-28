@@ -17,9 +17,9 @@ const (
 	// TargetLabel is the label containing the target ID.
 	TargetLabel = "io.buildpacks.base.id"
 	// OSDistroNameLabel is the label containing the OS distribution name.
-	OSDistroNameLabel = "io.buildpacks.distro.name"
+	OSDistroNameLabel = "io.buildpacks.base.distro.name"
 	// OSDistroVersionLabel is the label containing the OS distribution version.
-	OSDistroVersionLabel = "io.buildpacks.distro.version"
+	OSDistroVersionLabel = "io.buildpacks.base.distro.version"
 )
 
 func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForExport, checkReadAccess CheckReadAccess) (string, error) {
