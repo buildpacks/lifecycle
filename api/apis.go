@@ -15,7 +15,7 @@ var (
 	// Buildpack is a pair of lists of Buildpack API versions:
 	// 1. All supported versions (including deprecated versions)
 	// 2. The versions that are deprecated
-	Buildpack = newApisMustParse([]string{"0.7", "0.8", "0.9", "0.10"}, []string{})
+	Buildpack = newApisMustParse([]string{"0.7", "0.8", "0.9", "0.10", "0.11"}, []string{})
 )
 
 type APIs struct {
