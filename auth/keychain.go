@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strings"
 
 	ecr "github.com/awslabs/amazon-ecr-credential-helper/ecr-login"
 	"github.com/chrismellard/docker-credential-acr-env/pkg/credhelper"
@@ -17,6 +18,9 @@ import (
 )
 
 const EnvRegistryAuth = "CNB_REGISTRY_AUTH"
+
+// EnvRegistryAuthKeychainSkipFormat is the format string for the environment variable that can be used to skip the keychain for a specific vendor.
+const EnvRegistryAuthKeychainSkipFormat = "CNB_REGISTRY_AUTH_KEYCHAIN_SKIP_%s"
 
 var (
 	amazonKeychain = authn.NewKeychainFromHelper(ecr.NewECRHelper(ecr.WithLogger(io.Discard)))
@@ -34,12 +38,23 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 		return nil, err
 	}
 
+	keychains := []authn.Keychain{envKeychain, authn.DefaultKeychain}
+
+	if vendorKeychainEnabled("amazon") {
+		keychains = append(keychains, amazonKeychain)
+	}
+	if vendorKeychainEnabled("azure") {
+		keychains = append(keychains, azureKeychain)
+	}
+
 	return authn.NewMultiKeychain(
-		envKeychain,
-		NewResolvedKeychain(authn.DefaultKeychain, images...),
-		NewResolvedKeychain(amazonKeychain, images...),
-		NewResolvedKeychain(azureKeychain, images...),
+		keychains...,
 	), nil
+}
+
+func vendorKeychainEnabled(provider string) bool {
+	providerUpper := strings.ToUpper(provider)
+	return os.Getenv(fmt.Sprintf(EnvRegistryAuthKeychainSkipFormat, providerUpper)) != "true"
 }
 
 // NewEnvKeychain returns an authn.Keychain that uses the provided environment variable as a source of credentials.
