@@ -131,6 +131,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           check-latest: true
+          go-version-file: 'go.mod'
       - name: Get go version
         id: get-go-version
         run: |
