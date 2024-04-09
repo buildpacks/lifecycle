@@ -38,13 +38,15 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 		return nil, err
 	}
 
-	keychains := []authn.Keychain{envKeychain, authn.DefaultKeychain}
-
+	keychains := []authn.Keychain{
+		envKeychain,
+		NewResolvedKeychain(authn.DefaultKeychain, images...),
+	}
 	if vendorKeychainEnabled("amazon") {
-		keychains = append(keychains, amazonKeychain)
+		keychains = append(keychains, NewResolvedKeychain(amazonKeychain, images...))
 	}
 	if vendorKeychainEnabled("azure") {
-		keychains = append(keychains, azureKeychain)
+		keychains = append(keychains, NewResolvedKeychain(azureKeychain, images...))
 	}
 
 	return authn.NewMultiKeychain(
