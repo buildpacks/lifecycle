@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
@@ -25,12 +26,14 @@ type GenerateInputs struct {
 	OutputDir      string // a temp directory provided by the lifecycle to capture extensions output
 	PlatformDir    string
 	Env            BuildEnv
+	TargetEnv      []string
 	Out, Err       io.Writer
 	Plan           Plan
 }
 
 type GenerateOutputs struct {
 	Dockerfiles []DockerfileInfo
+	Contexts    []extend.ContextInfo
 	MetRequires []string
 }
 
@@ -102,6 +105,9 @@ func runGenerateCmd(d ExtDescriptor, extOutputDir, planPath string, inputs Gener
 		EnvOutputDir+"="+extOutputDir,
 		EnvPlatformDir+"="+inputs.PlatformDir,
 	)
+	if api.MustParse(d.API()).AtLeast("0.10") {
+		cmd.Env = append(cmd.Env, inputs.TargetEnv...)
+	}
 
 	if err := cmd.Run(); err != nil {
 		return NewError(err, ErrTypeBuildpack)
@@ -114,6 +120,7 @@ func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, lo
 	var err error
 	var dfInfo DockerfileInfo
 	var found bool
+	var contexts []extend.ContextInfo
 
 	// set MetRequires
 	gr.MetRequires = names(extPlanIn.Entries)
@@ -128,15 +135,22 @@ func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, lo
 		return GenerateOutputs{}, err
 	} else if found {
 		gr.Dockerfiles = append(gr.Dockerfiles, dfInfo)
+		logger.Debugf("Found run.Dockerfile for processing")
 	}
 
 	if dfInfo, found, err = findDockerfileFor(d, extOutputDir, DockerfileKindBuild, logger); err != nil {
 		return GenerateOutputs{}, err
 	} else if found {
 		gr.Dockerfiles = append(gr.Dockerfiles, dfInfo)
+		logger.Debugf("Found build.Dockerfile for processing")
 	}
 
-	logger.Debugf("Found '%d' Dockerfiles for processing", len(gr.Dockerfiles))
+	if contexts, err = extend.FindContexts(d.Extension.ID, extOutputDir, logger); err != nil {
+		return GenerateOutputs{}, err
+	}
+
+	gr.Contexts = contexts
+	logger.Debugf("Found '%d' Build Contexts for processing", len(gr.Contexts))
 
 	return gr, nil
 }

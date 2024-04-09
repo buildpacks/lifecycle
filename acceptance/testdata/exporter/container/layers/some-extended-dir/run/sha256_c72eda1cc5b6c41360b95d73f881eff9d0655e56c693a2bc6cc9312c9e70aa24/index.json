@@ -4,7 +4,7 @@
       {
          "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
          "size": 1083,
-         "digest": "sha256:c72eda1cc5b6c41360b95d73f881eff9d0655e56c693a2bc6cc9312c9e70aa24"
+         "digest": "sha256:40007d6086160bcdf45770ed12d23f0c594013cf0cd5e65ffc67be8f46e0d9c9"
       }
    ]
 }

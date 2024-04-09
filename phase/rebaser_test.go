@@ -771,17 +771,17 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 								h.AssertError(t, err, `unable to satisfy target os/arch constraints; new run image: {"os":"linux","arch":"amd64","arch-variant":"variant2"}, old run image: {"os":"linux","arch":"amd64","arch-variant":"variant1"}`)
 							})
 
-							it("errors and prevents the rebase from taking place when the io.buildpacks.distro.name are different", func() {
-								h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.distro.name", "distro1"))
-								h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.distro.name", "distro2"))
+							it("errors and prevents the rebase from taking place when the io.buildpacks.base.distro.name are different", func() {
+								h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.base.distro.name", "distro1"))
+								h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.base.distro.name", "distro2"))
 
 								_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 								h.AssertError(t, err, `unable to satisfy target os/arch constraints; new run image: {"os":"linux","arch":"amd64","distro":{"name":"distro2","version":""}}, old run image: {"os":"linux","arch":"amd64","distro":{"name":"distro1","version":""}}`)
 							})
 
-							it("errors and prevents the rebase from taking place when the io.buildpacks.distro.version are different", func() {
-								h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.distro.version", "version1"))
-								h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.distro.version", "version2"))
+							it("errors and prevents the rebase from taking place when the io.buildpacks.base.distro.version are different", func() {
+								h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.base.distro.version", "version1"))
+								h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.base.distro.version", "version2"))
 
 								_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 								h.AssertError(t, err, `unable to satisfy target os/arch constraints; new run image: {"os":"linux","arch":"amd64","distro":{"name":"","version":"version2"}}, old run image: {"os":"linux","arch":"amd64","distro":{"name":"","version":"version1"}}`)

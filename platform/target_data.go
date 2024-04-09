@@ -9,11 +9,19 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
-// Fulfills the prophecy set forth in https://github.com/buildpacks/rfcs/blob/b8abe33f2bdc58792acf0bd094dc4ce3c8a54dbb/text/0096-remove-stacks-mixins.md?plain=1#L97
+// EnvVarsFor fulfills the prophecy set forth in https://github.com/buildpacks/rfcs/blob/b8abe33f2bdc58792acf0bd094dc4ce3c8a54dbb/text/0096-remove-stacks-mixins.md?plain=1#L97
 // by returning an array of "VARIABLE=value" strings suitable for inclusion in your environment or complete breakfast.
-func EnvVarsFor(tm files.TargetMetadata) []string {
-	ret := []string{"CNB_TARGET_OS=" + tm.OS, "CNB_TARGET_ARCH=" + tm.Arch}
-	ret = append(ret, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
+func EnvVarsFor(tm files.TargetMetadata, logger log.Logger) []string {
+	// we should always have os & arch,
+	// if they are not populated try to get target information from the build-time base image
+	if tm.OS == "" {
+		GetTargetOSFromFileSystem(&fsutil.Detect{}, &tm, logger)
+	}
+	ret := []string{
+		"CNB_TARGET_OS=" + tm.OS,
+		"CNB_TARGET_ARCH=" + tm.Arch,
+		"CNB_TARGET_ARCH_VARIANT=" + tm.ArchVariant,
+	}
 	var distName, distVersion string
 	if tm.Distro != nil {
 		distName = tm.Distro.Name

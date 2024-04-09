@@ -37,27 +37,26 @@ type restoreCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *restoreCmd) DefineFlags() {
+	if r.PlatformAPI.AtLeast("0.13") {
+		cli.FlagInsecureRegistries(&r.InsecureRegistries)
+	}
 	if r.PlatformAPI.AtLeast("0.12") {
 		cli.FlagUseDaemon(&r.UseDaemon)
 		cli.FlagGeneratedDir(&r.GeneratedDir)
 		cli.FlagUseLayout(&r.UseLayout)
 		cli.FlagLayoutDir(&r.LayoutDir)
 	}
-
-	if r.PlatformAPI.AtLeast("0.13") {
-		cli.FlagInsecureRegistries(&r.InsecureRegistries)
-	}
-
 	if r.PlatformAPI.AtLeast("0.10") {
 		cli.FlagBuildImage(&r.BuildImageRef)
 	}
-
 	cli.FlagAnalyzedPath(&r.AnalyzedPath)
 	cli.FlagCacheDir(&r.CacheDir)
 	cli.FlagCacheImage(&r.CacheImageRef)
 	cli.FlagGID(&r.GID)
 	cli.FlagGroupPath(&r.GroupPath)
 	cli.FlagLayersDir(&r.LayersDir)
+	cli.FlagLogLevel(&r.LogLevel)
+	cli.FlagNoColor(&r.NoColor)
 	cli.FlagSkipLayers(&r.SkipLayers)
 	cli.FlagUID(&r.UID)
 }
@@ -219,7 +218,7 @@ func (r *restoreCmd) supportsBuildImageExtension() bool {
 }
 
 func (r *restoreCmd) supportsRunImageExtension() bool {
-	return r.PlatformAPI.AtLeast("0.12") && !r.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1057
+	return r.PlatformAPI.AtLeast("0.12") && !r.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1102
 }
 
 func (r *restoreCmd) supportsTargetData() bool {

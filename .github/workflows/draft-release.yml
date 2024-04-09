@@ -24,7 +24,7 @@ jobs:
             exit 1
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
-      - name: Determine download urls for linux-x86-64, linux-arm64, linux-s390x, and windows
+      - name: Determine download urls for linux-x86-64, linux-arm64, linux-ppc64le, linux-s390x, and windows
         id: artifact-urls
         # FIXME: this script should be updated to work with actions/github-script@v6
         uses: actions/github-script@v3
@@ -82,8 +82,8 @@ jobs:
                 if (urlList.length === 0) {
                   throw "no artifacts found"
                 }
-                if (urlList.length != 10) {
-                  throw "there should be exactly 10 artifacts"
+                if (urlList.length != 12) {
+                  throw "there should be exactly 12 artifacts"
                 }
                 return urlList.join(",")
               })
@@ -131,6 +131,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           check-latest: true
+          go-version-file: 'go.mod'
       - name: Get go version
         id: get-go-version
         run: |

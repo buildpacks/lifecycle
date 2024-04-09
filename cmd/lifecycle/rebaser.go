@@ -32,24 +32,23 @@ type rebaseCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *rebaseCmd) DefineFlags() {
+	if r.PlatformAPI.AtLeast("0.13") {
+		cli.FlagInsecureRegistries(&r.InsecureRegistries)
+	}
+	if r.PlatformAPI.AtLeast("0.12") {
+		cli.FlagForceRebase(&r.ForceRebase)
+	}
+	if r.PlatformAPI.AtLeast("0.11") {
+		cli.FlagPreviousImage(&r.PreviousImageRef)
+	}
+	cli.DeprecatedFlagRunImage(&r.DeprecatedRunImageRef)
 	cli.FlagGID(&r.GID)
+	cli.FlagLogLevel(&r.LogLevel)
+	cli.FlagNoColor(&r.NoColor)
 	cli.FlagReportPath(&r.ReportPath)
 	cli.FlagRunImage(&r.RunImageRef)
 	cli.FlagUID(&r.UID)
 	cli.FlagUseDaemon(&r.UseDaemon)
-	cli.DeprecatedFlagRunImage(&r.DeprecatedRunImageRef)
-
-	if r.PlatformAPI.AtLeast("0.11") {
-		cli.FlagPreviousImage(&r.PreviousImageRef)
-	}
-
-	if r.PlatformAPI.AtLeast("0.12") {
-		cli.FlagForceRebase(&r.ForceRebase)
-	}
-
-	if r.PlatformAPI.AtLeast("0.13") {
-		cli.FlagInsecureRegistries(&r.InsecureRegistries)
-	}
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -191,21 +190,13 @@ func (r *rebaseCmd) setAppImage() error {
 	}
 
 	if r.RunImageRef == "" {
-		if r.PlatformAPI.AtLeast("0.12") {
-			r.RunImageRef = md.RunImage.Reference
-			if r.RunImageRef != "" {
-				return nil
-			}
-		}
-
-		// for backwards compatibility, we need to fallback to the stack metadata
-		// fail if there is no run image metadata available from either location
-		if md.Stack == nil || md.Stack.RunImage.Image == "" {
+		runImage, err := platform.GetRunImageFromMetadata(*r.LifecycleInputs, md)
+		if err != nil {
 			return cmd.FailErrCode(errors.New("-run-image is required when there is no run image metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
 		}
 
-		// for older platforms, we find the best mirror for the run image as this point
-		r.RunImageRef, err = platform.BestRunImageMirrorFor(registry, md.Stack.RunImage, r.LifecycleInputs.AccessChecker())
+		// we find the best mirror for the run image as this point
+		r.RunImageRef, err = platform.BestRunImageMirrorFor(registry, runImage, r.LifecycleInputs.AccessChecker())
 		if err != nil {
 			return err
 		}

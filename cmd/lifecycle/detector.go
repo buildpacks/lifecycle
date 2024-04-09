@@ -33,6 +33,8 @@ func (d *detectCmd) DefineFlags() {
 	cli.FlagBuildpacksDir(&d.BuildpacksDir)
 	cli.FlagGroupPath(&d.GroupPath)
 	cli.FlagLayersDir(&d.LayersDir)
+	cli.FlagLogLevel(&d.LogLevel)
+	cli.FlagNoColor(&d.NoColor)
 	cli.FlagOrderPath(&d.OrderPath)
 	cli.FlagPlanPath(&d.PlanPath)
 	cli.FlagPlatformDir(&d.PlatformDir)
@@ -72,7 +74,7 @@ func (d *detectCmd) Exec() error {
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}
-	if detector.HasExtensions {
+	if detector.HasExtensions && detector.PlatformAPI.LessThan("0.13") {
 		if err = platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
 			return err
 		}

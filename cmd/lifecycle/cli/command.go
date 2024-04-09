@@ -14,6 +14,9 @@ type Command interface {
 	// DefineFlags defines the flags that are considered valid and reads their values (if provided)
 	DefineFlags()
 
+	// Inputs returns the platform inputs
+	Inputs() platform.LifecycleInputs
+
 	// Args validates arguments and flags, and fills in default values
 	Args(nargs int, args []string) error
 
@@ -25,16 +28,15 @@ type Command interface {
 }
 
 func Run(c Command, withPhaseName string, asSubcommand bool) {
-	var (
-		printVersion bool
-		logLevel     string
-		noColor      bool
-	)
-
 	log.SetOutput(io.Discard)
+
+	var printVersion bool
 	FlagVersion(&printVersion)
-	FlagLogLevel(&logLevel)
-	FlagNoColor(&noColor)
+
+	// DefineFlags (along with any function FlagXXX) defines the flags that are considered valid,
+	// but does not read the provided values; this is done by `flagSet.Parse`.
+	// The command `c` (e.g., detectCmd) is at this point already populated with platform inputs from the environment and/or default values,
+	// so command-line flags always take precedence.
 	c.DefineFlags()
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
@@ -47,21 +49,24 @@ func Run(c Command, withPhaseName string, asSubcommand bool) {
 			cmd.Exit(err)
 		}
 	}
-	cmd.DisableColor(noColor)
 
 	if printVersion {
 		cmd.ExitWithVersion()
 	}
-	if err := cmd.DefaultLogger.SetLevel(logLevel); err != nil {
+
+	cmd.DisableColor(c.Inputs().NoColor)
+	if err := cmd.DefaultLogger.SetLevel(c.Inputs().LogLevel); err != nil {
 		cmd.Exit(err)
 	}
-	cmd.DefaultLogger.Debugf("Starting %s...", withPhaseName)
 
+	// We print a warning here, so we should disable color if needed and set the log level before exercising this logic.
 	for _, arg := range flagSet.Args() {
 		if arg[0:1] == "-" {
 			cmd.DefaultLogger.Warnf("Warning: unconsumed flag-like positional arg: \n\t%s\n\t This will not be interpreted as a flag.\n\t Did you mean to put this before the first positional argument?", arg)
 		}
 	}
+
+	cmd.DefaultLogger.Debugf("Starting %s...", withPhaseName)
 
 	// Warn when CNB_PLATFORM_API is unset
 	if os.Getenv(platform.EnvPlatformAPI) == "" {

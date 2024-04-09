@@ -35,11 +35,6 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 		it("includes expected vars", func() {
 			benv := env.NewBuildEnv([]string{
 				"CNB_STACK_ID=some-stack-id",
-				"CNB_TARGET_ARCH=st-louis",
-				"CNB_TARGET_ARCH_VARIANT=suburban",
-				"CNB_TARGET_OS=BeOS",
-				"CNB_TARGET_DISTRO_NAME=web",
-				"CNB_TARGET_DISTRO_VERSION=3.0",
 				"HOSTNAME=some-hostname",
 				"HOME=some-home",
 				"HTTPS_PROXY=some-https-proxy",
@@ -59,11 +54,6 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 			sort.Strings(out)
 			expectedVars := []string{
 				"CNB_STACK_ID=some-stack-id",
-				"CNB_TARGET_ARCH=st-louis",
-				"CNB_TARGET_ARCH_VARIANT=suburban",
-				"CNB_TARGET_DISTRO_NAME=web",
-				"CNB_TARGET_DISTRO_VERSION=3.0",
-				"CNB_TARGET_OS=BeOS",
 				"CPATH=some-cpath",
 				"HOME=some-home",
 				"HOSTNAME=some-hostname",

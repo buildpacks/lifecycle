@@ -71,12 +71,20 @@ type GenerateResult struct {
 func (g *Generator) Generate() (GenerateResult, error) {
 	defer log.NewMeasurement("Generator", g.Logger)()
 	inputs := g.getGenerateInputs()
-	extensionOutputParentDir, err := os.MkdirTemp("", "cnb-extensions-generated.")
-	if err != nil {
-		return GenerateResult{}, err
+
+	var err error
+	if g.PlatformAPI.LessThan("0.13") {
+		extensionOutputParentDir, err := os.MkdirTemp("", "cnb-extensions-generated.")
+		if err != nil {
+			return GenerateResult{}, err
+		}
+		defer func() {
+			err = os.RemoveAll(extensionOutputParentDir)
+		}()
+		inputs.OutputDir = extensionOutputParentDir
+	} else {
+		inputs.OutputDir = g.GeneratedDir
 	}
-	defer os.RemoveAll(extensionOutputParentDir)
-	inputs.OutputDir = extensionOutputParentDir
 
 	var dockerfiles []buildpack.DockerfileInfo
 	filteredPlan := g.Plan
@@ -92,9 +100,6 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		g.Logger.Debug("Finding plan")
 		inputs.Plan = filteredPlan.Find(buildpack.KindExtension, ext.ID)
 
-		if g.AnalyzedMD.RunImage != nil && g.AnalyzedMD.RunImage.TargetMetadata != nil && g.PlatformAPI.AtLeast("0.12") {
-			inputs.Env = env.NewBuildEnv(append(inputs.Env.List(), platform.EnvVarsFor(*g.AnalyzedMD.RunImage.TargetMetadata)...))
-		}
 		g.Logger.Debug("Invoking command")
 		result, err := g.Executor.Generate(*descriptor, inputs, g.Logger)
 		if err != nil {
@@ -130,14 +135,14 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}
 
 	g.Logger.Debug("Copying Dockerfiles")
-	if err = g.copyDockerfiles(dockerfiles); err != nil {
+	if err := g.copyDockerfiles(dockerfiles); err != nil {
 		return GenerateResult{}, err
 	}
 
 	return GenerateResult{
 		AnalyzedMD: finalAnalyzedMD,
 		Plan:       filteredPlan,
-	}, nil
+	}, err
 }
 
 func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
@@ -146,6 +151,7 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 		BuildConfigDir: g.BuildConfigDir,
 		PlatformDir:    g.PlatformDir,
 		Env:            env.NewBuildEnv(os.Environ()),
+		TargetEnv:      platform.EnvVarsFor(g.AnalyzedMD.RunImageTarget(), g.Logger),
 		Out:            g.Out,
 		Err:            g.Err,
 	}
@@ -153,11 +159,24 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 
 func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
 	for _, dockerfile := range dockerfiles {
+		ignoreDockerfile := dockerfile.Kind == buildpack.DockerfileKindRun && dockerfile.Ignore
+
+		if g.PlatformAPI.AtLeast("0.13") {
+			if ignoreDockerfile {
+				if err := fsutil.RenameWithWindowsFallback(dockerfile.Path, dockerfile.Path+".ignore"); err != nil {
+					return fmt.Errorf("failed to rename Dockerfile at %s: %w", dockerfile.Path, err)
+				}
+			}
+
+			continue
+		}
+
 		targetDir := filepath.Join(g.GeneratedDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
-		var targetPath = filepath.Join(targetDir, "Dockerfile")
-		if dockerfile.Kind == buildpack.DockerfileKindRun && dockerfile.Ignore {
+		targetPath := filepath.Join(targetDir, "Dockerfile")
+		if ignoreDockerfile {
 			targetPath += ".ignore"
 		}
+
 		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 			return err
 		}

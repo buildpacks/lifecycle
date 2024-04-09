@@ -1,3 +1,6 @@
+// Package layers provides a factory that can be used to construct layer tarballs
+// from buildpack layer directories, extension layers, and other CNB filesystem constructs.
+// The tarballs can be added as layers to any OCI image.
 package layers
 
 import (

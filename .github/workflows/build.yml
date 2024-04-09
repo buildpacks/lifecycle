@@ -161,6 +161,14 @@ jobs:
           path: out/lifecycle-v*+linux.arm64.tgz.sha256
       - uses: actions/upload-artifact@v3
         with:
+          name: lifecycle-linux-ppc64le
+          path: out/lifecycle-v*+linux.ppc64le.tgz
+      - uses: actions/upload-artifact@v3
+        with:
+          name: lifecycle-linux-ppc64le-sha256
+          path: out/lifecycle-v*+linux.ppc64le.tgz.sha256
+      - uses: actions/upload-artifact@v3
+        with:
           name: lifecycle-linux-s390x
           path: out/lifecycle-v*+linux.s390x.tgz
       - uses: actions/upload-artifact@v3
@@ -214,6 +222,9 @@ jobs:
           LINUX_ARM64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64 | awk '{print $NF}')
           echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
 
+          LINUX_PPC64LE_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.ppc64le.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-ppc64le -arch ppc64le | awk '{print $NF}')
+          echo "LINUX_PPC64LE_SHA: LINUX_PPC64LE_SHA"
+
           LINUX_S390X_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.s390x.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x -arch s390x | awk '{print $NF}')
           echo "LINUX_S390X_SHA: $LINUX_S390X_SHA"
 
@@ -223,6 +234,7 @@ jobs:
           docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-ppc64le@${LINUX_PPC64LE_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x@${LINUX_S390X_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
 

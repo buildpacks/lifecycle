@@ -141,11 +141,16 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						runImageFixtureTopLayerSHA := layers[len(layers)-1]
 						runImageFixtureSHA := inspect.ID
 
+						experimentalMode := "warn"
+						if api.MustParse(platformAPI).AtLeast("0.13") {
+							experimentalMode = "error"
+						}
+
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(append(
 								dockerSocketMount,
-								"--env", "CNB_EXPERIMENTAL_MODE=warn",
+								"--env", "CNB_EXPERIMENTAL_MODE="+experimentalMode,
 								"--env", "CNB_PLATFORM_API="+platformAPI,
 							)...),
 							h.WithArgs(exportArgs...),
@@ -159,29 +164,33 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"Application Layer",
 							"Software Bill-of-Materials",
 							"Layer: 'launch-layer', Created by buildpack: cacher_buildpack@cacher_v1",
-							"Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree",
-							"Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl",
+							"Layer: 'RUN mkdir /some-other-dir && echo some-data > /some-other-dir/some-file && echo some-data > /some-other-file', Created by extension: second-extension",
+							"Layer: 'RUN mkdir /some-dir && echo some-data > /some-dir/some-file && echo some-data > /some-file', Created by extension: first-extension",
 							"", // run image layer
 						}
 						assertDaemonImageHasHistory(t, exportedImageName, expectedHistory)
 						t.Log("bases the exported image on the extended run image")
 						inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName)
 						h.AssertNil(t, err)
-						h.AssertEq(t, inspect.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
+						h.AssertEq(t, inspect.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<sha>/blobs/sha256/<config>
 						t.Log("Adds extension layers")
-						diffIDFromExt1 := "sha256:60600f423214c27fd184ebc96ae765bf2b4703c9981fb4205d28dd35e7eec4ae"
-						diffIDFromExt2 := "sha256:1d811b70500e2e9a5e5b8ca7429ef02e091cdf4657b02e456ec54dd1baea0a66"
-						var foundFromExt1, foundFromExt2 bool
-						for _, layer := range inspect.RootFS.Layers {
-							if layer == diffIDFromExt1 {
-								foundFromExt1 = true
-							}
-							if layer == diffIDFromExt2 {
-								foundFromExt2 = true
-							}
+						type testCase struct {
+							expectedDiffID string
+							layerIndex     int
 						}
-						h.AssertEq(t, foundFromExt1, true)
-						h.AssertEq(t, foundFromExt2, true)
+						testCases := []testCase{
+							{
+								expectedDiffID: "sha256:fb54d2566824d6630d94db0b008d9a544a94d3547a424f52e2fd282b648c0601", // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/65c2873d397056a5cb4169790654d787579b005f18b903082b177d4d9b4aecf5 after un-compressing and zeroing timestamps
+								layerIndex:     1,
+							},
+							{
+								expectedDiffID: "sha256:1018c7d3584c4f7fa3ef4486d1a6a11b93956b9d8bfe0898a3e0fbd248c984d8", // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/0fb9b88c9cbe9f11b4c8da645f390df59f5949632985a0bfc2a842ef17b2ad18 after un-compressing and zeroing timestamps
+								layerIndex:     2,
+							},
+						}
+						for _, tc := range testCases {
+							h.AssertEq(t, inspect.RootFS.Layers[tc.layerIndex], tc.expectedDiffID)
+						}
 						t.Log("sets the layers metadata label according to the new spec")
 						var lmd files.LayersMetadata
 						lmdJSON := inspect.Config.Labels["io.buildpacks.lifecycle.metadata"]
@@ -411,10 +420,15 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						runImageFixtureSHA, err := remoteImage.Digest()
 						h.AssertNil(t, err)
 
+						experimentalMode := "warn"
+						if api.MustParse(platformAPI).AtLeast("0.13") {
+							experimentalMode = "error"
+						}
+
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(
-								"--env", "CNB_EXPERIMENTAL_MODE=warn",
+								"--env", "CNB_EXPERIMENTAL_MODE="+experimentalMode,
 								"--env", "CNB_PLATFORM_API="+platformAPI,
 								"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
 								"--network", exportRegNetwork,
@@ -432,25 +446,30 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, err)
 						configFile, err := remoteImage.ConfigFile()
 						h.AssertNil(t, err)
-						h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
+						h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<sha>/blobs/sha256/<config>
 						t.Log("Adds extension layers")
 						layers, err = remoteImage.Layers()
 						h.AssertNil(t, err)
-						digestFromExt1 := "sha256:0c5f7a6fe14dbd19670f39e7466051cbd40b3a534c0812659740fb03e2137c1a"
-						digestFromExt2 := "sha256:482346d1e0c7afa2514ec366d2e000e0667d0a6664690aab3c8ad51c81915b91"
-						var foundFromExt1, foundFromExt2 bool
-						for _, layer := range layers {
+						type testCase struct {
+							expectedDigest string
+							layerIndex     int
+						}
+						testCases := []testCase{
+							{
+								expectedDigest: "sha256:08e7ad5ce17cf5e5f70affe68b341a93de86ee2ba074932c3a05b8770f66d772", // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/65c2873d397056a5cb4169790654d787579b005f18b903082b177d4d9b4aecf5 after un-compressing, zeroing timestamps, and re-compressing
+								layerIndex:     1,
+							},
+							{
+								expectedDigest: "sha256:0e74ef444ea437147e3fa0ce2aad371df5380c26b96875ae07b9b67f44cdb2ee", // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/0fb9b88c9cbe9f11b4c8da645f390df59f5949632985a0bfc2a842ef17b2ad18 after un-compressing, zeroing timestamps, and re-compressing
+								layerIndex:     2,
+							},
+						}
+						for _, tc := range testCases {
+							layer := layers[tc.layerIndex]
 							digest, err := layer.Digest()
 							h.AssertNil(t, err)
-							if digest.String() == digestFromExt1 {
-								foundFromExt1 = true
-							}
-							if digest.String() == digestFromExt2 {
-								foundFromExt2 = true
-							}
+							h.AssertEq(t, digest.String(), tc.expectedDigest)
 						}
-						h.AssertEq(t, foundFromExt1, true)
-						h.AssertEq(t, foundFromExt2, true)
 						t.Log("sets the layers metadata label according to the new spec")
 						var lmd files.LayersMetadata
 						lmdJSON := configFile.Config.Labels["io.buildpacks.lifecycle.metadata"]

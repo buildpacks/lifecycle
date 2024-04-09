@@ -17,9 +17,9 @@ const (
 	// TargetLabel is the label containing the target ID.
 	TargetLabel = "io.buildpacks.base.id"
 	// OSDistroNameLabel is the label containing the OS distribution name.
-	OSDistroNameLabel = "io.buildpacks.distro.name"
+	OSDistroNameLabel = "io.buildpacks.base.distro.name"
 	// OSDistroVersionLabel is the label containing the OS distribution version.
-	OSDistroVersionLabel = "io.buildpacks.distro.version"
+	OSDistroVersionLabel = "io.buildpacks.base.distro.version"
 )
 
 func BestRunImageMirrorFor(targetRegistry string, runImageMD files.RunImageForExport, checkReadAccess CheckReadAccess) (string, error) {
@@ -111,4 +111,18 @@ func GetRunImageForExport(inputs LifecycleInputs) (files.RunImageForExport, erro
 		return files.RunImageForExport{Image: analyzedMD.RunImageImage()}, nil
 	}
 	return runMD.Images[0], nil
+}
+
+// GetRunImageFromMetadata extracts the run image from the image metadata
+func GetRunImageFromMetadata(inputs LifecycleInputs, md files.LayersMetadata) (files.RunImageForExport, error) {
+	switch {
+	case inputs.PlatformAPI.AtLeast("0.12") && md.RunImage.RunImageForExport.Image != "":
+		return md.RunImage.RunImageForExport, nil
+	case md.Stack != nil && md.Stack.RunImage.Image != "":
+		// for backwards compatibility, we need to fallback to the stack metadata
+		// fail if there is no run image metadata available from either location
+		return md.Stack.RunImage, nil
+	default:
+		return files.RunImageForExport{}, errors.New("no run image metadata available")
+	}
 }
