@@ -33,8 +33,9 @@ jobs:
           TEST_COVERAGE: 1
         run: make test
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_linux
           fail_ci_if_error: true
