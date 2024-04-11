@@ -35,6 +35,18 @@ func (r *Restorer) Restore(cache Cache) error {
 		return err
 	}
 
+	if r.LayerMetadataRestorer == nil {
+		r.LayerMetadataRestorer = layer.NewDefaultMetadataRestorer(r.LayersDir, false, r.Logger)
+	}
+
+	if r.SBOMRestorer == nil {
+		r.SBOMRestorer = layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+			LayersDir: r.LayersDir,
+			Logger:    r.Logger,
+			Nop:       false,
+		}, r.PlatformAPI)
+	}
+
 	layerSHAStore := layer.NewSHAStore()
 	r.Logger.Debug("Restoring Layer Metadata")
 	if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
