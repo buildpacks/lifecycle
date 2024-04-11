@@ -1,6 +1,7 @@
 package image
 
 import (
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -56,15 +57,15 @@ TODO: This is a temporary solution in order to get insecure registries in other 
 TODO: Ideally we should fix the `imgutil.options` struct visibility in order to mock and test the `remote.WithRegistrySetting`
 TODO: function correctly and use the RegistryHandler everywhere it is needed.
 */
-func GetInsecureOptions(insecureRegistries []string) []remote.ImageOption {
-	var opts []remote.ImageOption
+func GetInsecureOptions(insecureRegistries []string) []imgutil.ImageOption {
+	var opts []imgutil.ImageOption
 	for _, insecureRegistry := range insecureRegistries {
 		opts = append(opts, remote.WithRegistrySetting(insecureRegistry, true))
 	}
 	return opts
 }
 
-func verifyReadAccess(imageRef string, keychain authn.Keychain, opts []remote.ImageOption) error {
+func verifyReadAccess(imageRef string, keychain authn.Keychain, opts []imgutil.ImageOption) error {
 	if imageRef == "" {
 		return nil
 	}
@@ -75,10 +76,11 @@ func verifyReadAccess(imageRef string, keychain authn.Keychain, opts []remote.Im
 		cmd.DefaultLogger.Debugf("Error checking read access: %s", err)
 		return errors.Errorf("ensure registry read access to %s", imageRef)
 	}
+
 	return nil
 }
 
-func verifyReadWriteAccess(imageRef string, keychain authn.Keychain, opts []remote.ImageOption) error {
+func verifyReadWriteAccess(imageRef string, keychain authn.Keychain, opts []imgutil.ImageOption) error {
 	if imageRef == "" {
 		return nil
 	}

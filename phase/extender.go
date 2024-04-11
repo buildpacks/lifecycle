@@ -281,15 +281,11 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	logger.Debugf("Original image has digest: %s", digest)
 
 	// get config
-	baseImage, err = imgutil.OverrideHistoryIfNeeded(baseImage)
-	if err != nil {
-		return nil, err
-	}
 	configFile, err = baseImage.ConfigFile()
 	if err != nil {
 		return nil, err
 	}
-	workingHistory = configFile.History
+	workingHistory = imgutil.NormalizedHistory(configFile.History, len(configFile.RootFS.DiffIDs))
 	userID, groupID := userFrom(*configFile)
 	origUserID := userID
 	for _, dockerfile := range dockerfiles {

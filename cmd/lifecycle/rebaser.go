@@ -113,7 +113,7 @@ func (r *rebaseCmd) Exec() error {
 			local.FromBaseImage(r.RunImageRef),
 		)
 	} else {
-		var opts []remote.ImageOption
+		var opts []imgutil.ImageOption
 		opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(r.RunImageRef))...)
 
 		newBaseImage, err = remote.NewImage(
@@ -168,7 +168,7 @@ func (r *rebaseCmd) setAppImage() error {
 			return err
 		}
 
-		var opts = []remote.ImageOption{
+		var opts = []imgutil.ImageOption{
 			remote.FromBaseImage(targetImageRef),
 		}
 
