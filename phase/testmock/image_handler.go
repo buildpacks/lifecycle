@@ -49,6 +49,21 @@ func (mr *MockHandlerMockRecorder) InitImage(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitImage", reflect.TypeOf((*MockHandler)(nil).InitImage), arg0)
 }
 
+// InitRemoteImage mocks base method.
+func (m *MockHandler) InitRemoteImage(arg0 string) (imgutil.Image, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InitRemoteImage", arg0)
+	ret0, _ := ret[0].(imgutil.Image)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InitRemoteImage indicates an expected call of InitRemoteImage.
+func (mr *MockHandlerMockRecorder) InitRemoteImage(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitRemoteImage", reflect.TypeOf((*MockHandler)(nil).InitRemoteImage), arg0)
+}
+
 // Kind mocks base method.
 func (m *MockHandler) Kind() string {
 	m.ctrl.T.Helper()

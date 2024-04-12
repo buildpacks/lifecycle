@@ -14,6 +14,7 @@ import (
 //go:generate mockgen -package testmock -destination ../phase/testmock/image_handler.go github.com/buildpacks/lifecycle/image Handler
 type Handler interface {
 	InitImage(imageRef string) (imgutil.Image, error)
+	InitRemoteImage(imageRef string) (imgutil.Image, error)
 	Kind() string
 }
 
@@ -22,15 +23,25 @@ type Handler interface {
 // - WHEN a docker client is provided then it returns a LocalHandler
 // - WHEN an auth.Keychain is provided then it returns a RemoteHandler
 // - Otherwise nil is returned
-func NewHandler(docker client.CommonAPIClient, keychain authn.Keychain, layoutDir string, useLayout bool, insecureRegistries []string) Handler {
+func NewHandler(
+	docker client.CommonAPIClient,
+	keychain authn.Keychain,
+	layoutDir string,
+	useLayout bool,
+	insecureRegistries []string,
+) Handler {
 	if layoutDir != "" && useLayout {
 		return &LayoutHandler{
-			layoutDir: layoutDir,
+			layoutDir:          layoutDir,
+			keychain:           keychain,
+			insecureRegistries: insecureRegistries,
 		}
 	}
 	if docker != nil {
 		return &LocalHandler{
-			docker: docker,
+			docker:             docker,
+			keychain:           keychain,
+			insecureRegistries: insecureRegistries,
 		}
 	}
 	if keychain != nil {

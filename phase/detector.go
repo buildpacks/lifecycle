@@ -49,7 +49,7 @@ type Detector struct {
 	PlatformDir    string
 	Resolver       DetectResolver
 	Runs           *sync.Map
-	AnalyzeMD      files.Analyzed
+	AnalyzeMD      files.Analyzed // FIXME: this should be AnalyzedMD
 	PlatformAPI    *api.Version
 
 	// If detect fails, we want to print debug statements as info level.

@@ -31,6 +31,11 @@ func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
 	)
 }
 
+// InitRemoteImage TODO
+func (h *RemoteHandler) InitRemoteImage(imageRef string) (imgutil.Image, error) {
+	return h.InitImage(imageRef)
+}
+
 func (h *RemoteHandler) Kind() string {
 	return RemoteKind
 }
