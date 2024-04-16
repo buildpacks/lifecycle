@@ -89,22 +89,29 @@ func (f *ConnectedFactory) NewRestorer(inputs platform.LifecycleInputs, logger l
 	if restorer.supportsBuildImageExtension() && inputs.BuildImageRef != "" {
 		restorer.BuilderImage, err = f.imageHandler.InitRemoteImage(inputs.BuildImageRef)
 		if err != nil || !restorer.BuilderImage.Found() {
-			return nil, fmt.Errorf("failed to initialize builder image %s", inputs.BuildImageRef)
+			return nil, errFailedInitImage(fmt.Sprintf("builder image %s", inputs.BuildImageRef), err)
 		}
 	}
 	if restorer.shouldPullRunImage() {
 		restorer.RunImage, err = f.imageHandler.InitRemoteImage(restorer.AnalyzedMD.RunImageImage()) // FIXME: if we have a digest reference available in `Reference` (e.g., in the non-daemon case) we should use it)
 		if err != nil || !restorer.RunImage.Found() {
-			return nil, fmt.Errorf("failed to initialize run image %s", restorer.AnalyzedMD.RunImageImage())
+			return nil, errFailedInitImage(fmt.Sprintf("run image %s", restorer.AnalyzedMD.RunImageImage()), err)
 		}
 	} else if restorer.shouldUpdateAnalyzed() {
 		restorer.RunImage, err = f.imageHandler.InitImage(restorer.AnalyzedMD.RunImageImage())
 		if err != nil || !restorer.RunImage.Found() {
-			return nil, fmt.Errorf("failed to initialize run image %s", restorer.AnalyzedMD.RunImageImage())
+			return nil, errFailedInitImage(fmt.Sprintf("run image %s", restorer.AnalyzedMD.RunImageImage()), err)
 		}
 	}
 
 	return restorer, nil
+}
+
+func errFailedInitImage(name string, err error) error {
+	if err == nil {
+		return fmt.Errorf("failed to find %s", name)
+	}
+	return fmt.Errorf("failed to initialize %s: %w", name, err)
 }
 
 func (r *Restorer) supportsBuildImageExtension() bool {
