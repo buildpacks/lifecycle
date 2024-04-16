@@ -296,7 +296,7 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions) error {
 		if err != nil {
 			return fmt.Errorf("failed to create layer from tar path %s: %w", fromTarPath, err)
 		}
-		if _, err = e.addOrReuseExtensionLayer(opts.WorkingImage, layer); err != nil {
+		if _, err = e.addExtensionLayer(opts.WorkingImage, layer); err != nil {
 			return fmt.Errorf("failed to add or reuse extension layer: %w", err)
 		}
 	}
@@ -612,8 +612,8 @@ func (e *Exporter) addOrReuseBuildpackLayer(image imgutil.Image, layer layers.La
 	return layer.Digest, image.AddLayerWithDiffIDAndHistory(layer.TarPath, layer.Digest, layer.History)
 }
 
-func (e *Exporter) addOrReuseExtensionLayer(image imgutil.Image, layer layers.Layer) (string, error) {
-	return layer.Digest, image.AddOrReuseLayerWithHistory(layer.TarPath, layer.Digest, layer.History)
+func (e *Exporter) addExtensionLayer(image imgutil.Image, layer layers.Layer) (string, error) {
+	return layer.Digest, image.AddLayerWithDiffIDAndHistory(layer.TarPath, layer.Digest, layer.History)
 }
 
 func (e *Exporter) makeBuildReport(layersDir string) (files.BuildReport, error) {
