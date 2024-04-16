@@ -231,7 +231,7 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 		return nil, fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
-	var opts []remote.ImageOption
+	var opts []imgutil.ImageOption
 	opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(imageRef))...)
 
 	// get remote image

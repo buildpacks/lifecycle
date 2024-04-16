@@ -18,7 +18,7 @@ func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
 		return nil, nil
 	}
 
-	options := []remote.ImageOption{
+	options := []imgutil.ImageOption{
 		remote.FromBaseImage(imageRef),
 	}
 

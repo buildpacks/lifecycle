@@ -34,7 +34,7 @@ type Factory struct {
 	UID, GID     int    // UID and GID are used to normalize layer entries
 	Logger       log.Logger
 	Ctx          context.Context
-	tarHashes    sync.Map // tarHases Stores hashes of layer tarballs for reuse between the export and cache steps.
+	tarHashes    sync.Map // tarHashes Stores hashes of layer tarballs for reuse between the export and cache steps.
 }
 
 type Layer struct {
