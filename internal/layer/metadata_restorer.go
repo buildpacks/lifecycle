@@ -113,8 +113,8 @@ func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, a
 				r.Logger.Debugf("Not restoring %q from cache, marked as cache=false", identifier)
 				continue
 			}
-			// If launch=true, the metadata was restored from the app image or the layer is stale.
-			if layer.Launch {
+			// If launch=true, the metadata was restored from the appLayers if present.
+			if _, ok := appLayers[layerName]; ok && layer.Launch {
 				r.Logger.Debugf("Not restoring %q from cache, marked as launch=true", identifier)
 				continue
 			}

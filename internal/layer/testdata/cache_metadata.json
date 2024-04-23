@@ -36,7 +36,7 @@
                     "launch": true,
                     "sha": "launch-cache-old-sha"
                 },
-		"launch-cache-not-in-app": {
+		        "launch-cache-not-in-app": {
                     "cache": true,
                     "data": {
                         "launch-cache-key": "cache-specific-value",
