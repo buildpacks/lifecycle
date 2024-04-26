@@ -11,11 +11,12 @@ import (
 
 // EnvVarsFor fulfills the prophecy set forth in https://github.com/buildpacks/rfcs/blob/b8abe33f2bdc58792acf0bd094dc4ce3c8a54dbb/text/0096-remove-stacks-mixins.md?plain=1#L97
 // by returning an array of "VARIABLE=value" strings suitable for inclusion in your environment or complete breakfast.
-func EnvVarsFor(tm files.TargetMetadata, logger log.Logger) []string {
+func EnvVarsFor(d fsutil.Detector, tm files.TargetMetadata, logger log.Logger) []string {
 	// we should always have os & arch,
 	// if they are not populated try to get target information from the build-time base image
-	if tm.OS == "" {
-		GetTargetOSFromFileSystem(&fsutil.Detect{}, &tm, logger)
+	if tm.OS == "" || tm.Distro == nil {
+		logger.Info("target distro name/version labels not found, reading /etc/os-release file")
+		GetTargetOSFromFileSystem(d, &tm, logger)
 	}
 	ret := []string{
 		"CNB_TARGET_OS=" + tm.OS,

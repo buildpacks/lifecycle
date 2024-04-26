@@ -13,6 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
@@ -239,7 +240,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 					BuildConfigDir: d.BuildConfigDir,
 					PlatformDir:    d.PlatformDir,
 					Env:            env.NewBuildEnv(os.Environ()),
-					TargetEnv:      platform.EnvVarsFor(d.AnalyzeMD.RunImageTarget(), d.Logger),
+					TargetEnv:      platform.EnvVarsFor(&fsutil.Detect{}, d.AnalyzeMD.RunImageTarget(), d.Logger),
 				}
 				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger)) // this is where we finally invoke bin/detect
 			}
