@@ -41,14 +41,14 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 
-					when("has extra information", func() {
-						it("matches", func() {
+					when("has distro information", func() {
+						it("does not match", func() {
 							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "MMX"}), true)
 							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{
 								OS:      baseTarget.OS,
 								Arch:    baseTarget.Arch,
 								Distros: []buildpack.OSDistro{{Name: "a", Version: "2"}},
-							}), true)
+							}), false)
 						})
 					})
 				})
