@@ -284,8 +284,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							h.AssertContains(t, inputs.TargetEnv,
 								"CNB_TARGET_ARCH=amd64",
 								"CNB_TARGET_ARCH_VARIANT=",
-								"CNB_TARGET_DISTRO_NAME=",
-								"CNB_TARGET_DISTRO_VERSION=",
+								"CNB_TARGET_DISTRO_NAME=ubuntu",
+								"CNB_TARGET_DISTRO_VERSION=22.04",
 								"CNB_TARGET_OS=linux",
 							)
 							return buildpack.GenerateOutputs{Dockerfiles: []buildpack.DockerfileInfo{{ExtensionID: d.Extension.ID,
@@ -296,8 +296,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							h.AssertContains(t, inputs.TargetEnv,
 								"CNB_TARGET_ARCH=amd64",
 								"CNB_TARGET_ARCH_VARIANT=",
-								"CNB_TARGET_DISTRO_NAME=",
-								"CNB_TARGET_DISTRO_VERSION=",
+								"CNB_TARGET_DISTRO_NAME=ubuntu",
+								"CNB_TARGET_DISTRO_VERSION=22.04",
 								"CNB_TARGET_OS=linux",
 							)
 							return buildpack.GenerateOutputs{Dockerfiles: []buildpack.DockerfileInfo{{ExtensionID: d.Extension.ID,

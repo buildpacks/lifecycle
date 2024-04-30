@@ -211,7 +211,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				t:        t,
 				HasFile:  false,
 			}
-			observed := platform.EnvVarsFor(d, tm, nil)
+			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME="+tm.Distro.Name)
@@ -221,14 +221,13 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("returns the right thing from /etc/os-release", func() {
-			logr := &log.Logger{Handler: memory.New()}
 			d := &mockDetector{
 				contents: "this is just test contents really",
 				t:        t,
 				HasFile:  true,
 			}
 			tm := files.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distro: nil}
-			observed := platform.EnvVarsFor(d, tm, logr)
+			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME=opensesame")
@@ -244,7 +243,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				t:        t,
 				HasFile:  false,
 			}
-			observed := platform.EnvVarsFor(d, tm, nil)
+			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
 			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
 			// note: per the spec only the ID field is optional, so I guess the others should always be set: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md#runtime-metadata
