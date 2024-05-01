@@ -91,8 +91,11 @@ func TargetSatisfiedForBuild(base files.TargetMetadata, module buildpack.TargetM
 	if !matches(base.ArchVariant, module.ArchVariant) {
 		return false
 	}
-	if base.Distro == nil || len(module.Distros) == 0 {
+	if len(module.Distros) == 0 {
 		return true
+	}
+	if base.Distro == nil {
+		return false
 	}
 	foundMatchingDist := false
 	for _, modDist := range module.Distros {
