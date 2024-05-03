@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
@@ -24,18 +25,21 @@ type MetadataRestorer interface {
 	Restore(buildpacks []buildpack.GroupElement, appMeta files.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore SHAStore) error
 }
 
-func NewDefaultMetadataRestorer(layersDir string, skipLayers bool, logger log.Logger) *DefaultMetadataRestorer {
+// NewDefaultMetadataRestorer returns an instance of the DefaultMetadataRestorer struct
+func NewDefaultMetadataRestorer(layersDir string, skipLayers bool, logger log.Logger, platformAPI *api.Version) *DefaultMetadataRestorer {
 	return &DefaultMetadataRestorer{
-		Logger:     logger,
-		LayersDir:  layersDir,
-		SkipLayers: skipLayers,
+		Logger:      logger,
+		LayersDir:   layersDir,
+		SkipLayers:  skipLayers,
+		PlatformAPI: platformAPI,
 	}
 }
 
 type DefaultMetadataRestorer struct {
-	LayersDir  string
-	SkipLayers bool
-	Logger     log.Logger
+	LayersDir   string
+	SkipLayers  bool
+	Logger      log.Logger
+	PlatformAPI *api.Version
 }
 
 func (r *DefaultMetadataRestorer) Restore(buildpacks []buildpack.GroupElement, appMeta files.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore SHAStore) error {
@@ -114,9 +118,11 @@ func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, a
 				continue
 			}
 			// If launch=true, the metadata was restored from the appLayers if present.
-			if _, ok := appLayers[layerName]; ok && layer.Launch {
-				r.Logger.Debugf("Not restoring %q from cache, marked as launch=true", identifier)
-				continue
+			if layer.Launch {
+				if _, ok := appLayers[layerName]; ok || r.PlatformAPI.LessThan("0.14") {
+					r.Logger.Debugf("Not restoring %q from cache, marked as launch=true", identifier)
+					continue
+				}
 			}
 			r.Logger.Infof("Restoring metadata for %q from cache", identifier)
 			if err := r.writeLayerMetadata(layerSHAStore, buildpackDir, layerName, layer, bp.ID); err != nil {
