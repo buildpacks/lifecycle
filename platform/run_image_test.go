@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle/platform"
@@ -204,7 +206,12 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 	when(".EnvVarsFor", func() {
 		it("returns the right thing", func() {
 			tm := files.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distro: &files.OSDistro{Name: "nix", Version: "22.11"}}
-			observed := platform.EnvVarsFor(tm, nil)
+			d := &mockDetector{
+				contents: "this is just test contents really",
+				t:        t,
+				HasFile:  false,
+			}
+			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
 			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME="+tm.Distro.Name)
@@ -213,9 +220,30 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, len(observed), 5)
 		})
 
+		it("returns the right thing from /etc/os-release", func() {
+			d := &mockDetector{
+				contents: "this is just test contents really",
+				t:        t,
+				HasFile:  true,
+			}
+			tm := files.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distro: nil}
+			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME=opensesame")
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION=3.14")
+			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
+			h.AssertEq(t, len(observed), 5)
+		})
+
 		it("does not return the wrong thing", func() {
 			tm := files.TargetMetadata{Arch: "pentium", OS: "linux"}
-			observed := platform.EnvVarsFor(tm, nil)
+			d := &mockDetector{
+				contents: "this is just test contents really",
+				t:        t,
+				HasFile:  false,
+			}
+			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
 			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
 			// note: per the spec only the ID field is optional, so I guess the others should always be set: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md#runtime-metadata

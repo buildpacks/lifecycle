@@ -191,8 +191,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_ARCH=amd64")
 					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_ARCH_VARIANT=")
 					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_OS=linux")
-					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_DISTRO_NAME=")
-					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_DISTRO_VERSION=")
 					return buildpack.BuildOutputs{}, nil
 				},
 			)
@@ -205,8 +203,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_ARCH=amd64")
 					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_ARCH_VARIANT=")
 					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_OS=linux")
-					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_DISTRO_NAME=")
-					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_DISTRO_VERSION=")
 					return buildpack.BuildOutputs{}, nil
 				})
 
