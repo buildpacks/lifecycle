@@ -34,6 +34,18 @@ func (m *MockImageDeleter) EXPECT() *MockImageDeleterMockRecorder {
 	return m.recorder
 }
 
+// DeleteImage mocks base method.
+func (m *MockImageDeleter) DeleteImage(arg0 imgutil.Image) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DeleteImage", arg0)
+}
+
+// DeleteImage indicates an expected call of DeleteImage.
+func (mr *MockImageDeleterMockRecorder) DeleteImage(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteImage", reflect.TypeOf((*MockImageDeleter)(nil).DeleteImage), arg0)
+}
+
 // DeleteOrigImageIfDifferentFromNewImage mocks base method.
 func (m *MockImageDeleter) DeleteOrigImageIfDifferentFromNewImage(arg0, arg1 imgutil.Image) {
 	m.ctrl.T.Helper()

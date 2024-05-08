@@ -3,6 +3,7 @@ package phase
 import (
 	"path/filepath"
 
+	c "github.com/buildpacks/lifecycle/cache"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -98,7 +99,16 @@ func (r *Restorer) Restore(cache Cache) error {
 			} else {
 				r.Logger.Infof("Restoring data for %q from cache", bpLayer.Identifier())
 				g.Go(func() error {
-					return r.restoreCacheLayer(cache, cachedLayer.SHA)
+					err = r.restoreCacheLayer(cache, cachedLayer.SHA)
+					if err != nil {
+						isReadErr, readErr := c.IsReadErr(err)
+						if isReadErr {
+							r.Logger.Warnf("%s, skipping restore", readErr.Error())
+							return nil
+						}
+						return errors.Wrapf(err, "restoring layer %s", bpLayer.Identifier())
+					}
+					return nil
 				})
 			}
 		}

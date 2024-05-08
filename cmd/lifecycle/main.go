@@ -96,14 +96,14 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, 
 		cacheStore phase.Cache
 		err        error
 	)
+	logger := cmd.DefaultLogger
 	if cacheImageRef != "" {
-		logger := cmd.DefaultLogger
 		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain, logger, cache.NewImageDeleter(cache.NewImageComparer(), logger, deletionEnabled))
 		if err != nil {
 			return nil, errors.Wrap(err, "creating image cache")
 		}
 	} else if cacheDir != "" {
-		cacheStore, err = cache.NewVolumeCache(cacheDir)
+		cacheStore, err = cache.NewVolumeCache(cacheDir, logger)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating volume cache")
 		}
@@ -118,14 +118,14 @@ func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain, deletion
 		cacheStore phase.Cache
 		err        error
 	)
+	logger := cmd.DefaultLogger
 	if cacheImageTag != "" {
-		logger := cmd.DefaultLogger
 		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain, logger, cache.NewImageDeleter(cache.NewImageComparer(), logger, deletionEnabled))
 		if err != nil {
 			return nil, cmd.FailErr(err, "create image cache")
 		}
 	} else if cacheDir != "" {
-		cacheStore, err = cache.NewVolumeCache(cacheDir)
+		cacheStore, err = cache.NewVolumeCache(cacheDir, logger)
 		if err != nil {
 			return nil, cmd.FailErr(err, "create volume cache")
 		}

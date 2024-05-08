@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -28,6 +30,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		backupDir    string
 		stagingDir   string
 		committedDir string
+		testLogger   log.Logger
 	)
 
 	it.Before(func() {
@@ -42,6 +45,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		backupDir = filepath.Join(volumeDir, "committed-backup")
 		stagingDir = filepath.Join(volumeDir, "staging")
 		committedDir = filepath.Join(volumeDir, "committed")
+		testLogger = cmd.DefaultLogger
 	})
 
 	it.After(func() {
@@ -50,7 +54,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 	when("#NewVolumeCache", func() {
 		it("returns an error when the volume path does not exist", func() {
-			_, err := cache.NewVolumeCache(filepath.Join(tmpDir, "does_not_exist"))
+			_, err := cache.NewVolumeCache(filepath.Join(tmpDir, "does_not_exist"), testLogger)
 			if err == nil {
 				t.Fatal("expected NewVolumeCache to fail because volume path does not exist")
 			}
@@ -66,7 +70,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			it("clears staging", func() {
 				var err error
 
-				subject, err = cache.NewVolumeCache(volumeDir)
+				subject, err = cache.NewVolumeCache(volumeDir, testLogger)
 				h.AssertNil(t, err)
 
 				_, err = os.Stat(filepath.Join(stagingDir, "some-layer.tar"))
@@ -80,7 +84,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			it("creates staging dir", func() {
 				var err error
 
-				subject, err = cache.NewVolumeCache(volumeDir)
+				subject, err = cache.NewVolumeCache(volumeDir, testLogger)
 				h.AssertNil(t, err)
 
 				_, err = os.Stat(stagingDir)
@@ -92,7 +96,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			it("creates committed dir", func() {
 				var err error
 
-				subject, err = cache.NewVolumeCache(volumeDir)
+				subject, err = cache.NewVolumeCache(volumeDir, testLogger)
 				h.AssertNil(t, err)
 
 				_, err = os.Stat(committedDir)
@@ -109,7 +113,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			it("clears the backup dir", func() {
 				var err error
 
-				subject, err = cache.NewVolumeCache(volumeDir)
+				subject, err = cache.NewVolumeCache(volumeDir, testLogger)
 				h.AssertNil(t, err)
 
 				_, err = os.Stat(filepath.Join(backupDir, "some-layer.tar"))
@@ -124,7 +128,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			var err error
 
-			subject, err = cache.NewVolumeCache(volumeDir)
+			subject, err = cache.NewVolumeCache(volumeDir, testLogger)
 			h.AssertNil(t, err)
 		})
 
@@ -206,7 +210,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			when("layer does not exist", func() {
 				it("returns an error", func() {
 					_, err := subject.RetrieveLayer("some_nonexistent_sha")
-					h.AssertError(t, err, "layer with SHA 'some_nonexistent_sha' not found")
+					h.AssertError(t, err, "Layer with SHA 'some_nonexistent_sha' not found")
 				})
 			})
 		})
@@ -230,7 +234,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			when("layer does not exist", func() {
 				it("returns an error", func() {
 					_, err := subject.RetrieveLayerFile("some_nonexistent_sha")
-					h.AssertError(t, err, "layer with SHA 'some_nonexistent_sha' not found")
+					h.AssertError(t, err, "Layer with SHA 'some_nonexistent_sha' not found")
 				})
 			})
 		})
@@ -340,7 +344,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
 
 						_, err := subject.RetrieveLayer("some_sha")
-						h.AssertError(t, err, "layer with SHA 'some_sha' not found")
+						h.AssertError(t, err, "Layer with SHA 'some_sha' not found")
 					})
 				})
 
@@ -415,7 +419,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, subject.AddLayer(layerReader, layerSha))
 
 						_, err := subject.RetrieveLayer(layerSha)
-						h.AssertError(t, err, fmt.Sprintf("layer with SHA '%s' not found", layerSha))
+						h.AssertError(t, err, fmt.Sprintf("Layer with SHA '%s' not found", layerSha))
 					})
 				})
 

@@ -54,6 +54,8 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 
 			it.Before(func() {
 				var err error
+				logHandler = memory.New()
+				logger := log.Logger{Handler: logHandler, Level: log.DebugLevel}
 
 				layersDir, err = os.MkdirTemp("", "lifecycle-layer-dir")
 				h.AssertNil(t, err)
@@ -61,12 +63,8 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 				cacheDir, err = os.MkdirTemp("", "")
 				h.AssertNil(t, err)
 
-				testCache, err = cache.NewVolumeCache(cacheDir)
+				testCache, err = cache.NewVolumeCache(cacheDir, &logger)
 				h.AssertNil(t, err)
-
-				logHandler = memory.New()
-
-				logger := log.Logger{Handler: logHandler, Level: log.DebugLevel}
 
 				mockCtrl = gomock.NewController(t)
 				sbomRestorer = testmock.NewMockSBOMRestorer(mockCtrl)

@@ -2,12 +2,14 @@ package cache
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/internal/fsutil"
@@ -20,9 +22,10 @@ type VolumeCache struct {
 	backupDir    string
 	stagingDir   string
 	committedDir string
+	logger       log.Logger
 }
 
-func NewVolumeCache(dir string) (*VolumeCache, error) {
+func NewVolumeCache(dir string, logger log.Logger) (*VolumeCache, error) {
 	if _, err := os.Stat(dir); err != nil {
 		return nil, err
 	}
@@ -32,6 +35,7 @@ func NewVolumeCache(dir string) (*VolumeCache, error) {
 		backupDir:    filepath.Join(dir, "committed-backup"),
 		stagingDir:   filepath.Join(dir, "staging"),
 		committedDir: filepath.Join(dir, "committed"),
+		logger:       logger,
 	}
 
 	if err := c.setupStagingDir(); err != nil {
@@ -133,7 +137,20 @@ func (c *VolumeCache) ReuseLayer(diffID string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
-	if err := os.Link(diffIDPath(c.committedDir, diffID), diffIDPath(c.stagingDir, diffID)); err != nil && !os.IsExist(err) {
+	committedPath := diffIDPath(c.committedDir, diffID)
+	stagingPath := diffIDPath(c.stagingDir, diffID)
+
+	if _, err := os.Stat(committedPath); err != nil {
+		if os.IsNotExist(err) {
+			return NewReadErr(fmt.Sprintf("Layer with SHA '%s' not found", diffID))
+		}
+		if os.IsPermission(err) {
+			return NewReadErr(fmt.Sprintf("Cannot read cache layer with SHA '%s' due to insufficient permissions", diffID))
+		}
+		return errors.Wrapf(err, "reusing layer (%s)", diffID)
+	}
+
+	if err := os.Link(committedPath, stagingPath); err != nil && !os.IsExist(err) {
 		return errors.Wrapf(err, "reusing layer (%s)", diffID)
 	}
 	return nil
@@ -146,7 +163,10 @@ func (c *VolumeCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "opening layer with SHA '%s'", diffID)
+		if os.IsPermission(err) {
+			return nil, NewReadErr(fmt.Sprintf("cannot read cache layer with SHA '%s' due to insufficient permissions", diffID))
+		}
+		return nil, NewReadErr(fmt.Sprintf("unknown error retrieving layer with SHA '%s'", diffID))
 	}
 	return file, nil
 }
@@ -165,7 +185,7 @@ func (c *VolumeCache) RetrieveLayerFile(diffID string) (string, error) {
 	path := diffIDPath(c.committedDir, diffID)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return "", errors.Wrapf(err, "layer with SHA '%s' not found", diffID)
+			return "", NewReadErr(fmt.Sprintf("Layer with SHA '%s' not found", diffID))
 		}
 		return "", errors.Wrapf(err, "retrieving layer with SHA '%s'", diffID)
 	}
@@ -205,4 +225,21 @@ func (c *VolumeCache) setupStagingDir() error {
 		return err
 	}
 	return os.MkdirAll(c.stagingDir, 0777)
+}
+
+func (c *VolumeCache) LayerExists(diffID string) (bool, error) {
+	path := diffIDPath(c.committedDir, diffID)
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "retrieving layer with SHA '%s'", diffID)
+	}
+	return true, nil
+}
+
+func (c *VolumeCache) Destroy() {
+	if err := os.RemoveAll(c.dir); err != nil {
+		c.logger.Warnf("Unable to delete cache directory: %v", err.Error())
+	}
 }

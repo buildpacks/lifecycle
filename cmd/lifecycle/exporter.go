@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -200,7 +201,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 	case e.UseLayout:
 		appImage, runImageID, err = e.initLayoutAppImage(analyzedMD)
 	case e.UseDaemon:
-		appImage, runImageID, err = e.initDaemonAppImage(analyzedMD)
+		appImage, runImageID, err = e.initDaemonAppImage(analyzedMD, cmd.DefaultLogger)
 	default:
 		appImage, runImageID, err = e.initRemoteAppImage(analyzedMD)
 	}
@@ -258,7 +259,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 	return nil
 }
 
-func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
+func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed, logger log.Logger) (imgutil.Image, string, error) {
 	var opts = []imgutil.ImageOption{
 		local.FromBaseImage(e.RunImageRef),
 	}
@@ -301,7 +302,7 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	}
 
 	if e.LaunchCacheDir != "" {
-		volumeCache, err := cache.NewVolumeCache(e.LaunchCacheDir)
+		volumeCache, err := cache.NewVolumeCache(e.LaunchCacheDir, logger)
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "create launch cache")
 		}

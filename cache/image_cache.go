@@ -106,8 +106,20 @@ func (c *ImageCache) ReuseLayer(diffID string) error {
 	return c.newImage.ReuseLayer(diffID)
 }
 
+func IsLayerNotFound(err error) bool {
+	var e imgutil.ErrLayerNotFound
+	return errors.As(err, &e)
+}
+
 func (c *ImageCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
-	return c.origImage.GetLayer(diffID)
+	closer, err := c.origImage.GetLayer(diffID)
+	if err != nil {
+		if IsLayerNotFound(err) {
+			return nil, NewReadErr(fmt.Sprintf("Layer with SHA '%s' not found", diffID))
+		}
+		return nil, NewReadErr(fmt.Sprintf("unknown error retrieving layer with SHA '%s'", diffID))
+	}
+	return closer, nil
 }
 
 func (c *ImageCache) Commit() error {
@@ -128,4 +140,27 @@ func (c *ImageCache) Commit() error {
 	c.origImage = c.newImage
 
 	return nil
+}
+
+func (c *ImageCache) LayerExists(diffID string) (bool, error) {
+	layers, err := c.origImage.UnderlyingImage().Layers()
+	if err != nil {
+		return false, errors.Wrap(err, "getting image layers")
+	}
+
+	for _, layer := range layers {
+		d, err := layer.DiffID()
+		if err != nil {
+			return false, errors.Wrap(err, "getting layer diffID")
+		}
+
+		if d.String() == diffID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c *ImageCache) Destroy() {
+	c.imageDeleter.DeleteImage(c.origImage)
 }

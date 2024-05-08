@@ -10,6 +10,7 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -37,7 +38,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 		fakeImage = fakes.NewImage("some-image", "", nil)
 		tmpDir, err = os.MkdirTemp("", "")
 		h.AssertNil(t, err)
-		volumeCache, err = cache.NewVolumeCache(tmpDir)
+		volumeCache, err = cache.NewVolumeCache(tmpDir, cmd.DefaultLogger)
 		h.AssertNil(t, err)
 		subject = cache.NewCachingImage(fakeImage, volumeCache)
 		layerPath, layerSHA, layerData = h.RandomLayer(t, tmpDir)
