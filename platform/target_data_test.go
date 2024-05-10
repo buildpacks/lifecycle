@@ -94,6 +94,93 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when(".GetTargetOSFromFileSystem", func() {
+		it("populates appropriately", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := files.TargetMetadata{}
+			d := mockDetector{contents: "this is just test contents really",
+				t:       t,
+				HasFile: true}
+			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertEq(t, "opensesame", tm.Distro.Name)
+			h.AssertEq(t, "3.14", tm.Distro.Version)
+		})
+
+		it("doesn't populate if there's no file", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := files.TargetMetadata{}
+			d := mockDetector{contents: "in unit tests 2.0 the users will generate the content but we'll serve them ads",
+				t:       t,
+				HasFile: false}
+			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertNil(t, tm.Distro)
+		})
+
+		it("doesn't populate if there's an error reading the file", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := files.TargetMetadata{}
+			d := mockDetector{contents: "contentment is the greatest wealth",
+				t:           t,
+				HasFile:     true,
+				ReadFileErr: fmt.Errorf("I'm sorry Dave, I don't even remember exactly what HAL says"),
+			}
+			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertNil(t, tm.Distro)
+		})
+	})
+
+	when(".EnvVarsFor", func() {
+		it("returns the right thing", func() {
+			tm := files.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distro: &files.OSDistro{Name: "nix", Version: "22.11"}}
+			d := &mockDetector{
+				contents: "this is just test contents really",
+				t:        t,
+				HasFile:  false,
+			}
+			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME="+tm.Distro.Name)
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION="+tm.Distro.Version)
+			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
+			h.AssertEq(t, len(observed), 5)
+		})
+
+		it("returns the right thing from /etc/os-release", func() {
+			d := &mockDetector{
+				contents: "this is just test contents really",
+				t:        t,
+				HasFile:  true,
+			}
+			tm := files.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distro: nil}
+			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT="+tm.ArchVariant)
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME=opensesame")
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION=3.14")
+			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
+			h.AssertEq(t, len(observed), 5)
+		})
+
+		it("does not return the wrong thing", func() {
+			tm := files.TargetMetadata{Arch: "pentium", OS: "linux"}
+			d := &mockDetector{
+				contents: "this is just test contents really",
+				t:        t,
+				HasFile:  false,
+			}
+			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
+			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
+			// note: per the spec only the ID field is optional, so I guess the others should always be set: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md#runtime-metadata
+			// the empty ones:
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT=")
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME=")
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION=")
+			h.AssertEq(t, len(observed), 5)
+		})
+	})
+
 	when(".TargetSatisfiedForRebase", func() {
 		var baseTarget files.TargetMetadata
 		when("orig image data", func() {
@@ -165,41 +252,6 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
-		})
-	})
-
-	when(".GetTargetOSFromFileSystem", func() {
-		it("populates appropriately", func() {
-			logr := &log.Logger{Handler: memory.New()}
-			tm := files.TargetMetadata{}
-			d := mockDetector{contents: "this is just test contents really",
-				t:       t,
-				HasFile: true}
-			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
-			h.AssertEq(t, "opensesame", tm.Distro.Name)
-			h.AssertEq(t, "3.14", tm.Distro.Version)
-		})
-
-		it("doesn't populate if there's no file", func() {
-			logr := &log.Logger{Handler: memory.New()}
-			tm := files.TargetMetadata{}
-			d := mockDetector{contents: "in unit tests 2.0 the users will generate the content but we'll serve them ads",
-				t:       t,
-				HasFile: false}
-			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
-			h.AssertNil(t, tm.Distro)
-		})
-
-		it("doesn't populate if there's an error reading the file", func() {
-			logr := &log.Logger{Handler: memory.New()}
-			tm := files.TargetMetadata{}
-			d := mockDetector{contents: "contentment is the greatest wealth",
-				t:           t,
-				HasFile:     true,
-				ReadFileErr: fmt.Errorf("I'm sorry Dave, I don't even remember exactly what HAL says"),
-			}
-			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
-			h.AssertNil(t, tm.Distro)
 		})
 	})
 }
