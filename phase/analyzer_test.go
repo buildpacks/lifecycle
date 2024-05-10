@@ -484,6 +484,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 					h.AssertEq(t, md.RunImage.Reference, "s0m3D1g3sT")
 				})
+
 				it("populates target metadata from the run image", func() {
 					h.AssertNil(t, previousImage.SetLabel("io.buildpacks.base.id", "id software"))
 					h.AssertNil(t, previousImage.SetOS("windows"))
@@ -507,6 +508,18 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 						h.AssertEq(t, md.RunImage.TargetMetadata.Distro.Name, "moobuntu")
 						h.AssertEq(t, md.RunImage.TargetMetadata.Distro.Version, "Helpful Holstein")
 					}
+				})
+
+				when("run image is missing OS", func() {
+					it("errors", func() {
+						h.AssertNil(t, previousImage.SetOS(""))
+						_, err := analyzer.Analyze()
+						if api.MustParse(platformAPI).LessThan("0.12") {
+							h.AssertNil(t, err)
+						} else {
+							h.AssertError(t, err, "failed to find OS")
+						}
+					})
 				})
 			})
 		})

@@ -86,6 +86,9 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 			if err != nil {
 				return files.Analyzed{}, errors.Wrap(err, "unpacking metadata from image")
 			}
+			if atm.OS == "" {
+				return files.Analyzed{}, errors.New("failed to find OS in run image config")
+			}
 		}
 	}
 
