@@ -21,34 +21,61 @@ func TestTargetData(t *testing.T) {
 
 func testTargetData(t *testing.T, when spec.G, it spec.S) {
 	when(".TargetSatisfiedForBuild", func() {
-		var baseTarget files.TargetMetadata
+		baseTarget := files.TargetMetadata{OS: "Win95", Arch: "Pentium"}
+		d := mockDetector{
+			contents: "this is just test contents really",
+			t:        t,
+			HasFile:  false, // by default, don't use info from /etc/os-release for these tests
+		}
+
 		when("base image data", func() {
 			when("has os and arch", func() {
-				baseTarget = files.TargetMetadata{OS: "Win95", Arch: "Pentium"}
-
 				when("buildpack data", func() {
 					when("has os and arch", func() {
 						it("must match", func() {
-							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
-							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: "Win98", Arch: baseTarget.Arch}), false)
-							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: "Pentium MMX"}), false)
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}, &log.Logger{Handler: memory.New()}), true)
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: "Win98", Arch: baseTarget.Arch}, &log.Logger{Handler: memory.New()}), false)
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: "Pentium MMX"}, &log.Logger{Handler: memory.New()}), false)
 						})
 					})
 
 					when("missing os and arch", func() {
 						it("matches", func() {
-							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: "", Arch: ""}), true)
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: "", Arch: ""}, &log.Logger{Handler: memory.New()}), true)
 						})
 					})
 
 					when("has distro information", func() {
 						it("does not match", func() {
-							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "MMX"}), true)
-							h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{
+							h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{
 								OS:      baseTarget.OS,
 								Arch:    baseTarget.Arch,
 								Distros: []buildpack.OSDistro{{Name: "a", Version: "2"}},
-							}), false)
+							}, &log.Logger{Handler: memory.New()}), false)
+						})
+
+						when("/etc/os-release has information", func() {
+							it("must match", func() {
+								d := mockDetector{
+									contents: "this is just test contents really",
+									t:        t,
+									HasFile:  true,
+								}
+								h.AssertEq(
+									t,
+									platform.TargetSatisfiedForBuild(
+										&d,
+										baseTarget,
+										buildpack.TargetMetadata{
+											OS:   baseTarget.OS,
+											Arch: baseTarget.Arch,
+											Distros: []buildpack.OSDistro{
+												{Name: "opensesame", Version: "3.14"},
+											},
+										},
+										&log.Logger{Handler: memory.New()},
+									), true)
+							})
 						})
 					})
 				})
@@ -59,14 +86,14 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 					when("buildpack data", func() {
 						when("has arch variant", func() {
 							it("must match", func() {
-								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-arch-variant"}), true)
-								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-other-arch-variant"}), false)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-arch-variant"}, &log.Logger{Handler: memory.New()}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, ArchVariant: "some-other-arch-variant"}, &log.Logger{Handler: memory.New()}), false)
 							})
 						})
 
 						when("missing arch variant", func() {
 							it("matches", func() {
-								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}, &log.Logger{Handler: memory.New()}), true)
 							})
 						})
 					})
@@ -78,14 +105,14 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 					when("buildpack data", func() {
 						when("has distro information", func() {
 							it("must match", func() {
-								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distros: []buildpack.OSDistro{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}), true)
-								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distros: []buildpack.OSDistro{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}), false)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distros: []buildpack.OSDistro{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}, &log.Logger{Handler: memory.New()}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch, Distros: []buildpack.OSDistro{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}, &log.Logger{Handler: memory.New()}), false)
 							})
 						})
 
 						when("missing distro information", func() {
 							it("matches", func() {
-								h.AssertEq(t, platform.TargetSatisfiedForBuild(baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}), true)
+								h.AssertEq(t, platform.TargetSatisfiedForBuild(&d, baseTarget, buildpack.TargetMetadata{OS: baseTarget.OS, Arch: baseTarget.Arch}, &log.Logger{Handler: memory.New()}), true)
 							})
 						})
 					})

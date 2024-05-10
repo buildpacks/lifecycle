@@ -41,7 +41,13 @@ func GetTargetMetadata(fromImage imgutil.Image) (*files.TargetMetadata, error) {
 }
 
 // TargetSatisfiedForBuild treats empty fields as wildcards and returns true if all populated fields match.
-func TargetSatisfiedForBuild(base files.TargetMetadata, module buildpack.TargetMetadata) bool {
+func TargetSatisfiedForBuild(d fsutil.Detector, base files.TargetMetadata, module buildpack.TargetMetadata, logger log.Logger) bool {
+	// ensure we have all available data
+	if base.OS == "" || base.Distro == nil {
+		logger.Info("target distro name/version labels not found, reading /etc/os-release file")
+		GetTargetOSFromFileSystem(d, &base, logger)
+	}
+	// check matches
 	if !matches(base.OS, module.OS) {
 		return false
 	}
@@ -51,6 +57,7 @@ func TargetSatisfiedForBuild(base files.TargetMetadata, module buildpack.TargetM
 	if !matches(base.ArchVariant, module.ArchVariant) {
 		return false
 	}
+	// check distro
 	if len(module.Distros) == 0 {
 		return true
 	}
@@ -84,8 +91,10 @@ func GetTargetOSFromFileSystem(d fsutil.Detector, tm *files.TargetMetadata, logg
 			return
 		}
 		info := d.GetInfo(contents)
-		if info.Version != "" || info.Name != "" {
+		if tm.OS == "" {
 			tm.OS = "linux"
+		}
+		if info.Version != "" || info.Name != "" {
 			tm.Distro = &files.OSDistro{Name: info.Name, Version: info.Version}
 		}
 	}
