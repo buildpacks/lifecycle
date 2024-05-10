@@ -6,7 +6,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
@@ -88,7 +87,7 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 				return files.Analyzed{}, errors.Wrap(err, "unpacking metadata from image")
 			}
 			if atm.OS == "" {
-				platform.GetTargetOSFromFileSystem(&fsutil.Detect{}, atm, a.Logger)
+				return files.Analyzed{}, errors.New("failed to find OS in run image config")
 			}
 		}
 	}
