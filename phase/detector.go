@@ -144,25 +144,13 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 	return nil, nil, ErrFailedDetection
 }
 
-// isWildcard returns true IFF the Arch and OS are unspecified, meaning that the target arch/os are "any"
-func isWildcard(t files.TargetMetadata) bool {
-	return t.Arch == "" && t.OS == ""
-}
-
-func hasWildcard(ts []buildpack.TargetMetadata) bool {
-	for _, tm := range ts {
-		if tm.OS == "" && tm.Arch == "" {
-			return true
-		}
-	}
-	return false
-}
-
 func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []files.BuildPlanEntry, error) {
 	// used below to mark each item as "done" by appending it to the done list
 	markDone := func(groupEl buildpack.GroupElement, descriptor buildpack.Descriptor) {
 		done = append(done, groupEl.WithAPI(descriptor.API()).WithHomepage(descriptor.Homepage()))
 	}
+
+	runImageTargetInfo := d.AnalyzeMD.RunImageTarget()
 
 	for i, groupEl := range group.Group {
 		// Continue if element has already been processed.
@@ -175,7 +163,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 			return d.detectOrder(groupEl.OrderExtensions, done, group.Group[i+1:], true, wg)
 		}
 
-		// Lookup element in store.  <-- "the store" is the directory where all the buildpacks are.
+		// Lookup element in store (the "store" is the directory where all the buildpacks are).
 		var (
 			descriptor buildpack.Descriptor
 			err        error
@@ -192,26 +180,29 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				// FIXME: cyclical references lead to infinite recursion
 				return d.detectOrder(order, done, group.Group[i+1:], groupEl.Optional, wg)
 			}
-			descriptor = bpDescriptor // standardize the type so below we don't have to care whether it was an extension
+			descriptor = bpDescriptor // Standardize the type so below we don't have to care whether it is an extension.
 		} else {
 			descriptor, err = d.DirStore.LookupExt(groupEl.ID, groupEl.Version)
 			if err != nil {
 				return nil, nil, err
 			}
 		}
+
+		// Check target compatibility.
 		if d.PlatformAPI.AtLeast("0.12") {
-			targetMatch := false
-			if isWildcard(d.AnalyzeMD.RunImageTarget()) || hasWildcard(descriptor.TargetsList()) {
+			var targetMatch bool
+			if len(descriptor.TargetsList()) == 0 {
 				targetMatch = true
 			} else {
-				for i := range descriptor.TargetsList() {
-					d.Logger.Debugf("Checking for match against descriptor: %s", descriptor.TargetsList()[i])
-					if platform.TargetSatisfiedForBuild(&fsutil.Detect{}, *d.AnalyzeMD.RunImage.TargetMetadata, descriptor.TargetsList()[i], d.Logger) {
+				for _, target := range descriptor.TargetsList() {
+					d.Logger.Debugf("Checking for match against descriptor: %s", target)
+					if platform.TargetSatisfiedForBuild(&fsutil.Detect{}, &runImageTargetInfo, target, d.Logger) {
 						targetMatch = true
 						break
 					}
 				}
 			}
+
 			if !targetMatch && !groupEl.Optional {
 				markDone(groupEl, descriptor)
 				d.Runs.Store(
@@ -220,7 +211,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 						Code: -1,
 						Err: fmt.Errorf(
 							"unable to satisfy target os/arch constraints; run image: %s, buildpack: %s",
-							encoding.ToJSONMaybe(d.AnalyzeMD.RunImage.TargetMetadata),
+							encoding.ToJSONMaybe(runImageTargetInfo),
 							encoding.ToJSONMaybe(descriptor.TargetsList()),
 						),
 					})
@@ -240,7 +231,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 					BuildConfigDir: d.BuildConfigDir,
 					PlatformDir:    d.PlatformDir,
 					Env:            env.NewBuildEnv(os.Environ()),
-					TargetEnv:      platform.EnvVarsFor(&fsutil.Detect{}, d.AnalyzeMD.RunImageTarget(), d.Logger),
+					TargetEnv:      platform.EnvVarsFor(&fsutil.Detect{}, runImageTargetInfo, d.Logger),
 				}
 				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger)) // this is where we finally invoke bin/detect
 			}

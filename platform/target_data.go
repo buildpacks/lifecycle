@@ -40,12 +40,18 @@ func GetTargetMetadata(fromImage imgutil.Image) (*files.TargetMetadata, error) {
 	return &tm, nil
 }
 
-// TargetSatisfiedForBuild treats empty fields as wildcards and returns true if all populated fields match.
-func TargetSatisfiedForBuild(d fsutil.Detector, base files.TargetMetadata, module buildpack.TargetMetadata, logger log.Logger) bool {
+// TargetSatisfiedForBuild modifies the provided target information for the base (run) image if distribution information is missing,
+// by reading distribution information from /etc/os-release.
+// OS, arch, and arch variant if not specified by at least one entity (image or module) will be treated as matches.
+// If a module specifies distribution information, the image must also specify matching information.
+func TargetSatisfiedForBuild(d fsutil.Detector, base *files.TargetMetadata, module buildpack.TargetMetadata, logger log.Logger) bool {
+	if base == nil {
+		base = &files.TargetMetadata{}
+	}
 	// ensure we have all available data
 	if base.Distro == nil {
 		logger.Info("target distro name/version labels not found, reading /etc/os-release file")
-		GetTargetOSFromFileSystem(d, &base, logger)
+		GetTargetOSFromFileSystem(d, base, logger)
 	}
 	// check matches
 	if !matches(base.OS, module.OS) {

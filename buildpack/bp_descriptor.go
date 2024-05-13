@@ -17,7 +17,7 @@ type BpDescriptor struct {
 	Order       Order            `toml:"order"`
 	WithRootDir string           `toml:"-"`
 	Targets     []TargetMetadata `toml:"targets"`
-	Stacks      []StackMetadata  `tome:"stacks"` // just for backwards compat so we can check if it's the bionic stack, which we translate to a target
+	Stacks      []StackMetadata  `toml:"stacks"` // just for backwards compat so we can check if it's the bionic stack, which we translate to a target
 
 }
 

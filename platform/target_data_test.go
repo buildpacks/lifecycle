@@ -21,7 +21,7 @@ func TestTargetData(t *testing.T) {
 
 func testTargetData(t *testing.T, when spec.G, it spec.S) {
 	when(".TargetSatisfiedForBuild", func() {
-		baseTarget := files.TargetMetadata{OS: "Win95", Arch: "Pentium"}
+		baseTarget := &files.TargetMetadata{OS: "Win95", Arch: "Pentium"}
 		d := mockDetector{
 			contents: "this is just test contents really",
 			t:        t,
