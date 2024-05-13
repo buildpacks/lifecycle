@@ -70,8 +70,6 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
 				descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "amd64", Distros: []OSDistro{{Name: "ubuntu", Version: "18.04"}}})
-			} else if stack.ID == "*" {
-				descriptor.Targets = append(descriptor.Targets, TargetMetadata{}) // matches any
 			}
 		}
 	}

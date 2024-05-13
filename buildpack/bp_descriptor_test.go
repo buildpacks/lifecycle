@@ -81,7 +81,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Targets[0].Distros[0].Version, "V8.4-2L3")
 		})
 
-		it("does translate one special stack value into target values for older apis", func() {
+		it("translates one special stack value into target values for older apis", func() {
 			path := filepath.Join("testdata", "buildpack", "by-id", "B", "v1", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
 			h.AssertNil(t, err)
