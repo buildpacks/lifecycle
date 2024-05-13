@@ -32,7 +32,7 @@ jobs:
         id: ZVSI
         run: |
           #creation of zvsi
-          ibmcloud is instance-create $ZVSI_INSTANCE_NAME ${{ secrets.ZVSI_VPC }} $ZVSI_ZONE_NAME $ZVSI_PROFILE_NAME ${{ secrets.ZVSI_SUBNET }} --image ${{ secrets.ZVSI_IMAGE }} --keys ${{ secrets.ZVSI_KEY }} --resource-group-id ${{ secrets.ZVSI_RG_ID }} --sgs ${{ secrets.ZVSI_SG }} --allow-ip-spoofing false
+          ibmcloud is instance-create $ZVSI_INSTANCE_NAME ${{ secrets.ZVSI_VPC }} $ZVSI_ZONE_NAME $ZVSI_PROFILE_NAME ${{ secrets.ZVSI_SUBNET }} --image ${{ secrets.ZVSI_IMAGE }} --keys ${{ secrets.ZVSI_KEY }} --resource-group-id ${{ secrets.ZVSI_RG_ID }} --sgs ${{ secrets.ZVSI_SG }}  --primary-network-interface "{\"name\":\"eth0\",\"allow_ip_spoofing\":false,\"subnet\": {\"name\":\"${{ secrets.ZVSI_SUBNET }}\"},\"security_groups\":[{\"id\":\"${{ secrets.ZVSI_SG }}\"}]}"
           #Reserving a floating ip to the ZVSI
           ibmcloud is floating-ip-reserve $ZVSI_FP_NAME --zone $ZVSI_ZONE_NAME --resource-group-id ${{ secrets.ZVSI_RG_ID }} --in $ZVSI_INSTANCE_NAME
           #Bouding the Floating ip to the ZVSI
