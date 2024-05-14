@@ -3,9 +3,12 @@ api = "0.12"
 [buildpack]
 id = "B"
 name = "Buildpack B"
-version = "v2"
+version = "v2.2"
 homepage = "Buildpack B Homepage"
 sbom-formats = ["application/vnd.cyclonedx+json"]
 
 [[stacks]]
 id = "io.buildpacks.stacks.bionic"
+
+[[stacks]]
+id = "io.buildpacks.stacks.jammy"

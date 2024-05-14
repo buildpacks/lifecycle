@@ -1,4 +1,4 @@
-FROM ubuntu:bionic
+FROM ubuntu:jammy
 
 ARG cnb_uid=1234
 ARG cnb_gid=1000
