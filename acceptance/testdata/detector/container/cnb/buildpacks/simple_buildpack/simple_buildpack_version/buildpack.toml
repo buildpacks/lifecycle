@@ -1,6 +1,12 @@
-api = "0.10"
+api = "0.9"
 
 [buildpack]
-    id = "simple_buildpack"
-    version = "simple_buildpack_version"
-    name = "Simple Buildpack"
+id = "simple_buildpack"
+version = "simple_buildpack_version"
+name = "Simple Buildpack"
+
+[[stacks]]
+id = "io.buildpacks.stacks.bionic"
+
+[[stacks]]
+id = "io.buildpacks.stacks.jammy"

@@ -192,6 +192,8 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		if d.PlatformAPI.AtLeast("0.12") {
 			var targetMatch bool
 			if len(descriptor.TargetsList()) == 0 {
+				// This is actually just for tests. In practice, the lifecycle will infer a target with at least an OS
+				// when targets are missing from buildpack.toml.
 				targetMatch = true
 			} else {
 				for _, target := range descriptor.TargetsList() {

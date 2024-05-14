@@ -8,6 +8,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 )
 
@@ -69,7 +70,11 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 	if len(descriptor.Targets) == 0 {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
-				descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "amd64", Distros: []OSDistro{{Name: "ubuntu", Version: "18.04"}}})
+				if api.MustParse(descriptor.API()).AtLeast("0.10") || len(descriptor.Stacks) == 1 {
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "amd64", Distros: []OSDistro{{Name: "ubuntu", Version: "18.04"}}})
+				}
+			} else if stack.ID == "*" {
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{}) // matches any
 			}
 		}
 	}
