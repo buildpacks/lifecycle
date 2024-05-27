@@ -200,7 +200,7 @@ jobs:
         with:
           name: lifecycle-bom-cdx-sha256
           path: lifecycle-v*-bom.cdx.json.sha256
-      - uses: azure/docker-login@v1
+      - uses: azure/docker-login@v2
         if: github.event_name == 'push'
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
