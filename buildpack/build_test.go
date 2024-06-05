@@ -941,7 +941,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(appDir, "launch-A-v1.toml"),
 						)
 						_, err := executor.Build(descriptor, inputs, logger)
-						h.AssertError(t, err, "toml: line 2 (last key \"processes.command\"): incompatible types: TOML value has type []interface {}; destination has type string")
+						h.AssertError(t, err, "toml: line 2 (last key \"processes.command\"): incompatible types: TOML value has type []any; destination has type string")
 					})
 				})
 			})
