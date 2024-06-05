@@ -5,7 +5,7 @@ require (
 	github.com/GoogleContainerTools/kaniko v1.23.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20240419161514-af205d85bb44
-	github.com/buildpacks/imgutil v0.0.0-20240422175901-30b002586ecc
+	github.com/buildpacks/imgutil v0.0.0-20240605145725-186f89b2d168
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.17
 	github.com/docker/docker v26.1.2+incompatible
