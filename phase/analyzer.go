@@ -15,30 +15,33 @@ import (
 // Analyzer reads metadata from the previous image (if it exists) and the run image,
 // and additionally restores the SBOM layer from the previous image for use later in the build.
 type Analyzer struct {
+	// images
 	PreviousImage imgutil.Image
 	RunImage      imgutil.Image
-	Logger        log.Logger
-	SBOMRestorer  layer.SBOMRestorer
-	PlatformAPI   *api.Version
+	// services
+	SBOMRestorer layer.SBOMRestorer
+	// common
+	Logger      log.Logger
+	PlatformAPI *api.Version
 }
 
 // NewAnalyzer configures a new Analyzer according to the provided Platform API version.
 func (f *ConnectedFactory) NewAnalyzer(inputs platform.LifecycleInputs, logger log.Logger) (*Analyzer, error) {
 	analyzer := &Analyzer{
-		Logger:       logger,
-		SBOMRestorer: &layer.NopSBOMRestorer{},
-		PlatformAPI:  f.platformAPI,
+		Logger: logger,
+		SBOMRestorer: layer.NewSBOMRestorer(
+			layer.SBOMRestorerOpts{
+				LayersDir: inputs.LayersDir,
+				Nop:       inputs.SkipLayers,
+				Logger:    logger,
+			},
+			f.platformAPI, // FIXME: this should probably be inputs.PlatformAPI, although they are the same
+		),
+		PlatformAPI: f.platformAPI, // FIXME: this should probably be inputs.PlatformAPI, although they are the same
 	}
 
 	if err := f.ensureRegistryAccess(inputs); err != nil {
 		return nil, err
-	}
-
-	if f.platformAPI.AtLeast("0.8") && !inputs.SkipLayers {
-		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{
-			LayersDir: inputs.LayersDir,
-			Logger:    logger,
-		}
 	}
 
 	var err error

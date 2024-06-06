@@ -6,9 +6,12 @@ import (
 	"github.com/buildpacks/imgutil"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 // ConnectedFactory is used to construct lifecycle phases that require access to an image repository
@@ -58,6 +61,36 @@ func (f *ConnectedFactory) ensureRegistryAccess(inputs platform.LifecycleInputs)
 	return nil
 }
 
+func (f *ConnectedFactory) getAnalyzed(analyzedPath string, logger log.Logger) (files.Analyzed, error) {
+	return f.configHandler.ReadAnalyzed(analyzedPath, logger)
+}
+
+func (f *ConnectedFactory) getBuildpacks(groupPath string, withOptionalGroup buildpack.Group, logger log.Logger) ([]buildpack.GroupElement, error) {
+	group := withOptionalGroup
+	var err error
+	if withOptionalGroup.Group == nil {
+		group, err = f.configHandler.ReadGroup(groupPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err = f.verifyGroup(group.Group, logger); err != nil {
+		return nil, err
+	}
+	return group.Group, nil
+}
+
+func (f *ConnectedFactory) getExtensions(groupPath string, logger log.Logger) ([]buildpack.GroupElement, error) {
+	group, err := f.configHandler.ReadGroup(groupPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading group: %w", err)
+	}
+	if err = f.verifyGroup(group.GroupExtensions, logger); err != nil {
+		return nil, err
+	}
+	return group.GroupExtensions, nil
+}
+
 func (f *ConnectedFactory) getPreviousImage(imageRef string, launchCacheDir string) (imgutil.Image, error) {
 	if imageRef == "" {
 		return nil, nil
@@ -85,4 +118,13 @@ func (f *ConnectedFactory) getRunImage(imageRef string) (imgutil.Image, error) {
 		return nil, fmt.Errorf("getting run image: %w", err)
 	}
 	return runImage, nil
+}
+
+func (f *ConnectedFactory) verifyGroup(group []buildpack.GroupElement, logger log.Logger) error {
+	for _, groupEl := range group {
+		if err := f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), groupEl.API, logger); err != nil {
+			return err
+		}
+	}
+	return nil
 }

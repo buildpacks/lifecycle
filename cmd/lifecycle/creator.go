@@ -124,7 +124,7 @@ func (c *createCmd) Exec() error {
 		plan       files.Plan
 	)
 	cmd.DefaultLogger.Phase("ANALYZING")
-	analyzerFactory := phase.NewConnectedFactory(
+	connectedFactory := phase.NewConnectedFactory(
 		c.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(c.keychain),
@@ -132,7 +132,7 @@ func (c *createCmd) Exec() error {
 		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistries),
 		image.NewRegistryHandler(c.keychain, c.InsecureRegistries),
 	)
-	analyzer, err := analyzerFactory.NewAnalyzer(c.Inputs(), cmd.DefaultLogger)
+	analyzer, err := connectedFactory.NewAnalyzer(c.Inputs(), cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize analyzer")
 	}
@@ -146,13 +146,13 @@ func (c *createCmd) Exec() error {
 
 	// Detect
 	cmd.DefaultLogger.Phase("DETECTING")
-	detectorFactory := phase.NewHermeticFactory(
+	hermeticFactory := phase.NewHermeticFactory(
 		c.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		files.NewHandler(),
 		dirStore,
 	)
-	detector, err := detectorFactory.NewDetector(c.Inputs(), cmd.DefaultLogger)
+	detector, err := hermeticFactory.NewDetector(c.Inputs(), cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}
@@ -171,12 +171,12 @@ func (c *createCmd) Exec() error {
 	// Restore
 	if !c.SkipLayers || c.PlatformAPI.AtLeast("0.10") {
 		cmd.DefaultLogger.Phase("RESTORING")
-		restoreCmd := &restoreCmd{
-			Platform: c.Platform,
-			keychain: c.keychain,
+		restorer, err := connectedFactory.NewRestorer(c.Inputs(), cmd.DefaultLogger, buildpack.Group{})
+		if err != nil {
+			return unwrapErrorFailWithMessage(err, "initialize restorer")
 		}
-		if err := restoreCmd.restore(analyzedMD.LayersMetadata, group, cacheStore); err != nil {
-			return err
+		if err = restorer.RestoreCache(); err != nil {
+			return cmd.FailErrCode(err, c.CodeFor(platform.RestoreError), "restore")
 		}
 	}
 

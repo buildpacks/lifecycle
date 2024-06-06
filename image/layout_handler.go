@@ -8,13 +8,17 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
+	"github.com/buildpacks/imgutil/remote"
+	"github.com/google/go-containerregistry/pkg/authn"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 const LayoutKind = "layout"
 
 type LayoutHandler struct {
-	layoutDir string
+	layoutDir          string
+	keychain           authn.Keychain
+	insecureRegistries []string
 }
 
 func (h *LayoutHandler) InitImage(imageRef string) (imgutil.Image, error) {
@@ -27,6 +31,25 @@ func (h *LayoutHandler) InitImage(imageRef string) (imgutil.Image, error) {
 		return nil, err
 	}
 	return layout.NewImage(path, layout.FromBaseImagePath(path))
+}
+
+// InitRemoteImage TODO
+func (h *LayoutHandler) InitRemoteImage(imageRef string) (imgutil.Image, error) {
+	if imageRef == "" {
+		return nil, nil
+	}
+
+	options := []imgutil.ImageOption{
+		remote.FromBaseImage(imageRef),
+	}
+
+	options = append(options, GetInsecureOptions(h.insecureRegistries)...)
+
+	return remote.NewImage(
+		imageRef,
+		h.keychain,
+		options...,
+	)
 }
 
 func (h *LayoutHandler) Kind() string {
