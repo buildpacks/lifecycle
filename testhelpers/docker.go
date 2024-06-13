@@ -2,7 +2,6 @@ package testhelpers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -12,7 +11,6 @@ import (
 	"sync"
 	"testing"
 
-	dockertypes "github.com/docker/docker/api/types"
 	dockercli "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/pkg/errors"
@@ -108,16 +106,26 @@ func DockerVolumeExists(t *testing.T, volumeName string) bool {
 }
 
 // FIXME: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
-func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) error {
-	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: auth})
-	if err != nil {
-		return errors.Wrap(err, "pushing image")
+func PushImage(ref string, auth string) error {
+	// Filter out any existing DOCKER_CONFIG from the environment
+	filteredEnv := []string{}
+	for _, envVar := range os.Environ() {
+		if !strings.HasPrefix(envVar, "DOCKER_CONFIG=") {
+			filteredEnv = append(filteredEnv, envVar)
+		}
 	}
+	// Append the new DOCKER_CONFIG to the filtered environment
+	newEnv := append(filteredEnv, "DOCKER_CONFIG="+auth)
 
-	defer rc.Close()
-	err = checkResponse(rc)
+	cmd := exec.Command("docker", "push", ref)
+	cmd.Env = newEnv
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
 	if err != nil {
-		return errors.Wrap(err, "push response")
+		return errors.Wrapf(err, "error pushing image: %s", stderr.String())
 	}
 
 	return nil
