@@ -13,6 +13,7 @@ import (
 	"github.com/apex/log/handlers/discard"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -586,6 +587,39 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							assertAfter: func() {
 								h.AssertLogEntry(t, logHandler, "new runtime base image 'some-other-run-image' not found in run metadata")
 							},
+						},
+						{
+							before: func() {
+								generator.RunMetadata = files.Run{
+									Images: []files.RunImageForExport{
+										{Image: "some-run-image"},
+										{Image: "some-second-run-image", Mirrors: []string{"some-second-run-image-mirror"}},
+									},
+								}
+
+								generator.AccessChecker = func(repo string, _ authn.Keychain) (bool, error) {
+									switch repo {
+									case "some-second-run-image-mirror":
+										return true, nil
+									default:
+										return false, nil
+									}
+								}
+							},
+							descCondition: "run metadata is provided but the image is not accessible",
+							descResult:    "selects the run image mirror",
+							aDockerfiles: []buildpack.DockerfileInfo{
+								{
+									ExtensionID: "A",
+									Kind:        "run",
+									Path:        runDockerfilePathA,
+									WithBase:    "some-second-run-image",
+									Extend:      false,
+								},
+							},
+							bDockerfiles:              []buildpack.DockerfileInfo{},
+							expectedRunImageImage:     "some-second-run-image-mirror",
+							expectedRunImageReference: "some-second-run-image-mirror",
 						},
 					} {
 						tc := tc

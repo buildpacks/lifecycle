@@ -27,6 +27,7 @@ type Generator struct {
 	DirStore       DirStore
 	Executor       buildpack.GenerateExecutor
 	Extensions     []buildpack.GroupElement
+	AccessChecker  platform.CheckReadAccess
 	Logger         log.Logger
 	Out, Err       io.Writer
 	Plan           files.Plan
@@ -43,6 +44,7 @@ func (f *HermeticFactory) NewGenerator(inputs platform.LifecycleInputs, stdout, 
 		PlatformDir:    inputs.PlatformDir,
 		DirStore:       f.dirStore,
 		Executor:       &buildpack.DefaultGenerateExecutor{},
+		AccessChecker:  inputs.AccessChecker(),
 		Logger:         logger,
 		Out:            stdout,
 		Err:            stderr,
@@ -119,6 +121,11 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	if generatedRunImageRef != "" && g.isNew(generatedRunImageRef) {
 		if !g.RunMetadata.Contains(generatedRunImageRef) {
 			g.Logger.Warnf("new runtime base image '%s' not found in run metadata", generatedRunImageRef)
+		} else {
+			generatedRunImageRef, err = platform.BestRunImageMirrorFor("", g.RunMetadata.FindByRef(generatedRunImageRef), g.AccessChecker)
+			if err != nil {
+				return GenerateResult{}, err
+			}
 		}
 		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", generatedRunImageRef)
 		finalAnalyzedMD.RunImage = &files.RunImage{ // target data is cleared
