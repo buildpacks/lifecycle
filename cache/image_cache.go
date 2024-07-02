@@ -106,11 +106,13 @@ func (c *ImageCache) ReuseLayer(diffID string) error {
 	return c.newImage.ReuseLayer(diffID)
 }
 
+// IsLayerNotFound checks if the error is a layer not found error
 func IsLayerNotFound(err error) bool {
 	var e imgutil.ErrLayerNotFound
 	return errors.As(err, &e)
 }
 
+// RetrieveLayer retrieves a layer from the cache
 func (c *ImageCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
 	closer, err := c.origImage.GetLayer(diffID)
 	if err != nil {
@@ -142,6 +144,7 @@ func (c *ImageCache) Commit() error {
 	return nil
 }
 
+// LayerExists checks if a layer exists in the cache
 func (c *ImageCache) LayerExists(diffID string) (bool, error) {
 	layers, err := c.origImage.UnderlyingImage().Layers()
 	if err != nil {
@@ -161,6 +164,7 @@ func (c *ImageCache) LayerExists(diffID string) (bool, error) {
 	return false, nil
 }
 
+// Destroy deletes the cache image
 func (c *ImageCache) Destroy() {
 	c.imageDeleter.DeleteImage(c.origImage)
 }

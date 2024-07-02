@@ -7,10 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/log"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/log"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"

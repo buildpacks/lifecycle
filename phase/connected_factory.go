@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/imgutil"
+
 	"github.com/buildpacks/lifecycle/log"
 
 	"github.com/buildpacks/lifecycle/api"

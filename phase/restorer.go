@@ -3,9 +3,10 @@ package phase
 import (
 	"path/filepath"
 
-	c "github.com/buildpacks/lifecycle/cache"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
+
+	c "github.com/buildpacks/lifecycle/cache"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"

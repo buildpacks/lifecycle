@@ -10,9 +10,10 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
-	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/lifecycle/cmd"
 
 	"github.com/buildpacks/lifecycle/cache"
 	h "github.com/buildpacks/lifecycle/testhelpers"

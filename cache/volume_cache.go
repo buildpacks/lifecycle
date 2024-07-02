@@ -9,8 +9,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/log"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/log"
 
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/platform"
@@ -25,6 +26,7 @@ type VolumeCache struct {
 	logger       log.Logger
 }
 
+// NewVolumeCache creates a new VolumeCache
 func NewVolumeCache(dir string, logger log.Logger) (*VolumeCache, error) {
 	if _, err := os.Stat(dir); err != nil {
 		return nil, err
@@ -227,6 +229,7 @@ func (c *VolumeCache) setupStagingDir() error {
 	return os.MkdirAll(c.stagingDir, 0777)
 }
 
+// LayerExists returns true if the layer with the given diffID exists in the cache
 func (c *VolumeCache) LayerExists(diffID string) (bool, error) {
 	path := diffIDPath(c.committedDir, diffID)
 	if _, err := os.Stat(path); err != nil {
@@ -238,6 +241,7 @@ func (c *VolumeCache) LayerExists(diffID string) (bool, error) {
 	return true, nil
 }
 
+// Destroy removes the cache directory and all its contents
 func (c *VolumeCache) Destroy() {
 	if err := os.RemoveAll(c.dir); err != nil {
 		c.logger.Warnf("Unable to delete cache directory: %v", err.Error())
