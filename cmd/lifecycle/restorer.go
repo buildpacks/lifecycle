@@ -305,7 +305,7 @@ func (r *restoreCmd) restore(layerMetadata files.LayersMetadata, group buildpack
 		Buildpacks:            group.Group,
 		Logger:                cmd.DefaultLogger,
 		PlatformAPI:           r.PlatformAPI,
-		LayerMetadataRestorer: layer.NewDefaultMetadataRestorer(r.LayersDir, r.SkipLayers, cmd.DefaultLogger),
+		LayerMetadataRestorer: layer.NewDefaultMetadataRestorer(r.LayersDir, r.SkipLayers, cmd.DefaultLogger, r.PlatformAPI),
 		LayersMetadata:        layerMetadata,
 		SBOMRestorer: layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
 			LayersDir: r.LayersDir,

@@ -42,7 +42,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		layerDir, err = os.MkdirTemp("", "lifecycle-layer-dir")
 		h.AssertNil(t, err)
 		logger = log.Logger{Handler: &discard.Handler{}}
-		layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger)
+		layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger, api.Platform.Latest())
 		layerSHAStore = layer.NewSHAStore()
 	})
 
@@ -136,11 +136,40 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 					{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
 					// Cache-image-only layers.
 					{"metadata.buildpack/cache.toml", "[metadata]\n  cache-key = \"cache-value\""},
+					// Cached launch layers not in app
+					{"metadata.buildpack/launch-cache-not-in-app.toml", "[metadata]\n  cache-only-key = \"cache-only-value\"\n  launch-cache-key = \"cache-specific-value\""},
 				} {
 					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
 					h.AssertStringContains(t, string(got), data.want)
 					h.AssertStringDoesNotContain(t, string(got), unsetFlags) // The [types] table shouldn't exist. The build, cache and launch flags are set to false.
 				}
+			})
+
+			when("platformAPI is less than 0.14", func() {
+				it.Before(func() {
+					layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger, api.MustParse("0.13"))
+				})
+
+				it("ignores launch-cache-not-in-app", func() {
+					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
+					h.AssertNil(t, err)
+
+					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack/launch-cache-not-in-app.toml"))
+					unsetFlags := "[types]"
+					for _, data := range []struct{ name, want string }{
+						// App layers.
+						{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
+						{"metadata.buildpack/launch-build-cache.toml", "[metadata]\n  launch-build-cache-key = \"launch-build-cache-value\""},
+						{"metadata.buildpack/launch-cache.toml", "[metadata]\n  launch-cache-key = \"launch-cache-value\""},
+						{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
+						// Cache-image-only layers.
+						{"metadata.buildpack/cache.toml", "[metadata]\n  cache-key = \"cache-value\""},
+					} {
+						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
+						h.AssertStringContains(t, string(got), data.want)
+						h.AssertStringDoesNotContain(t, string(got), unsetFlags) // The [types] table shouldn't exist. The build, cache and launch flags are set to false.
+					}
+				})
 			})
 
 			it("restores layer metadata without the launch, build and cache flags", func() {
@@ -184,14 +213,6 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "no.group.buildpack"))
-			})
-
-			it("does not restore launch=true layer metadata", func() {
-				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
-				h.AssertNil(t, err)
-
-				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache-not-in-app.toml"))
-				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache-not-in-app.sha"))
 			})
 
 			it("does not restore cache=false layer metadata", func() {
@@ -299,7 +320,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("skip layers is true", func() {
 				it.Before(func() {
 					skipLayers = true
-					layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger)
+					layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger, api.Platform.Latest())
 				})
 
 				it("does not write buildpack layer metadata", func() {
