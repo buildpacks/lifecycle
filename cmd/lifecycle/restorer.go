@@ -50,7 +50,9 @@ func (r *restoreCmd) DefineFlags() {
 		cli.FlagBuildImage(&r.BuildImageRef)
 	}
 	cli.FlagAnalyzedPath(&r.AnalyzedPath)
-	cli.FlagRunPath(&r.RunPath)
+	if r.PlatformAPI.AtLeast("0.14") {
+		cli.FlagRunPath(&r.RunPath)
+	}
 	cli.FlagCacheDir(&r.CacheDir)
 	cli.FlagCacheImage(&r.CacheImageRef)
 	cli.FlagGID(&r.GID)
@@ -104,11 +106,6 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	runToml, err := files.Handler.ReadRun(r.RunPath, cmd.DefaultLogger)
-	if err != nil {
-		return err
-	}
-
 	var analyzedMD files.Analyzed
 	if analyzedMD, err = files.Handler.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
 		if r.supportsBuildImageExtension() && r.BuildImageRef != "" {
@@ -129,14 +126,13 @@ func (r *restoreCmd) Exec() error {
 			runImage imgutil.Image
 		)
 		runImageName := analyzedMD.RunImageImage() // FIXME: if we have a digest reference available in `Reference` (e.g., in the non-daemon case) we should use it
-		if runToml.Contains(runImageName) {
-			runImageName, err = platform.BestRunImageMirrorFor("", runToml.FindByRef(runImageName), r.AccessChecker())
-			if err != nil {
-				return err
-			}
-
-			analyzedMD.RunImage.Image = runImageName
-			analyzedMD.RunImage.Reference = runImageName
+		accessibleRunImage, err := r.runImageAccessCheck(runImageName)
+		if err != nil {
+			return err
+		}
+		if runImageName != accessibleRunImage {
+			analyzedMD.RunImage.Image = accessibleRunImage
+			analyzedMD.RunImage.Reference = accessibleRunImage
 		}
 
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
@@ -206,6 +202,23 @@ func needsPulling(runImage *files.RunImage) bool {
 		return false
 	}
 	return runImage.Extend
+}
+
+func (r *restoreCmd) runImageAccessCheck(runImageName string) (string, error) {
+	if r.PlatformAPI.LessThan("0.14") {
+		return runImageName, nil
+	}
+
+	runToml, err := files.Handler.ReadRun(r.RunPath, cmd.DefaultLogger)
+	if err != nil {
+		return "", err
+	}
+
+	if !runToml.Contains(runImageName) {
+		return runImageName, nil
+	}
+
+	return platform.BestRunImageMirrorFor("", runToml.FindByRef(runImageName), r.AccessChecker())
 }
 
 func (r *restoreCmd) needsUpdating(runImage *files.RunImage, group buildpack.Group) bool {
