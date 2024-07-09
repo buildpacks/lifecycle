@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/buildpacks/imgutil"
@@ -120,19 +121,28 @@ func EnvVarsFor(d fsutil.Detector, tm files.TargetMetadata, logger log.Logger) [
 		logger.Info("target distro name/version labels not found, reading /etc/os-release file")
 		GetTargetOSFromFileSystem(d, &tm, logger)
 	}
+	// required
 	ret := []string{
 		"CNB_TARGET_OS=" + tm.OS,
 		"CNB_TARGET_ARCH=" + tm.Arch,
-		"CNB_TARGET_ARCH_VARIANT=" + tm.ArchVariant,
 	}
+	// optional
 	var distName, distVersion string
 	if tm.Distro != nil {
 		distName = tm.Distro.Name
 		distVersion = tm.Distro.Version
 	}
-	ret = append(ret, "CNB_TARGET_DISTRO_NAME="+distName)
-	ret = append(ret, "CNB_TARGET_DISTRO_VERSION="+distVersion)
+	ret = appendIfNotEmpty(ret, "CNB_TARGET_ARCH_VARIANT", tm.ArchVariant)
+	ret = appendIfNotEmpty(ret, "CNB_TARGET_DISTRO_NAME", distName)
+	ret = appendIfNotEmpty(ret, "CNB_TARGET_DISTRO_VERSION", distVersion)
 	return ret
+}
+
+func appendIfNotEmpty(env []string, key, val string) []string {
+	if val == "" {
+		return env
+	}
+	return append(env, fmt.Sprintf("%s=%s", key, val))
 }
 
 // TargetSatisfiedForRebase treats optional fields (ArchVariant and Distribution fields) as wildcards if empty, returns true if all populated fields match
