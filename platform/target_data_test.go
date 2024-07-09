@@ -2,6 +2,7 @@ package platform_test
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/apex/log"
@@ -129,6 +130,8 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 				t:       t,
 				HasFile: true}
 			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertEq(t, "linux", tm.OS)
+			h.AssertEq(t, runtime.GOARCH, tm.Arch)
 			h.AssertEq(t, "opensesame", tm.Distro.Name)
 			h.AssertEq(t, "3.14", tm.Distro.Version)
 		})
@@ -199,12 +202,28 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 			observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
 			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
 			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
-			// note: per the spec only the ID field is optional, so I guess the others should always be set: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md#runtime-metadata
-			// the empty ones:
-			h.AssertContains(t, observed, "CNB_TARGET_ARCH_VARIANT=")
-			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME=")
-			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION=")
-			h.AssertEq(t, len(observed), 5)
+			h.AssertEq(t, len(observed), 2)
+		})
+
+		when("optional vars are empty", func() {
+			it("omits them", func() {
+				tm := files.TargetMetadata{
+					// required
+					OS:   "linux",
+					Arch: "pentium",
+					// optional
+					ArchVariant: "",
+					Distro:      &files.OSDistro{Name: "nix", Version: ""},
+					ID:          "",
+				}
+				d := &mockDetector{
+					contents: "this is just test contents really",
+					t:        t,
+					HasFile:  false,
+				}
+				observed := platform.EnvVarsFor(d, tm, &log.Logger{Handler: memory.New()})
+				h.AssertEq(t, len(observed), 3)
+			})
 		})
 	})
 

@@ -221,7 +221,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Do(
 				func(_ buildpack.Descriptor, inputs buildpack.DetectInputs, _ log.Logger) buildpack.DetectOutputs {
 					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_ARCH=amd64")
-					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_ARCH_VARIANT=")
 					h.AssertContains(t, inputs.TargetEnv, "CNB_TARGET_OS=linux")
 					return buildpack.DetectOutputs{}
 				})

@@ -1,6 +1,9 @@
 package platform
 
 import (
+	"fmt"
+	"runtime"
+
 	"github.com/buildpacks/imgutil"
 
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -87,10 +90,16 @@ func matches(target1, target2 string) bool {
 	return target1 == target2
 }
 
-// GetTargetOSFromFileSystem populates the target metadata you pass in if the information is available
-// returns a boolean indicating whether it populated any data.
+// GetTargetOSFromFileSystem populates the provided target metadata with information from /etc/os-release
+// if it is available.
 func GetTargetOSFromFileSystem(d fsutil.Detector, tm *files.TargetMetadata, logger log.Logger) {
 	if d.HasSystemdFile() {
+		if tm.OS == "" {
+			tm.OS = "linux"
+		}
+		if tm.Arch == "" {
+			tm.Arch = runtime.GOARCH // in a future world where we support cross platform builds, this should be removed
+		}
 		contents, err := d.ReadSystemdFile()
 		if err != nil {
 			logger.Warnf("Encountered error trying to read /etc/os-release file: %s", err.Error())
@@ -112,19 +121,28 @@ func EnvVarsFor(d fsutil.Detector, tm files.TargetMetadata, logger log.Logger) [
 		logger.Info("target distro name/version labels not found, reading /etc/os-release file")
 		GetTargetOSFromFileSystem(d, &tm, logger)
 	}
+	// required
 	ret := []string{
 		"CNB_TARGET_OS=" + tm.OS,
 		"CNB_TARGET_ARCH=" + tm.Arch,
-		"CNB_TARGET_ARCH_VARIANT=" + tm.ArchVariant,
 	}
+	// optional
 	var distName, distVersion string
 	if tm.Distro != nil {
 		distName = tm.Distro.Name
 		distVersion = tm.Distro.Version
 	}
-	ret = append(ret, "CNB_TARGET_DISTRO_NAME="+distName)
-	ret = append(ret, "CNB_TARGET_DISTRO_VERSION="+distVersion)
+	ret = appendIfNotEmpty(ret, "CNB_TARGET_ARCH_VARIANT", tm.ArchVariant)
+	ret = appendIfNotEmpty(ret, "CNB_TARGET_DISTRO_NAME", distName)
+	ret = appendIfNotEmpty(ret, "CNB_TARGET_DISTRO_VERSION", distVersion)
 	return ret
+}
+
+func appendIfNotEmpty(env []string, key, val string) []string {
+	if val == "" {
+		return env
+	}
+	return append(env, fmt.Sprintf("%s=%s", key, val))
 }
 
 // TargetSatisfiedForRebase treats optional fields (ArchVariant and Distribution fields) as wildcards if empty, returns true if all populated fields match
