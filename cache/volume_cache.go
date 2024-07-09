@@ -147,7 +147,7 @@ func (c *VolumeCache) ReuseLayer(diffID string) error {
 			return NewReadErr(fmt.Sprintf("Layer with SHA '%s' not found", diffID))
 		}
 		if os.IsPermission(err) {
-			return NewReadErr(fmt.Sprintf("Cannot read cache layer with SHA '%s' due to insufficient permissions", diffID))
+			return NewReadErr(fmt.Sprintf("failed to read cache layer with SHA '%s' due to insufficient permissions", diffID))
 		}
 		return fmt.Errorf("failed to re-use cache layer with SHA '%s': %w", diffID, err)
 	}
