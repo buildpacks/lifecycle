@@ -187,7 +187,7 @@ func (c *VolumeCache) RetrieveLayerFile(diffID string) (string, error) {
 	path := diffIDPath(c.committedDir, diffID)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return "", NewReadErr(fmt.Sprintf("Layer with SHA '%s' not found", diffID))
+			return "", NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
 		}
 		return "", errors.Wrapf(err, "retrieving layer with SHA '%s'", diffID)
 	}
