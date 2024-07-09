@@ -211,7 +211,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			when("layer does not exist", func() {
 				it("returns an error", func() {
 					_, err := subject.RetrieveLayer("some_nonexistent_sha")
-					h.AssertError(t, err, "Layer with SHA 'some_nonexistent_sha' not found")
+					h.AssertError(t, err, "failed to find cache layer with SHA 'some_nonexistent_sha'")
 				})
 			})
 		})
@@ -235,7 +235,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			when("layer does not exist", func() {
 				it("returns an error", func() {
 					_, err := subject.RetrieveLayerFile("some_nonexistent_sha")
-					h.AssertError(t, err, "Layer with SHA 'some_nonexistent_sha' not found")
+					h.AssertError(t, err, "failed to find cache layer with SHA 'some_nonexistent_sha'")
 				})
 			})
 		})
@@ -345,7 +345,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
 
 						_, err := subject.RetrieveLayer("some_sha")
-						h.AssertError(t, err, "Layer with SHA 'some_sha' not found")
+						h.AssertError(t, err, "failed to find cache layer with SHA 'some_sha'")
 					})
 				})
 
@@ -420,7 +420,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, subject.AddLayer(layerReader, layerSha))
 
 						_, err := subject.RetrieveLayer(layerSha)
-						h.AssertError(t, err, fmt.Sprintf("Layer with SHA '%s' not found", layerSha))
+						h.AssertError(t, err, fmt.Sprintf("failed to find cache layer with SHA '%s'", layerSha))
 					})
 				})
 

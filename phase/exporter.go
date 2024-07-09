@@ -34,9 +34,7 @@ type Cache interface {
 	AddLayerFile(tarPath string, sha string) error
 	ReuseLayer(sha string) error
 	RetrieveLayer(sha string) (io.ReadCloser, error)
-	LayerExists(sha string) (bool, error)
 	Commit() error
-	Destroy()
 }
 
 type Exporter struct {

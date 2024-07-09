@@ -168,7 +168,7 @@ func (c *VolumeCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
 		if os.IsPermission(err) {
 			return nil, NewReadErr(fmt.Sprintf("failed to read cache layer with SHA '%s' due to insufficient permissions", diffID))
 		}
-		return nil, NewReadErr(fmt.Sprintf("unknown error retrieving layer with SHA '%s'", diffID))
+		return nil, fmt.Errorf("failed to get cache layer with SHA '%s'", diffID)
 	}
 	return file, nil
 }
@@ -227,23 +227,4 @@ func (c *VolumeCache) setupStagingDir() error {
 		return err
 	}
 	return os.MkdirAll(c.stagingDir, 0777)
-}
-
-// LayerExists returns true if the layer with the given diffID exists in the cache
-func (c *VolumeCache) LayerExists(diffID string) (bool, error) {
-	path := diffIDPath(c.committedDir, diffID)
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, errors.Wrapf(err, "retrieving layer with SHA '%s'", diffID)
-	}
-	return true, nil
-}
-
-// Destroy removes the cache directory and all its contents
-func (c *VolumeCache) Destroy() {
-	if err := os.RemoveAll(c.dir); err != nil {
-		c.logger.Warnf("Unable to delete cache directory: %v", err.Error())
-	}
 }
