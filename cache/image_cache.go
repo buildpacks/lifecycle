@@ -117,7 +117,7 @@ func (c *ImageCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
 	closer, err := c.origImage.GetLayer(diffID)
 	if err != nil {
 		if IsLayerNotFound(err) {
-			return nil, NewReadErr(fmt.Sprintf("Layer with SHA '%s' not found", diffID))
+			return nil, NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
 		}
 		return nil, NewReadErr(fmt.Sprintf("unknown error retrieving layer with SHA '%s'", diffID))
 	}
