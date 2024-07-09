@@ -104,7 +104,7 @@ func (r *Restorer) Restore(cache Cache) error {
 					if err != nil {
 						isReadErr, readErr := c.IsReadErr(err)
 						if isReadErr {
-							r.Logger.Warnf("%s, skipping restore", readErr.Error())
+							r.Logger.Warnf("Skipping restore for layer %s: %s", bpLayer.Identifier(), readErr.Error())
 							return nil
 						}
 						return errors.Wrapf(err, "restoring layer %s", bpLayer.Identifier())
