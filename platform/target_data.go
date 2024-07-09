@@ -1,6 +1,8 @@
 package platform
 
 import (
+	"runtime"
+
 	"github.com/buildpacks/imgutil"
 
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -87,10 +89,16 @@ func matches(target1, target2 string) bool {
 	return target1 == target2
 }
 
-// GetTargetOSFromFileSystem populates the target metadata you pass in if the information is available
-// returns a boolean indicating whether it populated any data.
+// GetTargetOSFromFileSystem populates the provided target metadata with information from /etc/os-release
+// if it is available.
 func GetTargetOSFromFileSystem(d fsutil.Detector, tm *files.TargetMetadata, logger log.Logger) {
 	if d.HasSystemdFile() {
+		if tm.OS == "" {
+			tm.OS = "linux"
+		}
+		if tm.Arch == "" {
+			tm.Arch = runtime.GOARCH // in a future world where we support cross platform builds, this should be removed
+		}
 		contents, err := d.ReadSystemdFile()
 		if err != nil {
 			logger.Warnf("Encountered error trying to read /etc/os-release file: %s", err.Error())

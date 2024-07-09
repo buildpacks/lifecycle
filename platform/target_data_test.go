@@ -2,6 +2,7 @@ package platform_test
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/apex/log"
@@ -129,6 +130,8 @@ func testTargetData(t *testing.T, when spec.G, it spec.S) {
 				t:       t,
 				HasFile: true}
 			platform.GetTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertEq(t, "linux", tm.OS)
+			h.AssertEq(t, runtime.GOARCH, tm.Arch)
 			h.AssertEq(t, "opensesame", tm.Distro.Name)
 			h.AssertEq(t, "3.14", tm.Distro.Version)
 		})
