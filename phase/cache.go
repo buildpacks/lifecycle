@@ -107,7 +107,7 @@ func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir LayerDir, previous
 			if !isReadErr {
 				return "", errors.Wrapf(err, "reusing layer %s", layer.ID)
 			}
-			e.Logger.Warnf("%s, skipping reuse", readErr.Error())
+			e.Logger.Warnf(r.Logger.Warnf("Skipping re-use for layer %s: %s", layer.ID, readErr.Error()))
 		}
 	}
 	e.Logger.Infof("Adding cache layer '%s'\n", layer.ID)
