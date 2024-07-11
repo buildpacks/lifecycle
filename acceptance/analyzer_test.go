@@ -450,7 +450,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "validating registry write access: ensure registry read/write access to " + analyzeRegFixtures.InaccessibleImage
+						expected := "ensure registry read/write access to " + analyzeRegFixtures.InaccessibleImage
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})

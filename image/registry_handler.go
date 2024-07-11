@@ -1,12 +1,11 @@
 package image
 
 import (
+	"fmt"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/pkg/errors"
-
-	"github.com/buildpacks/lifecycle/cmd"
 )
 
 // RegistryHandler takes care of the registry settings and checks
@@ -73,8 +72,7 @@ func verifyReadAccess(imageRef string, keychain authn.Keychain, opts []imgutil.I
 	img, _ := remote.NewImage(imageRef, keychain, opts...)
 	canRead, err := img.CheckReadAccess()
 	if !canRead {
-		cmd.DefaultLogger.Debugf("Error checking read access: %s", err)
-		return errors.Errorf("ensure registry read access to %s", imageRef)
+		return fmt.Errorf("failed to ensure registry read access to %s: %w", imageRef, err)
 	}
 
 	return nil
@@ -88,8 +86,7 @@ func verifyReadWriteAccess(imageRef string, keychain authn.Keychain, opts []imgu
 	img, _ := remote.NewImage(imageRef, keychain, opts...)
 	canReadWrite, err := img.CheckReadWriteAccess()
 	if !canReadWrite {
-		cmd.DefaultLogger.Debugf("Error checking read/write access: %s", err)
-		return errors.Errorf("ensure registry read/write access to %s", imageRef)
+		return fmt.Errorf("failed to ensure registry read/write access to %s: %w", imageRef, err)
 	}
 	return nil
 }
