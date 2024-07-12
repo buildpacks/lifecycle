@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"strings"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
@@ -116,7 +117,8 @@ func IsLayerNotFound(err error) bool {
 func (c *ImageCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
 	closer, err := c.origImage.GetLayer(diffID)
 	if err != nil {
-		if IsLayerNotFound(err) {
+		// TODO: This is a workaround for a bug in the imgutil library where it returns an error when the layer is not found
+		if IsLayerNotFound(err) || strings.Contains(err.Error(), "EOF") {
 			return nil, NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
 		}
 		return nil, fmt.Errorf("failed to get cache layer with SHA '%s'", diffID)
