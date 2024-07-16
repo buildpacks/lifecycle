@@ -113,7 +113,7 @@ func (c *ImageCache) ReuseLayer(diffID string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
-	err := c.origImage.ReuseLayer(diffID)
+	err := c.newImage.ReuseLayer(diffID)
 	if err != nil {
 		// FIXME: this path is not currently executed.
 		// If a blob is not present in the registry, we should get imgutil.ErrLayerNotFound.
