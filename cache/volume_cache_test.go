@@ -512,6 +512,21 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, string(bytes), "existing data")
 					})
 				})
+
+				when("the layer does not exist", func() {
+					it("fails with a read error", func() {
+						err := subject.ReuseLayer("some_nonexistent_sha")
+						isReadErr, _ := cache.IsReadErr(err)
+						h.AssertEq(t, isReadErr, true)
+
+						err = subject.Commit()
+						h.AssertNil(t, err)
+
+						_, err = subject.RetrieveLayer("some_sha")
+						isReadErr, _ = cache.IsReadErr(err)
+						h.AssertEq(t, isReadErr, true)
+					})
+				})
 			})
 
 			when("attempting to commit more than once", func() {
