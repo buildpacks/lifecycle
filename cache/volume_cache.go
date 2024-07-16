@@ -168,6 +168,9 @@ func (c *VolumeCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
 		if os.IsPermission(err) {
 			return nil, NewReadErr(fmt.Sprintf("failed to read cache layer with SHA '%s' due to insufficient permissions", diffID))
 		}
+		if os.IsNotExist(err) {
+			return nil, NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
+		}
 		return nil, fmt.Errorf("failed to get cache layer with SHA '%s'", diffID)
 	}
 	return file, nil
