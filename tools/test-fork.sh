@@ -35,10 +35,22 @@ if [[ $registry != "index.docker.io" ]]; then
   sed -i '' "s/username: \${{ secrets.DOCKER_USERNAME }}/login-server: $registry\n          username: $username/g" .github/workflows/*.yml
 fi
 
-# If using ghcr.io, we don't need to set the DOCKER_* secrets. Update the login action to use GitHub token instead.
 if [[ $registry == *"ghcr.io"* ]]; then
+  # If using ghcr.io, we don't need to set the DOCKER_* secrets. Update the login action to use GitHub token instead.
   echo "Updating login action to use GitHub token for ghcr.io"
   sed -i '' "s/secrets.DOCKER_PASSWORD/secrets.GITHUB_TOKEN/g" .github/workflows/*.yml
+
+  echo "Adding workflow permissions to push images to ghcr.io"
+  LF=$'\n'
+  sed -i '' "/      id-token: write/ a\\
+      contents: read\\
+      packages: write\\
+      attestations: write${LF}" .github/workflows/build.yml
+  sed -i '' "/      id-token: write/ a\\
+      contents: read\\
+      packages: write\\
+      attestations: write${LF}" .github/workflows/post-release.yml
+  LF=""
 fi
 
 echo "Removing arm tests (these require a self-hosted runner)"
