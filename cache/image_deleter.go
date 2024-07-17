@@ -12,6 +12,7 @@ import (
 // ImageDeleter defines the methods available to delete and compare cached images
 type ImageDeleter interface {
 	DeleteOrigImageIfDifferentFromNewImage(origImage, newImage imgutil.Image)
+	DeleteImage(image imgutil.Image)
 }
 
 // ImageDeleterImpl is a component to manage cache image deletion
@@ -35,13 +36,13 @@ func (c *ImageDeleterImpl) DeleteOrigImageIfDifferentFromNewImage(origImage, new
 		}
 
 		if !same {
-			c.deleteImage(origImage)
+			c.DeleteImage(origImage)
 		}
 	}
 }
 
-// deleteImage deletes an image
-func (c *ImageDeleterImpl) deleteImage(image imgutil.Image) {
+// DeleteImage deletes an image
+func (c *ImageDeleterImpl) DeleteImage(image imgutil.Image) {
 	if c.deletionEnabled {
 		if err := image.Delete(); err != nil {
 			c.logger.Warnf("Unable to delete cache image: %v", err.Error())

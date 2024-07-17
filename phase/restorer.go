@@ -6,6 +6,8 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
+	c "github.com/buildpacks/lifecycle/cache"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/layer"
@@ -98,7 +100,16 @@ func (r *Restorer) Restore(cache Cache) error {
 			} else {
 				r.Logger.Infof("Restoring data for %q from cache", bpLayer.Identifier())
 				g.Go(func() error {
-					return r.restoreCacheLayer(cache, cachedLayer.SHA)
+					err = r.restoreCacheLayer(cache, cachedLayer.SHA)
+					if err != nil {
+						isReadErr, readErr := c.IsReadErr(err)
+						if isReadErr {
+							r.Logger.Warnf("Skipping restore for layer %s: %s", bpLayer.Identifier(), readErr.Error())
+							return nil
+						}
+						return errors.Wrapf(err, "restoring layer %s", bpLayer.Identifier())
+					}
+					return nil
 				})
 			}
 		}

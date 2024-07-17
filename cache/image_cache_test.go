@@ -146,7 +146,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		when("layer does not exist", func() {
 			it("returns an error", func() {
 				_, err := subject.RetrieveLayer("some_nonexistent_sha")
-				h.AssertError(t, err, "failed to get layer with sha 'some_nonexistent_sha'")
+				h.AssertError(t, err, "failed to get cache layer with SHA 'some_nonexistent_sha'")
 			})
 		})
 	})
@@ -236,7 +236,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.AddLayerFile(testLayerTarPath, testLayerSHA))
 
 					_, err := subject.RetrieveLayer(testLayerSHA)
-					h.AssertError(t, err, fmt.Sprintf("failed to get layer with sha '%s'", testLayerSHA))
+					h.AssertError(t, err, fmt.Sprintf("failed to get cache layer with SHA '%s'", testLayerSHA))
 				})
 			})
 		})

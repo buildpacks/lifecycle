@@ -164,7 +164,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			cacheDir, err = os.MkdirTemp("", "lifecycle.cache-dir.")
 			h.AssertNil(t, err)
-			testCache, err = cache.NewVolumeCache(cacheDir)
+			testCache, err = cache.NewVolumeCache(cacheDir, &log.Logger{Handler: &discard.Handler{}})
 			h.AssertNil(t, err)
 			h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 			h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: files.LayerMetadata{SHA: layer.Digest}}))

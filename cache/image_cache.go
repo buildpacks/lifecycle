@@ -99,15 +99,44 @@ func (c *ImageCache) AddLayerFile(tarPath string, diffID string) error {
 	return c.newImage.AddLayerWithDiffID(tarPath, diffID)
 }
 
+// isLayerNotFound checks if the error is a layer not found error
+//
+// FIXME: we should not have to rely on trapping ErrUnexpectedEOF.
+// If a blob is not present in the registry, we should get imgutil.ErrLayerNotFound,
+// but we do not and instead get io.ErrUnexpectedEOF
+func isLayerNotFound(err error) bool {
+	var e imgutil.ErrLayerNotFound
+	return errors.As(err, &e) || errors.Is(err, io.ErrUnexpectedEOF)
+}
+
 func (c *ImageCache) ReuseLayer(diffID string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
-	return c.newImage.ReuseLayer(diffID)
+	err := c.newImage.ReuseLayer(diffID)
+	if err != nil {
+		// FIXME: this path is not currently executed.
+		// If a blob is not present in the registry, we should get imgutil.ErrLayerNotFound.
+		// We should then skip attempting to reuse the layer.
+		// However, we do not get imgutil.ErrLayerNotFound when the blob is not present.
+		if isLayerNotFound(err) {
+			return NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
+		}
+		return fmt.Errorf("failed to reuse cache layer with SHA '%s'", diffID)
+	}
+	return nil
 }
 
+// RetrieveLayer retrieves a layer from the cache
 func (c *ImageCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
-	return c.origImage.GetLayer(diffID)
+	closer, err := c.origImage.GetLayer(diffID)
+	if err != nil {
+		if isLayerNotFound(err) {
+			return nil, NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
+		}
+		return nil, fmt.Errorf("failed to get cache layer with SHA '%s'", diffID)
+	}
+	return closer, nil
 }
 
 func (c *ImageCache) Commit() error {

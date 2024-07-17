@@ -42,7 +42,7 @@ func (f *ConnectedFactory) NewAnalyzer(inputs platform.LifecycleInputs, logger l
 	}
 
 	var err error
-	if analyzer.PreviousImage, err = f.getPreviousImage(inputs.PreviousImageRef, inputs.LaunchCacheDir); err != nil {
+	if analyzer.PreviousImage, err = f.getPreviousImage(inputs.PreviousImageRef, inputs.LaunchCacheDir, logger); err != nil {
 		return nil, err
 	}
 	if analyzer.RunImage, err = f.getRunImage(inputs.RunImageRef); err != nil {

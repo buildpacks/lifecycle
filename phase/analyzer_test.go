@@ -332,6 +332,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 		it.Before(func() {
 			var err error
+			discardLogger := log.Logger{Handler: &discard.Handler{}}
 
 			tmpDir, err = os.MkdirTemp("", "analyzer-tests")
 			h.AssertNil(t, err)
@@ -342,14 +343,12 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 			cacheDir, err = os.MkdirTemp("", "some-cache-dir")
 			h.AssertNil(t, err)
 
-			testCache, err = cache.NewVolumeCache(cacheDir)
+			testCache, err = cache.NewVolumeCache(cacheDir, &discardLogger)
 			h.AssertNil(t, err)
 
 			previousImage = fakes.NewImage("image-repo-name", "", local.IDIdentifier{
 				ImageID: "s0m3D1g3sT",
 			})
-
-			discardLogger := log.Logger{Handler: &discard.Handler{}}
 
 			mockCtrl = gomock.NewController(t)
 
