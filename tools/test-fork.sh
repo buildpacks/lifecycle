@@ -51,7 +51,7 @@ if [[ -z $2 ]]; then
   sed -i '' "s/make acceptance/echo acceptance/g" .github/workflows/*.yml
   echo "$(sed '/pack-acceptance/,$d' .github/workflows/build.yml)" > .github/workflows/build.yml
   echo "Removing Codecov"
-  sed -i '' "/- name: Upload coverage to Codecov/,+6d" .github/workflows/build.yml
+  sed -i '' "/- name: Upload coverage to Codecov/,+7d" .github/workflows/build.yml
   sed -i '' "/- name: Prepare Codecov/,+6d" .github/workflows/build.yml
 else
   echo "Retaining tests"
