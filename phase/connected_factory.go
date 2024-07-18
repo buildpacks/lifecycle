@@ -5,6 +5,8 @@ import (
 
 	"github.com/buildpacks/imgutil"
 
+	"github.com/buildpacks/lifecycle/log"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/image"
@@ -58,7 +60,7 @@ func (f *ConnectedFactory) ensureRegistryAccess(inputs platform.LifecycleInputs)
 	return nil
 }
 
-func (f *ConnectedFactory) getPreviousImage(imageRef string, launchCacheDir string) (imgutil.Image, error) {
+func (f *ConnectedFactory) getPreviousImage(imageRef string, launchCacheDir string, logger log.Logger) (imgutil.Image, error) {
 	if imageRef == "" {
 		return nil, nil
 	}
@@ -69,7 +71,7 @@ func (f *ConnectedFactory) getPreviousImage(imageRef string, launchCacheDir stri
 	if launchCacheDir == "" || f.imageHandler.Kind() != image.LocalKind {
 		return previousImage, nil
 	}
-	volumeCache, err := cache.NewVolumeCache(launchCacheDir)
+	volumeCache, err := cache.NewVolumeCache(launchCacheDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("creating launch cache: %w", err)
 	}

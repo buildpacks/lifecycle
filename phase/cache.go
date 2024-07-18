@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	c "github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
@@ -100,7 +101,14 @@ func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir LayerDir, previous
 	if layer.Digest == previousSHA {
 		e.Logger.Infof("Reusing cache layer '%s'\n", layer.ID)
 		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
-		return layer.Digest, cache.ReuseLayer(previousSHA)
+		err = cache.ReuseLayer(previousSHA)
+		if err != nil {
+			isReadErr, readErr := c.IsReadErr(err)
+			if !isReadErr {
+				return "", errors.Wrapf(err, "reusing layer %s", layer.ID)
+			}
+			e.Logger.Warnf("Skipping re-use for layer %s: %s", layer.ID, readErr.Error())
+		}
 	}
 	e.Logger.Infof("Adding cache layer '%s'\n", layer.ID)
 	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)

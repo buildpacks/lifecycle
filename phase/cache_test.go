@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/apex/log"
+	"github.com/apex/log/handlers/discard"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
@@ -46,6 +47,10 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			mockCtrl = gomock.NewController(t)
 			layerFactory = testmock.NewMockLayerFactory(mockCtrl)
 
+			logHandler = memory.New()
+			level, err := log.ParseLevel("info")
+			h.AssertNil(t, err)
+
 			tmpDir, err = os.MkdirTemp("", "lifecycle.cacher.layer")
 			h.AssertNil(t, err)
 			h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "artifacts"), 0777))
@@ -53,11 +58,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			cacheDir = filepath.Join(tmpDir, "cache")
 			h.AssertNil(t, os.Mkdir(cacheDir, 0777))
 
-			testCache, err = cache.NewVolumeCache(cacheDir)
-			h.AssertNil(t, err)
-
-			logHandler = memory.New()
-			level, err := log.ParseLevel("info")
+			testCache, err = cache.NewVolumeCache(cacheDir, &log.Logger{Handler: logHandler, Level: level})
 			h.AssertNil(t, err)
 
 			exporter = &phase.Exporter{
@@ -300,13 +301,15 @@ func assertCacheHasLayer(t *testing.T, cache phase.Cache, id string) {
 }
 
 func initializeCache(t *testing.T, exporter *phase.Exporter, testCache *phase.Cache, cacheDir, layersDir, metadataTemplate string) {
-	previousCache, err := cache.NewVolumeCache(cacheDir)
+	logger := &log.Logger{Handler: &discard.Handler{}}
+
+	previousCache, err := cache.NewVolumeCache(cacheDir, logger)
 	h.AssertNil(t, err)
 
 	err = exporter.Cache(layersDir, previousCache)
 	h.AssertNil(t, err)
 
-	*testCache, err = cache.NewVolumeCache(cacheDir)
+	*testCache, err = cache.NewVolumeCache(cacheDir, logger)
 	h.AssertNil(t, err)
 
 	h.AssertNil(t, os.WriteFile(

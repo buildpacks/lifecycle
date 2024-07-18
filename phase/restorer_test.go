@@ -54,6 +54,8 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 
 			it.Before(func() {
 				var err error
+				logHandler = memory.New()
+				logger := log.Logger{Handler: logHandler, Level: log.DebugLevel}
 
 				layersDir, err = os.MkdirTemp("", "lifecycle-layer-dir")
 				h.AssertNil(t, err)
@@ -61,12 +63,8 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 				cacheDir, err = os.MkdirTemp("", "")
 				h.AssertNil(t, err)
 
-				testCache, err = cache.NewVolumeCache(cacheDir)
+				testCache, err = cache.NewVolumeCache(cacheDir, &logger)
 				h.AssertNil(t, err)
-
-				logHandler = memory.New()
-
-				logger := log.Logger{Handler: logHandler, Level: log.DebugLevel}
 
 				mockCtrl = gomock.NewController(t)
 				sbomRestorer = testmock.NewMockSBOMRestorer(mockCtrl)
@@ -203,53 +201,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 					h.AssertNil(t, os.RemoveAll(layersDir))
 					h.AssertNil(t, os.Mkdir(layersDir, 0777))
 
-					contents := fmt.Sprintf(`{
-    "buildpacks": [
-        {
-            "key": "buildpack.id",
-            "layers": {
-                "cache-false": {
-                    "cache": false,
-                    "sha": "%s"
-                },
-                "cache-launch": {
-                    "cache": true,
-                    "launch": true,
-                    "sha": "%s"
-                },
-                "cache-only": {
-                    "cache": true,
-                    "data": {
-                        "cache-only-key": "cache-only-val"
-                    },
-                    "sha": "%s"
-                }
-            }
-        },
-        {
-            "key": "nogroup.buildpack.id",
-            "layers": {
-                "some-layer": {
-                    "cache": true,
-                    "sha": "%s"
-                }
-            }
-        },
-        {
-            "key": "escaped/buildpack/id",
-            "layers": {
-                "escaped-bp-layer": {
-                    "cache": true,
-                    "data": {
-                        "escaped-bp-key": "escaped-bp-val"
-                    },
-                    "sha": "%s"
-                }
-            }
-        }
-    ]
-}
-`, cacheFalseLayerSHA, cacheLaunchLayerSHA, cacheOnlyLayerSHA, noGroupLayerSHA, escapedLayerSHA)
+					contents := buildMetadata(cacheFalseLayerSHA, cacheLaunchLayerSHA, cacheOnlyLayerSHA, noGroupLayerSHA, escapedLayerSHA)
 
 					err = os.WriteFile(
 						filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
@@ -345,6 +297,40 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 						assertLogEntry(t, logHandler, expected)
 						expected = fmt.Sprintf("Layer sha: %q", otherSHA)
 						assertLogEntry(t, logHandler, expected)
+					})
+				})
+
+				when("there is a cache-only layer referenced in metadata that does not exist", func() {
+					var nonExistentCacheLaunchLayerSHA string
+
+					it.Before(func() {
+						nonExistentCacheLaunchLayerSHA = "some-made-up-sha"
+						contents := buildMetadata(cacheFalseLayerSHA, nonExistentCacheLaunchLayerSHA, cacheOnlyLayerSHA, noGroupLayerSHA, escapedLayerSHA)
+
+						err := os.WriteFile(
+							filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
+							[]byte(contents),
+							0600,
+						)
+						h.AssertNil(t, err)
+
+						err = restorer.Restore(testCache)
+						h.AssertNil(t, err)
+					})
+
+					it("restores expected cache-only layer", func() {
+						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only", "file-from-cache-only-layer"))
+						want := "echo text from cache-only layer\n"
+						h.AssertEq(t, string(got), want)
+					})
+
+					it("keeps expected layer metadata", func() {
+						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.toml"))
+						h.AssertEq(t, string(got), "[metadata]\n  cache-only-key = \"cache-only-val\"\n")
+					})
+
+					it("skips restoring non-existent cache-launch layer", func() {
+						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"))
 					})
 				})
 
@@ -549,4 +535,54 @@ func TestWriteLayer(t *testing.T) {
 	h.AssertEq(t, string(got), want)
 
 	h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "test-buildpack", "test-layer"))
+}
+
+func buildMetadata(cacheFalseLayerSHA string, cacheLaunchLayerSHA string, cacheOnlyLayerSHA string, noGroupLayerSHA string, escapedLayerSHA string) string {
+	return fmt.Sprintf(`{
+    "buildpacks": [
+        {
+            "key": "buildpack.id",
+            "layers": {
+                "cache-false": {
+                    "cache": false,
+                    "sha": "%s"
+                },
+                "cache-launch": {
+                    "cache": true,
+                    "launch": true,
+                    "sha": "%s"
+                },
+                "cache-only": {
+                    "cache": true,
+                    "data": {
+                        "cache-only-key": "cache-only-val"
+                    },
+                    "sha": "%s"
+                }
+            }
+        },
+        {
+            "key": "nogroup.buildpack.id",
+            "layers": {
+                "some-layer": {
+                    "cache": true,
+                    "sha": "%s"
+                }
+            }
+        },
+        {
+            "key": "escaped/buildpack/id",
+            "layers": {
+                "escaped-bp-layer": {
+                    "cache": true,
+                    "data": {
+                        "escaped-bp-key": "escaped-bp-val"
+                    },
+                    "sha": "%s"
+                }
+            }
+        }
+    ]
+}
+`, cacheFalseLayerSHA, cacheLaunchLayerSHA, cacheOnlyLayerSHA, noGroupLayerSHA, escapedLayerSHA)
 }
