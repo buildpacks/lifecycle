@@ -298,15 +298,11 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		workingHistory []v1.History
 	)
 	// get config
-	baseImage, err = imgutil.OverrideHistoryIfNeeded(baseImage)
-	if err != nil {
-		return nil, err
-	}
 	configFile, err = baseImage.ConfigFile()
 	if err != nil {
 		return nil, err
 	}
-	workingHistory = configFile.History
+	workingHistory = imgutil.NormalizedHistory(configFile.History, len(configFile.RootFS.DiffIDs))
 	buildOptions := e.extendOptions()
 	userID, groupID := userFrom(*configFile)
 	origUserID := userID

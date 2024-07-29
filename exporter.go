@@ -326,7 +326,7 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions) error {
 			Digest:  layerHex.String(),
 			History: h,
 		}
-		if _, err = e.addOrReuseExtensionLayer(opts.WorkingImage, layer); err != nil {
+		if _, err = e.addExtensionLayer(opts.WorkingImage, layer); err != nil {
 			return err
 		}
 	}
@@ -694,22 +694,8 @@ func (e *Exporter) addOrReuseBuildpackLayer(image imgutil.Image, layer layers.La
 	return layer.Digest, image.AddLayerWithDiffIDAndHistory(layer.TarPath, layer.Digest, layer.History)
 }
 
-func (e *Exporter) addOrReuseExtensionLayer(image imgutil.Image, layer layers.Layer) (string, error) {
-	rc, err := image.GetLayer(layer.Digest)
-	if err != nil {
-		// FIXME: imgutil should declare an error type for missing layer
-		if !strings.Contains(err.Error(), "image did not have layer with diff id") && // remote
-			!strings.Contains(err.Error(), "does not contain layer with diff ID") {
-			return "", err
-		}
-		e.Logger.Infof("Adding extension layer %s\n", layer.ID)
-		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
-		return layer.Digest, image.AddLayerWithDiffIDAndHistory(layer.TarPath, layer.Digest, layer.History)
-	}
-	_ = rc.Close() // close the layer reader
-	e.Logger.Infof("Reusing layer %s\n", layer.ID)
-	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
-	return layer.Digest, image.ReuseLayerWithHistory(layer.Digest, layer.History)
+func (e *Exporter) addExtensionLayer(image imgutil.Image, layer layers.Layer) (string, error) {
+	return layer.Digest, image.AddLayerWithDiffIDAndHistory(layer.TarPath, layer.Digest, layer.History)
 }
 
 func (e *Exporter) makeBuildReport(layersDir string) (files.BuildReport, error) {

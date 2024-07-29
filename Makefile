@@ -257,7 +257,7 @@ install-mockgen:
 
 install-golangci-lint:
 	@echo "> Installing golangci-lint..."
-	$(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.1
+	$(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2
 
 lint: install-golangci-lint
 	@echo "> Linting code..."
