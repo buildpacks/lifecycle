@@ -136,10 +136,10 @@ func (r *restoreCmd) Exec() error {
 		}
 
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
-			cmd.DefaultLogger.Debugf("Pulling run image metadata for %s...", runImageName)
-			runImage, err = r.pullSparse(runImageName)
+			cmd.DefaultLogger.Debugf("Pulling run image metadata for %s...", accessibleRunImage)
+			runImage, err = r.pullSparse(accessibleRunImage)
 			if err != nil {
-				return cmd.FailErr(err, fmt.Sprintf("pull run image %s", runImageName))
+				return cmd.FailErr(err, fmt.Sprintf("pull run image %s", accessibleRunImage))
 			}
 			// update analyzed metadata, even if we only needed to pull the image metadata, because
 			// the extender needs a digest reference in analyzed.toml,
@@ -150,9 +150,9 @@ func (r *restoreCmd) Exec() error {
 		} else if r.needsUpdating(analyzedMD.RunImage, group) {
 			cmd.DefaultLogger.Debugf("Updating run image info in analyzed metadata...")
 			h := image.NewHandler(r.docker, r.keychain, r.LayoutDir, r.UseLayout, r.InsecureRegistries)
-			runImage, err = h.InitImage(runImageName)
+			runImage, err = h.InitImage(accessibleRunImage)
 			if err != nil || !runImage.Found() {
-				return cmd.FailErr(err, fmt.Sprintf("get run image %s", runImageName))
+				return cmd.FailErr(err, fmt.Sprintf("get run image %s", accessibleRunImage))
 			}
 			if err = r.updateAnalyzedMD(&analyzedMD, runImage); err != nil {
 				return cmd.FailErr(err, "update analyzed metadata")
