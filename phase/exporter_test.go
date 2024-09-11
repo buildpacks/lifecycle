@@ -227,8 +227,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					_, err := exporter.Export(opts)
 					h.AssertNil(t, err)
 					h.AssertContains(t, fakeAppImage.ReusedLayers(), "slice-1-digest")
-					assertLogEntry(t, logHandler, "Reusing 1/3 app layer(s)")
-					assertLogEntry(t, logHandler, "Adding 2/3 app layer(s)")
+					assertLogEntry(t, logHandler, "Reused 1/3 app layer(s)")
+					assertLogEntry(t, logHandler, "Added 2/3 app layer(s)")
 				})
 			})
 
@@ -248,7 +248,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				assertHasLayer(t, fakeAppImage, "app")
-				assertLogEntry(t, logHandler, "Adding 1/1 app layer(s)")
+				assertLogEntry(t, logHandler, "Added 1/1 app layer(s)")
 			})
 
 			it("creates config layer on Run image", func() {
@@ -873,7 +873,7 @@ version = "4.5.6"
 				it("exports slice layers", func() {
 					_, err := exporter.Export(opts)
 					h.AssertNil(t, err)
-					assertLogEntry(t, logHandler, "Adding 3/3 app layer(s)")
+					assertLogEntry(t, logHandler, "Added 3/3 app layer(s)")
 				})
 			})
 
@@ -906,7 +906,7 @@ version = "4.5.6"
 				h.AssertNil(t, err)
 
 				assertHasLayer(t, fakeAppImage, "app")
-				assertLogEntry(t, logHandler, "Adding 1/1 app layer(s)")
+				assertLogEntry(t, logHandler, "Added 1/1 app layer(s)")
 			})
 
 			it("creates config layer on Run image", func() {

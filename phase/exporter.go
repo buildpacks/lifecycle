@@ -446,6 +446,8 @@ func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *files.BuildMet
 
 func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta *files.LayersMetadata) error {
 	// creating app layers (slices + app dir)
+	e.Logger.Debugf("Adding app layers")
+
 	sliceLayers, err := e.LayerFactory.SliceLayers(opts.AppDir, slices)
 	if err != nil {
 		return errors.Wrap(err, "creating app layers")
@@ -453,6 +455,7 @@ func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta 
 
 	var numberOfReusedLayers int
 	for _, slice := range sliceLayers {
+		e.Logger.Debugf("Layer '%s' SHA: %s\n", slice.ID, slice.Digest)
 		var err error
 
 		found := false
@@ -471,16 +474,15 @@ func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta 
 		if err != nil {
 			return err
 		}
-		e.Logger.Debugf("Layer '%s' SHA: %s\n", slice.ID, slice.Digest)
 		meta.App = append(meta.App, files.LayerMetadata{SHA: slice.Digest})
 	}
 
 	delta := len(sliceLayers) - numberOfReusedLayers
 	if numberOfReusedLayers > 0 {
-		e.Logger.Infof("Reusing %d/%d app layer(s)\n", numberOfReusedLayers, len(sliceLayers))
+		e.Logger.Infof("Reused %d/%d app layer(s)\n", numberOfReusedLayers, len(sliceLayers))
 	}
 	if delta != 0 {
-		e.Logger.Infof("Adding %d/%d app layer(s)\n", delta, len(sliceLayers))
+		e.Logger.Infof("Added %d/%d app layer(s)\n", delta, len(sliceLayers))
 	}
 	return nil
 }
