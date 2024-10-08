@@ -120,7 +120,7 @@ func (r *restoreCmd) Exec() error {
 			}
 			analyzedMD.BuildImage = &files.ImageIdentifier{Reference: digestRef.String()}
 			cmd.DefaultLogger.Debugf("Adding build image info to analyzed metadata: ")
-			cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.BuildImage))
+			cmd.DefaultLogger.Debug(encoding.ToJSONMaybe(analyzedMD.BuildImage))
 		}
 		var (
 			runImage imgutil.Image
@@ -188,11 +188,11 @@ func (r *restoreCmd) updateAnalyzedMD(analyzedMD *files.Analyzed, runImage imgut
 		}
 	}
 	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata was: ")
-	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
+	cmd.DefaultLogger.Debug(encoding.ToJSONMaybe(analyzedMD.RunImage))
 	analyzedMD.RunImage.Reference = digestRef.String()
 	analyzedMD.RunImage.TargetMetadata = targetData
 	cmd.DefaultLogger.Debugf("Run image info in analyzed metadata is: ")
-	cmd.DefaultLogger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
+	cmd.DefaultLogger.Debug(encoding.ToJSONMaybe(analyzedMD.RunImage))
 	return nil
 }
 
