@@ -140,6 +140,9 @@ func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {
 		return errors.New("restoring layer: cache not provided")
 	}
 	r.Logger.Debugf("Retrieving data for %q", sha)
+	if err := cache.VerifyLayer(sha); err != nil {
+		return err
+	}
 	rc, err := cache.RetrieveLayer(sha)
 	if err != nil {
 		return err

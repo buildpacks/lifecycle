@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -143,11 +145,8 @@ func (c *VolumeCache) ReuseLayer(diffID string) error {
 	stagingPath := diffIDPath(c.stagingDir, diffID)
 
 	if _, err := os.Stat(committedPath); err != nil {
-		if os.IsNotExist(err) {
-			return NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
-		}
-		if os.IsPermission(err) {
-			return NewReadErr(fmt.Sprintf("failed to read cache layer with SHA '%s' due to insufficient permissions", diffID))
+		if err = handleFileError(err, diffID); errors.Is(err, ReadErr{}) {
+			return err
 		}
 		return fmt.Errorf("failed to re-use cache layer with SHA '%s': %w", diffID, err)
 	}
@@ -165,11 +164,8 @@ func (c *VolumeCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		if os.IsPermission(err) {
-			return nil, NewReadErr(fmt.Sprintf("failed to read cache layer with SHA '%s' due to insufficient permissions", diffID))
-		}
-		if os.IsNotExist(err) {
-			return nil, NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
+		if err = handleFileError(err, diffID); errors.Is(err, ReadErr{}) {
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to get cache layer with SHA '%s'", diffID)
 	}
@@ -189,8 +185,8 @@ func (c *VolumeCache) HasLayer(diffID string) (bool, error) {
 func (c *VolumeCache) RetrieveLayerFile(diffID string) (string, error) {
 	path := diffIDPath(c.committedDir, diffID)
 	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			return "", NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
+		if err = handleFileError(err, diffID); errors.Is(err, ReadErr{}) {
+			return "", err
 		}
 		return "", errors.Wrapf(err, "retrieving layer with SHA '%s'", diffID)
 	}
@@ -230,4 +226,33 @@ func (c *VolumeCache) setupStagingDir() error {
 		return err
 	}
 	return os.MkdirAll(c.stagingDir, 0777)
+}
+
+func (c *VolumeCache) VerifyLayer(diffID string) error {
+	layerRC, err := c.RetrieveLayer(diffID)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = layerRC.Close()
+	}()
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, layerRC); err != nil {
+		return errors.Wrap(err, "hashing layer")
+	}
+	foundDiffID := "sha256:" + hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+	if diffID != foundDiffID {
+		return NewReadErr(fmt.Sprintf("expected layer contents to have SHA '%s'; found '%s'", diffID, foundDiffID))
+	}
+	return err
+}
+
+func handleFileError(err error, diffID string) error {
+	if os.IsNotExist(err) {
+		return NewReadErr(fmt.Sprintf("failed to find cache layer with SHA '%s'", diffID))
+	}
+	if os.IsPermission(err) {
+		return NewReadErr(fmt.Sprintf("failed to read cache layer with SHA '%s' due to insufficient permissions", diffID))
+	}
+	return err
 }

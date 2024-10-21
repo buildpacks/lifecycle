@@ -158,3 +158,8 @@ func (c *ImageCache) Commit() error {
 
 	return nil
 }
+
+func (c *ImageCache) VerifyLayer(_ string) error {
+	// we assume the registry is verifying digests for us
+	return nil
+}
