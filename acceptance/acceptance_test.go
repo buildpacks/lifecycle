@@ -23,7 +23,6 @@ const (
 var (
 	latestPlatformAPI = api.Platform.Latest().String()
 	buildDir          string
-	cacheFixtureDir   string
 )
 
 func TestVersion(t *testing.T) {

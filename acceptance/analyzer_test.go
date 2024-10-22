@@ -37,7 +37,6 @@ func TestAnalyzer(t *testing.T) {
 
 	analyzeImage = analyzeTest.testImageRef
 	analyzerPath = analyzeTest.containerBinaryPath
-	cacheFixtureDir = filepath.Join("testdata", "cache-dir")
 	analyzeRegAuthConfig = analyzeTest.targetRegistry.authConfig
 	analyzeRegNetwork = analyzeTest.targetRegistry.network
 	analyzeDaemonFixtures = analyzeTest.targetDaemon.fixtures

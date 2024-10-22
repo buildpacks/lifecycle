@@ -202,7 +202,7 @@ func (r *Rebaser) validateTarget(appImg imgutil.Image, newBaseImg imgutil.Image)
 	}
 	if rebasable == "false" {
 		if !r.Force {
-			return fmt.Errorf(msgAppImageNotMarkedRebasable + "; " + msgProvideForceToOverride)
+			return errors.New(msgAppImageNotMarkedRebasable + "; " + msgProvideForceToOverride)
 		}
 		r.Logger.Warn(msgAppImageNotMarkedRebasable)
 	}

@@ -7,3 +7,8 @@
   id = "cacher_buildpack"
   version = "cacher_v1"
   api = "0.8"
+
+[[group]]
+  id = "corrupted_buildpack"
+  version = "corrupted_v1"
+  api = "0.8"

@@ -228,6 +228,7 @@ func (c *VolumeCache) setupStagingDir() error {
 	return os.MkdirAll(c.stagingDir, 0777)
 }
 
+// VerifyLayer returns an error if the layer contents do not match the provided sha.
 func (c *VolumeCache) VerifyLayer(diffID string) error {
 	layerRC, err := c.RetrieveLayer(diffID)
 	if err != nil {

@@ -40,7 +40,6 @@ func TestCreator(t *testing.T) {
 
 	createImage = createTest.testImageRef
 	creatorPath = createTest.containerBinaryPath
-	cacheFixtureDir = filepath.Join("testdata", "creator", "cache-dir")
 	createRegAuthConfig = createTest.targetRegistry.authConfig
 	createRegNetwork = createTest.targetRegistry.network
 	createDaemonFixtures = createTest.targetDaemon.fixtures
