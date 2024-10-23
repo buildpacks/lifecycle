@@ -56,7 +56,6 @@ func TestExporter(t *testing.T) {
 
 	exportImage = exportTest.testImageRef
 	exporterPath = exportTest.containerBinaryPath
-	cacheFixtureDir = filepath.Join("testdata", "exporter", "cache-dir")
 	exportRegAuthConfig = exportTest.targetRegistry.authConfig
 	exportRegNetwork = exportTest.targetRegistry.network
 	exportDaemonFixtures = exportTest.targetDaemon.fixtures
@@ -404,9 +403,16 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							var err error
 							cacheDir, err = os.MkdirTemp("", "cache")
 							h.AssertNil(t, err)
+							h.AssertNil(t, os.Chmod(cacheDir, 0777)) // Override umask
 
 							cacheFixtureDir := filepath.Join("testdata", "exporter", "cache-dir")
 							h.AssertNil(t, fsutil.Copy(cacheFixtureDir, cacheDir))
+							// We have to pre-create the tar files so that their digests do not change due to timestamps
+							// But, ':' in the filepath on Windows is not allowed
+							h.AssertNil(t, os.Rename(
+								filepath.Join(cacheDir, "committed", "sha256_258dfa0cc987efebc17559694866ebc91139e7c0e574f60d1d4092f53d7dff59.tar"),
+								filepath.Join(cacheDir, "committed", "sha256:258dfa0cc987efebc17559694866ebc91139e7c0e574f60d1d4092f53d7dff59.tar"),
+							))
 						})
 
 						it.After(func() {
@@ -415,7 +421,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 						it("overwrites the original layer", func() {
 							exportFlags := []string{
-								"-cache-dir", "/cache/committed",
+								"-cache-dir", "/cache",
 								"-log-level", "debug",
 							}
 							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
@@ -428,10 +434,11 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 									"--env", "CNB_PLATFORM_API="+platformAPI,
 									"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
 									"--network", exportRegNetwork,
-									"--volume", fmt.Sprintf("%s:/cache/committed", cacheDir),
+									"--volume", fmt.Sprintf("%s:/cache", cacheDir),
 								),
 								h.WithArgs(exportArgs...),
 							)
+							h.AssertStringContains(t, output, "Skipping reuse for layer corrupted_buildpack:corrupted-layer: expected layer contents to have SHA 'sha256:258dfa0cc987efebc17559694866ebc91139e7c0e574f60d1d4092f53d7dff59'; found 'sha256:9e0b77ed599eafdab8611f7eeefef084077f91f02f1da0a3870c7ff20a08bee8'")
 							h.AssertStringContains(t, output, "Saving "+exportedImageName)
 							h.Run(t, exec.Command("docker", "pull", exportedImageName))
 							defer h.Run(t, exec.Command("docker", "image", "rm", exportedImageName))

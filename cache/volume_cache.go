@@ -2,7 +2,6 @@ package cache
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -241,7 +240,7 @@ func (c *VolumeCache) VerifyLayer(diffID string) error {
 	if _, err := io.Copy(hasher, layerRC); err != nil {
 		return errors.Wrap(err, "hashing layer")
 	}
-	foundDiffID := "sha256:" + hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+	foundDiffID := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
 	if diffID != foundDiffID {
 		return NewReadErr(fmt.Sprintf("expected layer contents to have SHA '%s'; found '%s'", diffID, foundDiffID))
 	}

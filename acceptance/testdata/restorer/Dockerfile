@@ -8,12 +8,10 @@ ENV CNB_GROUP_ID=${cnb_gid}
 
 COPY ./container/ /
 
-# turn /to_cache/<buildpack> directories into cache tarballs
-# these are referenced by sha in /cache/committed/io.buildpacks.lifecycle.cache.metadata
-RUN tar cvf /cache/committed/sha256:2d9c9c638d5c4f0df067eeae7b9c99ad05776a89d19ab863c28850a91e5f2944.tar -C /to_cache/cacher_buildpack layers
-RUN tar cvf /cache/committed/sha256:58bafa1e79c8e44151141c95086beb37ca85b69578fc890bce33bb4c6c8e851f.tar -C /to_cache/unused_buildpack layers
-# this layer has the wrong sha to mimic corrupted data
-RUN tar cvf /cache/committed/sha256:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c.tar -C /to_cache/corrupted_buildpack layers
+# We have to pre-create the tar files so that their digests do not change due to timestamps
+# But, ':' in the filepath on Windows is not allowed
+RUN mv /cache/committed/sha256_2d9c9c638d5c4f0df067eeae7b9c99ad05776a89d19ab863c28850a91e5f2944.tar /cache/committed/sha256:2d9c9c638d5c4f0df067eeae7b9c99ad05776a89d19ab863c28850a91e5f2944.tar
+RUN mv /cache/committed/sha256_430338f576c11e5236669f9c843599d96afe28784cffcb2d46ddb07beb00df78.tar /cache/committed/sha256:430338f576c11e5236669f9c843599d96afe28784cffcb2d46ddb07beb00df78.tar
 
 ENTRYPOINT ["/cnb/lifecycle/restorer"]
 
