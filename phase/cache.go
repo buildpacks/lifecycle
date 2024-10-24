@@ -99,15 +99,23 @@ func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir LayerDir, previous
 		return "", errors.Wrapf(err, "creating layer '%s'", layerDir.Identifier())
 	}
 	if layer.Digest == previousSHA {
-		e.Logger.Infof("Reusing cache layer '%s'\n", layer.ID)
-		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
-		err = cache.ReuseLayer(previousSHA)
-		if err != nil {
-			isReadErr, readErr := c.IsReadErr(err)
-			if !isReadErr {
-				return "", errors.Wrapf(err, "reusing layer %s", layer.ID)
+		if err = cache.VerifyLayer(previousSHA); err == nil {
+			e.Logger.Infof("Reusing cache layer '%s'\n", layer.ID)
+			e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
+			if err = cache.ReuseLayer(previousSHA); err != nil {
+				if isReadErr, readErr := c.IsReadErr(err); isReadErr {
+					// we shouldn't get here, as VerifyLayer would've returned an error
+					e.Logger.Warnf("Skipping re-use for layer %s: %s", layer.ID, readErr.Error())
+				} else {
+					return "", errors.Wrapf(err, "reusing layer %s", layer.ID)
+				}
 			}
-			e.Logger.Warnf("Skipping re-use for layer %s: %s", layer.ID, readErr.Error())
+		} else {
+			if isReadErr, readErr := c.IsReadErr(err); isReadErr {
+				e.Logger.Warnf("Skipping reuse for layer %s: %s", layer.ID, readErr.Error())
+			} else {
+				return "", errors.Wrapf(err, "verifying layer '%s'", layerDir.Identifier())
+			}
 		}
 	}
 	e.Logger.Infof("Adding cache layer '%s'\n", layer.ID)

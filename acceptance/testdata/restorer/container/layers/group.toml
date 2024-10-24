@@ -8,6 +8,11 @@
   version = "cacher_v1"
   api = "0.10"
 
+[[group]]
+  id = "corrupted_buildpack"
+  version = "corrupted_v1"
+  api = "0.11"
+
 [[group-extensions]]
     id = "some-extension-id"
     version = "v1"
