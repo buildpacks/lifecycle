@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
 	dockercli "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/pkg/errors"
@@ -109,7 +109,7 @@ func DockerVolumeExists(t *testing.T, volumeName string) bool {
 
 // FIXME: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
 func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) error {
-	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: auth})
+	rc, err := dockerCli.ImagePush(context.Background(), ref, image.PushOptions{RegistryAuth: auth})
 	if err != nil {
 		return errors.Wrap(err, "pushing image")
 	}
