@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/docker/docker/api/types/image"
 	"github.com/pkg/errors"
 
 	"github.com/BurntSushi/toml"
@@ -20,7 +21,6 @@ import (
 	"github.com/buildpacks/imgutil/layer"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	dockertypes "github.com/docker/docker/api/types"
 	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -325,10 +325,10 @@ func lifecycleLayer() (string, error) {
 }
 
 func pullImage(dockerCli dockercli.CommonAPIClient, ref string) error {
-	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+	rc, err := dockerCli.ImagePull(context.Background(), ref, image.PullOptions{})
 	if err != nil {
 		// Retry
-		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+		rc, err = dockerCli.ImagePull(context.Background(), ref, image.PullOptions{})
 		if err != nil {
 			return err
 		}
