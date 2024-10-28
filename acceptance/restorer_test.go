@@ -165,7 +165,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertPathDoesNotExist(t, uncachedFile)
 				})
 
-				it("does not restore unused buildpack layer data", func() {
+				it("does not restore layer data from unused buildpacks", func() {
 					h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
@@ -178,6 +178,21 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					// check no content is not present from unused buildpack
 					unusedBpLayer := filepath.Join(copyDir, "layers", "unused_buildpack")
 					h.AssertPathDoesNotExist(t, unusedBpLayer)
+				})
+
+				it("does not restore corrupted layer data", func() {
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						"/layers",
+						restoreImage,
+						h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
+						h.WithArgs("-cache-dir", "/cache"),
+					)
+
+					// check corrupted layer is not restored
+					corruptedFile := filepath.Join(copyDir, "layers", "corrupted_buildpack", "corrupted-layer")
+					h.AssertPathDoesNotExist(t, corruptedFile)
 				})
 			})
 		})

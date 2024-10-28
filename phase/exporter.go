@@ -35,6 +35,7 @@ type Cache interface {
 	ReuseLayer(sha string) error
 	RetrieveLayer(sha string) (io.ReadCloser, error)
 	Commit() error
+	VerifyLayer(sha string) error
 }
 
 type Exporter struct {

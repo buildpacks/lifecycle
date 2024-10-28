@@ -1,0 +1,17 @@
+{
+  "buildpacks": [
+    {
+      "key": "corrupted_buildpack",
+      "version": "corrupted_v1",
+      "layers": {
+        "corrupted-layer": {
+          "sha": "sha256:258dfa0cc987efebc17559694866ebc91139e7c0e574f60d1d4092f53d7dff59",
+          "data": null,
+          "build": false,
+          "launch": true,
+          "cache": true
+        }
+      }
+    }
+  ]
+}
