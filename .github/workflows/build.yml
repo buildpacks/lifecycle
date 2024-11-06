@@ -128,14 +128,14 @@ jobs:
       - name: Set version
         run: |
           echo "LIFECYCLE_VERSION=$(go run tools/version/main.go)" | tee -a $GITHUB_ENV version.txt
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: version
           path: version.txt
       - name: Set tag
         run: |
           echo "LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)" >> tag.txt
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: tag
           path: tag.txt
@@ -144,43 +144,43 @@ jobs:
           make clean
           make build
           make package
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-linux-x86-64
           path: out/lifecycle-v*+linux.x86-64.tgz
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-linux-x86-64-sha256
           path: out/lifecycle-v*+linux.x86-64.tgz.sha256
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-linux-arm64
           path: out/lifecycle-v*+linux.arm64.tgz
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-linux-arm64-sha256
           path: out/lifecycle-v*+linux.arm64.tgz.sha256
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-linux-ppc64le
           path: out/lifecycle-v*+linux.ppc64le.tgz
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-linux-ppc64le-sha256
           path: out/lifecycle-v*+linux.ppc64le.tgz.sha256
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-linux-s390x
           path: out/lifecycle-v*+linux.s390x.tgz
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-linux-s390x-sha256
           path: out/lifecycle-v*+linux.s390x.tgz.sha256
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-windows-x86-64-sha256
           path: out/lifecycle-v*+windows.x86-64.tgz.sha256
@@ -189,14 +189,14 @@ jobs:
         with:
           args: mod -licenses -json -output lifecycle-v${{ env.LIFECYCLE_VERSION }}-bom.cdx.json
           version: ^v1
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-bom-cdx
           path: lifecycle-v*-bom.cdx.json
       - name: Calculate SBOM sha
         run: |
           shasum -a 256 lifecycle-v${{ env.LIFECYCLE_VERSION }}-bom.cdx.json > lifecycle-v${{ env.LIFECYCLE_VERSION }}-bom.cdx.json.sha256
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: lifecycle-bom-cdx-sha256
           path: lifecycle-v*-bom.cdx.json.sha256
