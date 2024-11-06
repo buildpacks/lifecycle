@@ -205,7 +205,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: tag
       - name: Set env
@@ -270,17 +270,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: 'pack/go.mod'
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: version
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: tag
       - name: Set env
         run: |
           cat version.txt >> $GITHUB_ENV
           cat tag.txt >> $GITHUB_ENV
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: lifecycle-linux-x86-64
           path: pack
@@ -341,17 +341,17 @@ jobs:
           ${IPAddress} host.docker.internal
           ${IPAddress} gateway.docker.internal
           " | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Encoding utf8
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: version
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: tag
       - name: Set env
         run: |
           cat version.txt >> $env:GITHUB_ENV
           cat tag.txt >> $env:GITHUB_ENV
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: lifecycle-windows-x86-64
           path: pack
