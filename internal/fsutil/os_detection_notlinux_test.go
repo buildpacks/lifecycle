@@ -20,10 +20,10 @@ func TestDetectorNonUnix(t *testing.T) {
 func testDetectorNonUnix(t *testing.T, when spec.G, it spec.S) {
 	when("we don't have a file", func() {
 		it("returns false correctly", func() {
-			h.AssertEq(t, (&fsutil.Detect{}).HasSystemdFile(), false)
+			h.AssertEq(t, (&fsutil.DefaultDetector{}).HasSystemdFile(), false)
 		})
 		it("returns an error correctly", func() {
-			_, err := (&fsutil.Detect{}).ReadSystemdFile()
+			_, err := (&fsutil.DefaultDetector{}).ReadSystemdFile()
 			h.AssertNotNil(t, err)
 		})
 	})

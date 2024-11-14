@@ -15,7 +15,7 @@ func TestDetector(t *testing.T) {
 }
 
 // there's no state on this object so we can just use the same one forever
-var detect fsutil.Detect
+var detect fsutil.DefaultDetector
 
 func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when("we have the contents of an os-release file", func() {

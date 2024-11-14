@@ -11,6 +11,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
+	llog "github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -324,3 +325,5 @@ func (d *mockDetector) GetInfo(osReleaseContents string) fsutil.OSInfo {
 		Version: "3.14",
 	}
 }
+
+func (d *mockDetector) InfoOnce(_ llog.Logger) {}

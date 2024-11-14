@@ -53,7 +53,6 @@ func TargetSatisfiedForBuild(d fsutil.Detector, base *files.TargetMetadata, modu
 	}
 	// ensure we have all available data
 	if base.Distro == nil {
-		logger.Info("target distro name/version labels not found, reading /etc/os-release file")
 		GetTargetOSFromFileSystem(d, base, logger)
 	}
 	// check matches
@@ -93,6 +92,7 @@ func matches(target1, target2 string) bool {
 // GetTargetOSFromFileSystem populates the provided target metadata with information from /etc/os-release
 // if it is available.
 func GetTargetOSFromFileSystem(d fsutil.Detector, tm *files.TargetMetadata, logger log.Logger) {
+	d.InfoOnce(logger)
 	if d.HasSystemdFile() {
 		if tm.OS == "" {
 			tm.OS = "linux"
@@ -118,7 +118,6 @@ func EnvVarsFor(d fsutil.Detector, tm files.TargetMetadata, logger log.Logger) [
 	// we should always have os & arch,
 	// if they are not populated try to get target information from the build-time base image
 	if tm.Distro == nil {
-		logger.Info("target distro name/version labels not found, reading /etc/os-release file")
 		GetTargetOSFromFileSystem(d, &tm, logger)
 	}
 	// required
