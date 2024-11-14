@@ -17,12 +17,14 @@ type Detector interface {
 	HasSystemdFile() bool
 	ReadSystemdFile() (string, error)
 	GetInfo(osReleaseContents string) OSInfo
+	StoredInfo() *OSInfo
 	InfoOnce(logger log.Logger)
 }
 
 // DefaultDetector implements Detector
 type DefaultDetector struct {
 	once sync.Once
+	info *OSInfo
 }
 
 // HasSystemdFile returns true if /etc/os-release exists with contents
@@ -60,7 +62,13 @@ func (d *DefaultDetector) GetInfo(osReleaseContents string) OSInfo {
 			break
 		}
 	}
+	d.info = &ret // store for future use
 	return ret
+}
+
+// StoredInfo returns any OSInfo found during the last call to GetInfo
+func (d *DefaultDetector) StoredInfo() *OSInfo {
+	return d.info
 }
 
 // InfoOnce logs an info message to the provided logger, but only once in the lifetime of the receiving DefaultDetector.

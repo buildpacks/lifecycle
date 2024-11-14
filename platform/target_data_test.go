@@ -327,3 +327,7 @@ func (d *mockDetector) GetInfo(osReleaseContents string) fsutil.OSInfo {
 }
 
 func (d *mockDetector) InfoOnce(_ llog.Logger) {}
+
+func (d *mockDetector) StoredInfo() *fsutil.OSInfo {
+	return nil
+}

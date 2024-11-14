@@ -92,14 +92,22 @@ func matches(target1, target2 string) bool {
 // GetTargetOSFromFileSystem populates the provided target metadata with information from /etc/os-release
 // if it is available.
 func GetTargetOSFromFileSystem(d fsutil.Detector, tm *files.TargetMetadata, logger log.Logger) {
+	if tm.OS == "" {
+		tm.OS = "linux" // we shouldn't get here, as OS comes from the image config, and OS is always required
+	}
+	if tm.Arch == "" {
+		tm.Arch = runtime.GOARCH // in a future world where we support cross-platform builds, this should be removed
+	}
+
+	if info := d.StoredInfo(); info != nil {
+		if info.Version != "" || info.Name != "" {
+			tm.Distro = &files.OSDistro{Name: info.Name, Version: info.Version}
+		}
+		return
+	}
+
 	d.InfoOnce(logger)
 	if d.HasSystemdFile() {
-		if tm.OS == "" {
-			tm.OS = "linux"
-		}
-		if tm.Arch == "" {
-			tm.Arch = runtime.GOARCH // in a future world where we support cross platform builds, this should be removed
-		}
 		contents, err := d.ReadSystemdFile()
 		if err != nil {
 			logger.Warnf("Encountered error trying to read /etc/os-release file: %s", err.Error())
