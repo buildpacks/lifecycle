@@ -313,7 +313,7 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed, logger log.Log
 }
 
 func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
-	var opts = []imgutil.ImageOption{
+	var appOpts = []imgutil.ImageOption{
 		remote.FromBaseImage(e.RunImageRef),
 	}
 
@@ -324,43 +324,57 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		}
 		if extendedConfig != nil {
 			cmd.DefaultLogger.Debugf("Using config from extensions...")
-			opts = append(opts, remote.WithConfig(extendedConfig))
+			appOpts = append(appOpts, remote.WithConfig(extendedConfig))
 		}
 	}
 
 	if e.supportsHistory() {
-		opts = append(opts, remote.WithHistory())
+		appOpts = append(appOpts, remote.WithHistory())
 	}
 
-	opts = append(opts, image.GetInsecureOptions(e.InsecureRegistries)...)
+	appOpts = append(appOpts, image.GetInsecureOptions(e.InsecureRegistries)...)
 
 	if analyzedMD.PreviousImageRef() != "" {
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImageRef())
-		opts = append(opts, remote.WithPreviousImage(analyzedMD.PreviousImageRef()))
+		appOpts = append(appOpts, remote.WithPreviousImage(analyzedMD.PreviousImageRef()))
 	}
 
 	if !e.customSourceDateEpoch().IsZero() {
-		opts = append(opts, remote.WithCreatedAt(e.customSourceDateEpoch()))
+		appOpts = append(appOpts, remote.WithCreatedAt(e.customSourceDateEpoch()))
 	}
 
 	appImage, err := remote.NewImage(
 		e.OutputImageRef,
 		e.keychain,
-		opts...,
+		appOpts...,
 	)
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "create new app image")
 	}
 
-	runImage, err := remote.NewImage(e.RunImageRef, e.keychain, remote.FromBaseImage(e.RunImageRef))
+	runImageID, err := func() (string, error) {
+		runImage, err := remote.NewImage(
+			e.RunImageRef,
+			e.keychain,
+			append(
+				image.GetInsecureOptions(e.InsecureRegistries),
+				remote.FromBaseImage(e.RunImageRef),
+			)...,
+		)
+		if err != nil {
+			return "", fmt.Errorf("failed to access run image: %w", err)
+		}
+		runImageID, err := runImage.Identifier()
+		if err != nil {
+			return "", fmt.Errorf("failed to get run image identifier: %w", err)
+		}
+		return runImageID.String(), nil
+	}()
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "access run image")
+		return nil, "", cmd.FailErr(err, "get run image ID")
 	}
-	runImageID, err := runImage.Identifier()
-	if err != nil {
-		return nil, "", cmd.FailErr(err, "get run image reference")
-	}
-	return appImage, runImageID.String(), nil
+
+	return appImage, runImageID, nil
 }
 
 func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
