@@ -20,10 +20,10 @@ func TestDetectorUnix(t *testing.T) {
 func testDetectorUnix(t *testing.T, when spec.G, it spec.S) {
 	when("we should have a file", func() {
 		it("returns true correctly", func() {
-			h.AssertEq(t, (&fsutil.Detect{}).HasSystemdFile(), true)
+			h.AssertEq(t, (&fsutil.DefaultDetector{}).HasSystemdFile(), true)
 		})
 		it("returns the file contents", func() {
-			s, err := (&fsutil.Detect{}).ReadSystemdFile()
+			s, err := (&fsutil.DefaultDetector{}).ReadSystemdFile()
 			h.AssertNil(t, err)
 			h.AssertStringContains(t, s, "NAME")
 		})
