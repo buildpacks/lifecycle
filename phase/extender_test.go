@@ -247,8 +247,6 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 			api.MustParse("0.12"),
 			api.MustParse("0.13"),
 		} {
-			platformAPI := platformAPI
-
 			when(fmt.Sprintf("using the platform API %s", platformAPI), func() {
 				it.Before(func() {
 					extender.PlatformAPI = platformAPI
@@ -379,7 +377,6 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 							expectedImageSHA:          notRebasableSHA,
 						},
 					} {
-						tc := tc
 						when := when
 						desc := func(b bool) string {
 							if b {

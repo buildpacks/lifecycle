@@ -73,7 +73,6 @@ func testRef(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 			for _, tc := range testCases {
-				tc := tc
 				w := when
 				w(tc.condition, func() {
 					it(tc.does, func() {
