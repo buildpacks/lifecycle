@@ -5,15 +5,16 @@ linters:
   disable-all: true
   enable:
     - bodyclose
+    - copyloopvar
     - dogsled
     - errcheck
-    - exportloopref
     - gocritic
     - goimports
     - gosec
     - gosimple
     - govet
     - ineffassign
+    - intrange
     - misspell
     - nakedret
     - revive
