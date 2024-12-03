@@ -179,8 +179,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			api.MustParse("0.12"),
 			api.MustParse("0.13"),
 		} {
-			platformAPI := platformAPI
-
 			when(fmt.Sprintf("using the platform API %s", platformAPI), func() {
 				it.Before(func() {
 					generator.PlatformAPI = platformAPI
@@ -586,7 +584,6 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					} {
-						tc := tc
 						when := when
 						when(tc.descCondition, func() {
 							if tc.before != nil {
