@@ -38,12 +38,9 @@ GOFILES := $(shell $(GOCMD) run tools$/lister$/main.go)
 
 all: test build package
 
-build: build-linux-amd64 build-linux-arm64 build-linux-ppc64le build-linux-s390x
+GOOS_ARCHS = linux/amd64 linux/arm64 linux/ppc64le linux/s390x
 
-build-linux-amd64: build-linux-amd64-lifecycle build-linux-amd64-symlinks build-linux-amd64-launcher
-build-linux-arm64: build-linux-arm64-lifecycle build-linux-arm64-symlinks build-linux-arm64-launcher
-build-linux-ppc64le: build-linux-ppc64le-lifecycle build-linux-ppc64le-symlinks build-linux-ppc64le-launcher
-build-linux-s390x: build-linux-s390x-lifecycle build-linux-s390x-symlinks build-linux-s390x-launcher
+build: build-linux-amd64 build-linux-arm64 build-linux-ppc64le build-linux-s390x
 
 build-image-linux-amd64: build-linux-amd64 package-linux-amd64
 build-image-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64.tgz
@@ -65,153 +62,48 @@ build-image-linux-s390x: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSIO
 build-image-linux-s390x:
 	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -arch s390x -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
 
-build-linux-amd64-lifecycle: $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle
+define build_targets
+build-$(1)-$(2): build-$(1)-$(2)-lifecycle build-$(1)-$(2)-symlinks build-$(1)-$(2)-launcher
 
-build-linux-arm64-lifecycle: $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle
+build-$(1)-$(2)-lifecycle: $(BUILD_DIR)/$(1)-$(2)/lifecycle/lifecycle
 
-build-linux-ppc64le-lifecycle: $(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/lifecycle: export GOOS:=$(1)
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/lifecycle: export GOARCH:=$(2)
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/lifecycle: OUT_DIR?=$$(BUILD_DIR)/$$(GOOS)-$$(GOARCH)/lifecycle
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/lifecycle: $$(GOFILES)
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/lifecycle:
+	@echo "> Building lifecycle/lifecycle for $$(GOOS)/$$(GOARCH)..."
+	mkdir -p $$(OUT_DIR)
+	$$(GOENV) $$(GOBUILD) -o $$(OUT_DIR)/lifecycle -a ./cmd/lifecycle
 
-build-linux-s390x-lifecycle: $(BUILD_DIR)/linux-s390x/lifecycle/lifecycle
+build-$(1)-$(2)-symlinks: export GOOS:=$(1)
+build-$(1)-$(2)-symlinks: export GOARCH:=$(2)
+build-$(1)-$(2)-symlinks: OUT_DIR?=$$(BUILD_DIR)/$$(GOOS)-$$(GOARCH)/lifecycle
+build-$(1)-$(2)-symlinks:
+	@echo "> Creating phase symlinks for $$(GOOS)/$$(GOARCH)..."
+	ln -sf lifecycle $$(OUT_DIR)/detector
+	ln -sf lifecycle $$(OUT_DIR)/analyzer
+	ln -sf lifecycle $$(OUT_DIR)/restorer
+	ln -sf lifecycle $$(OUT_DIR)/builder
+	ln -sf lifecycle $$(OUT_DIR)/exporter
+	ln -sf lifecycle $$(OUT_DIR)/rebaser
+	ln -sf lifecycle $$(OUT_DIR)/creator
+	ln -sf lifecycle $$(OUT_DIR)/extender
 
-$(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: export GOOS:=linux
-$(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: export GOARCH:=amd64
-$(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: $(GOFILES)
-$(BUILD_DIR)/linux-amd64/lifecycle/lifecycle:
-	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+build-$(1)-$(2)-launcher: $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher
 
-$(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: export GOOS:=linux
-$(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: export GOARCH:=arm64
-$(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: $(GOFILES)
-$(BUILD_DIR)/linux-arm64/lifecycle/lifecycle:
-	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: export GOOS:=$(1)
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: export GOARCH:=$(2)
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: OUT_DIR?=$$(BUILD_DIR)/$$(GOOS)-$$(GOARCH)/lifecycle
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: $$(GOFILES)
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher:
+	@echo "> Building lifecycle/launcher for $$(GOOS)/$$(GOARCH)..."
+	mkdir -p $$(OUT_DIR)
+	$$(GOENV) $$(GOBUILD) -o $$(OUT_DIR)/launcher -a ./cmd/launcher
+	test $$$$(du -m $$(OUT_DIR)/launcher|cut -f 1) -le 3
+endef
 
-$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle: export GOOS:=linux
-$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle: export GOARCH:=ppc64le
-$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle: $(GOFILES)
-$(BUILD_DIR)/linux-ppc64le/lifecycle/lifecycle:
-	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
-
-$(BUILD_DIR)/linux-s390x/lifecycle/lifecycle: export GOOS:=linux
-$(BUILD_DIR)/linux-s390x/lifecycle/lifecycle: export GOARCH:=s390x
-$(BUILD_DIR)/linux-s390x/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-s390x/lifecycle/lifecycle: $(GOFILES)
-$(BUILD_DIR)/linux-s390x/lifecycle/lifecycle:
-	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
-
-build-linux-amd64-launcher: $(BUILD_DIR)/linux-amd64/lifecycle/launcher
-
-$(BUILD_DIR)/linux-amd64/lifecycle/launcher: export GOOS:=linux
-$(BUILD_DIR)/linux-amd64/lifecycle/launcher: export GOARCH:=amd64
-$(BUILD_DIR)/linux-amd64/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-amd64/lifecycle/launcher: $(GOFILES)
-$(BUILD_DIR)/linux-amd64/lifecycle/launcher:
-	@echo "> Building lifecycle/launcher for $(GOOS)/$(GOARCH)..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
-
-build-linux-arm64-launcher: $(BUILD_DIR)/linux-arm64/lifecycle/launcher
-
-$(BUILD_DIR)/linux-arm64/lifecycle/launcher: export GOOS:=linux
-$(BUILD_DIR)/linux-arm64/lifecycle/launcher: export GOARCH:=arm64
-$(BUILD_DIR)/linux-arm64/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-arm64/lifecycle/launcher: $(GOFILES)
-$(BUILD_DIR)/linux-arm64/lifecycle/launcher:
-	@echo "> Building lifecycle/launcher for $(GOOS)/$(GOARCH)..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
-
-build-linux-ppc64le-launcher: $(BUILD_DIR)/linux-ppc64le/lifecycle/launcher
-
-$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher: export GOOS:=linux
-$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher: export GOARCH:=ppc64le
-$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher: $(GOFILES)
-$(BUILD_DIR)/linux-ppc64le/lifecycle/launcher:
-	@echo "> Building lifecycle/launcher for $(GOOS)/$(GOARCH)..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
-
-build-linux-s390x-launcher: $(BUILD_DIR)/linux-s390x/lifecycle/launcher
-
-$(BUILD_DIR)/linux-s390x/lifecycle/launcher: export GOOS:=linux
-$(BUILD_DIR)/linux-s390x/lifecycle/launcher: export GOARCH:=s390x
-$(BUILD_DIR)/linux-s390x/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-s390x/lifecycle/launcher: $(GOFILES)
-$(BUILD_DIR)/linux-s390x/lifecycle/launcher:
-	@echo "> Building lifecycle/launcher for $(GOOS)/$(GOARCH)..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
-
-build-linux-amd64-symlinks: export GOOS:=linux
-build-linux-amd64-symlinks: export GOARCH:=amd64
-build-linux-amd64-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-build-linux-amd64-symlinks:
-	@echo "> Creating phase symlinks for $(GOOS)/$(GOARCH)..."
-	ln -sf lifecycle $(OUT_DIR)/detector
-	ln -sf lifecycle $(OUT_DIR)/analyzer
-	ln -sf lifecycle $(OUT_DIR)/restorer
-	ln -sf lifecycle $(OUT_DIR)/builder
-	ln -sf lifecycle $(OUT_DIR)/exporter
-	ln -sf lifecycle $(OUT_DIR)/rebaser
-	ln -sf lifecycle $(OUT_DIR)/creator
-	ln -sf lifecycle $(OUT_DIR)/extender
-
-build-linux-arm64-symlinks: export GOOS:=linux
-build-linux-arm64-symlinks: export GOARCH:=arm64
-build-linux-arm64-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-build-linux-arm64-symlinks:
-	@echo "> Creating phase symlinks for $(GOOS)/$(GOARCH)..."
-	ln -sf lifecycle $(OUT_DIR)/detector
-	ln -sf lifecycle $(OUT_DIR)/analyzer
-	ln -sf lifecycle $(OUT_DIR)/restorer
-	ln -sf lifecycle $(OUT_DIR)/builder
-	ln -sf lifecycle $(OUT_DIR)/exporter
-	ln -sf lifecycle $(OUT_DIR)/rebaser
-	ln -sf lifecycle $(OUT_DIR)/creator
-	ln -sf lifecycle $(OUT_DIR)/extender
-
-build-linux-ppc64le-symlinks: export GOOS:=linux
-build-linux-ppc64le-symlinks: export GOARCH:=ppc64le
-build-linux-ppc64le-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-build-linux-ppc64le-symlinks:
-	@echo "> Creating phase symlinks for $(GOOS)/$(GOARCH)..."
-	ln -sf lifecycle $(OUT_DIR)/detector
-	ln -sf lifecycle $(OUT_DIR)/analyzer
-	ln -sf lifecycle $(OUT_DIR)/restorer
-	ln -sf lifecycle $(OUT_DIR)/builder
-	ln -sf lifecycle $(OUT_DIR)/exporter
-	ln -sf lifecycle $(OUT_DIR)/rebaser
-	ln -sf lifecycle $(OUT_DIR)/creator
-	ln -sf lifecycle $(OUT_DIR)/extender
-
-build-linux-s390x-symlinks: export GOOS:=linux
-build-linux-s390x-symlinks: export GOARCH:=s390x
-build-linux-s390x-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-build-linux-s390x-symlinks:
-	@echo "> Creating phase symlinks for $(GOOS)/$(GOARCH)..."
-	ln -sf lifecycle $(OUT_DIR)/detector
-	ln -sf lifecycle $(OUT_DIR)/analyzer
-	ln -sf lifecycle $(OUT_DIR)/restorer
-	ln -sf lifecycle $(OUT_DIR)/builder
-	ln -sf lifecycle $(OUT_DIR)/exporter
-	ln -sf lifecycle $(OUT_DIR)/rebaser
-	ln -sf lifecycle $(OUT_DIR)/creator
-	ln -sf lifecycle $(OUT_DIR)/extender
+$(foreach ga,$(GOOS_ARCHS),$(eval $(call build_targets,$(word 1, $(subst /, ,$(ga))),$(word 2, $(subst /, ,$(ga))))))
 
 ## DARWIN ARM64/AMD64
 include lifecycle.mk
