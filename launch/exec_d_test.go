@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -42,11 +41,7 @@ func testExecD(t *testing.T, when spec.G, it spec.S) {
 			wd, err := os.Getwd()
 			h.AssertNil(t, err)
 
-			exe := ""
-			if runtime.GOOS == "windows" {
-				exe = ".exe"
-			}
-			path = filepath.Join(tmpDir, "execd"+exe)
+			path = filepath.Join(tmpDir, "execd")
 
 			//#nosec G204
 			cmd := exec.Command("go", "build",

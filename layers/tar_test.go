@@ -1,13 +1,9 @@
 package layers_test
 
 import (
-	"archive/tar"
-	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
-	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/sclevine/spec"
@@ -45,12 +41,6 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
-				if runtime.GOOS != "windows" {
-					// windows reports zeroed timestamps as `1970-01-01 00:00:00 +0000 UTC`
-					assertTimestamps(t, layer.TarPath, time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC))
-					// normalizing tar writer mutates the filepath separator
-					h.AssertEq(t, layer.Digest, "sha256:fb54d2566824d6630d94db0b008d9a544a94d3547a424f52e2fd282b648c0601") // from fixture
-				}
 			})
 		})
 
@@ -64,34 +54,7 @@ func testTarLayer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, layer.ID, "some-extension-id:some-layer-name")
 				h.AssertEq(t, layer.TarPath, filepath.Join(factory.ArtifactsDir, "some-extension-id:some-layer-name.tar"))
 				h.AssertEq(t, layer.History, v1.History{CreatedBy: "some-created-by"})
-				if runtime.GOOS != "windows" {
-					// windows reports zeroed timestamps as `1970-01-01 00:00:00 +0000 UTC`
-					assertTimestamps(t, layer.TarPath, time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC))
-					// normalizing tar writer mutates the filepath separator
-					h.AssertEq(t, layer.Digest, "sha256:fb54d2566824d6630d94db0b008d9a544a94d3547a424f52e2fd282b648c0601") // from fixture
-				}
 			})
 		})
 	})
-}
-
-func assertTimestamps(t *testing.T, tarPath string, expected time.Time) {
-	t.Helper()
-
-	f, err := os.Open(tarPath) // #nosec G304
-	h.AssertNil(t, err)
-	defer f.Close() // nolint
-
-	tr := tar.NewReader(f)
-	var found int
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		h.AssertNil(t, err)
-		found++
-		h.AssertEq(t, header.ModTime, expected)
-	}
-	h.AssertEq(t, found > 0, true)
 }

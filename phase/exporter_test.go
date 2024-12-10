@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -708,11 +707,7 @@ version = "4.5.6"
 
 					val, err := opts.WorkingImage.Env("PATH")
 					h.AssertNil(t, err)
-					if runtime.GOOS == "windows" {
-						h.AssertEq(t, val, `c:\cnb\process;c:\cnb\lifecycle;some-path`)
-					} else {
-						h.AssertEq(t, val, `/cnb/process:/cnb/lifecycle:some-path`)
-					}
+					h.AssertEq(t, val, `/cnb/process:/cnb/lifecycle:some-path`)
 				})
 			})
 

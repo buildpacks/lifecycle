@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/apex/log"
@@ -295,8 +294,6 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "Image extensions are not supported for Windows builds")
-
 				descriptorPath = filepath.Join("testdata", "extension", "by-id", "A", "v1", "extension.toml")
 				var err error
 				descriptor, err = buildpack.ReadExtDescriptor(descriptorPath)

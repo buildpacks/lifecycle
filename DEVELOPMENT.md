@@ -21,7 +21,7 @@
     * Windows:
         * `choco install cygwin make -y`
         * `[Environment]::SetEnvironmentVariable("PATH", "C:\tools\cygwin\bin;$ENV:PATH", "MACHINE")`
-        
+
 ### Caveats
 
 * The acceptance tests require the docker daemon to be able to communicate with a local containerized insecure registry. On Docker Desktop 3.3.x, this may result in failures such as: `Expected nil: push response: : Get http://localhost:<port>/v2/: dial tcp [::1]:<port>: connect: connection refused`. To fix these failures, it may be necessary to add the following to the Docker Desktop Engine config:
@@ -30,17 +30,6 @@
   "insecure-registries": [
     "<my-host-ip>/32"
   ]
-```
-
-* Some of the Windows acceptance tests use license restricted base images. By default, the docker deamon will not publish layers from these images when pushing to a registry which can result in test failures with error messages such as: `Ignoring image "X" because it was corrupt`. To fix these failures you must [enable pushing nondistributable artifacts](https://docs.docker.com/engine/reference/commandline/dockerd/#allow-push-of-nondistributable-artifacts) to the test registry by adding the following to your Docker Desktop Engine config: 
-    * `%programdata%\docker\config\daemon.json`:
-
-```
-{
-  "allow-nondistributable-artifacts": [
-    "<my-host-ip>/32"
-  ]
-}
 ```
 
 ### Testing GitHub actions on forks
@@ -57,7 +46,7 @@ For the fork, it is necessary to add the following secrets:
 * DOCKER_PASSWORD (if not using ghcr.io)
 * DOCKER_USERNAME (if not using ghcr.io)
 
-The tools/test-fork.sh script can be used to update the source code to reflect the state of the fork. 
+The tools/test-fork.sh script can be used to update the source code to reflect the state of the fork.
 It can be invoked like so: `./tools/test-fork.sh <registry repo name>`
 
 ## Tasks

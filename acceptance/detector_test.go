@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -29,8 +28,6 @@ var (
 )
 
 func TestDetector(t *testing.T) {
-	h.SkipIf(t, runtime.GOOS == "windows", "Detector acceptance tests are not yet supported on Windows")
-
 	info, err := h.DockerCli(t).Info(context.TODO())
 	h.AssertNil(t, err)
 

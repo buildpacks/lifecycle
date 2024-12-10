@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -32,8 +31,6 @@ var (
 )
 
 func TestRestorer(t *testing.T) {
-	h.SkipIf(t, runtime.GOOS == "windows", "Restorer acceptance tests are not yet supported on Windows")
-
 	testImageDockerContext := filepath.Join("testdata", "restorer")
 	restoreTest = NewPhaseTest(t, "restorer", testImageDockerContext)
 	restoreTest.Start(t, updateTOMLFixturesWithTestRegistry)
