@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/buildpacks/imgutil/layout/sparse"
@@ -45,8 +44,6 @@ const (
 )
 
 func TestExtender(t *testing.T) {
-	h.SkipIf(t, runtime.GOOS == "windows", "Extender is not supported on Windows")
-
 	testImageDockerContext := filepath.Join("testdata", "extender")
 	extendTest = NewPhaseTest(t, "extender", testImageDockerContext)
 	extendTest.Start(t)

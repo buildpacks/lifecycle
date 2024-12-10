@@ -123,7 +123,7 @@ func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) err
 	return nil
 }
 
-// SeedDockerVolume only works with Linux daemons as Windows only mounts volumes for started containers
+// SeedDockerVolume only works with Linux daemons
 func SeedDockerVolume(t *testing.T, srcPath string) string {
 	volumeName := "test-volume-" + RandString(10)
 	containerName := "test-volume-helper-" + RandString(10)

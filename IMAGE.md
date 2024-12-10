@@ -7,7 +7,6 @@ This image is maintained by the [Cloud Native Buildpacks project](https://buildp
 Supported tags are semver-versioned manifest lists - e.g., `0.12.0` or `0.12.0-rc.1`, pointing to one of the following os/architectures:
 * `linux/amd64`
 * `linux/arm64`
-* `windows/amd64`
 
 # About this image
 

@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -128,8 +127,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("the provided layers directory isn't writeable", func() {
 			it("recursively chowns the directory", func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
-
 				analyzeFlags := []string{"-run-image", analyzeRegFixtures.ReadOnlyRunImage}
 
 				output := h.DockerRun(t,
@@ -202,8 +199,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		it("drops privileges", func() {
-			h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
-
 			analyzeArgs := []string{
 				"-analyzed", "/some-dir/some-analyzed.toml",
 				"-run-image", analyzeRegFixtures.ReadOnlyRunImage,

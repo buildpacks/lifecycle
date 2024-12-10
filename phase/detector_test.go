@@ -744,7 +744,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Targets: []buildpack.TargetMetadata{
 						{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
 							Distros: []buildpack.OSDistro{
-								{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+								{Name: "Sceens 95", Version: "OSR1"}, {Name: "Sceens 95", Version: "OSR2.5"}}},
 						{Arch: "ARM64", OS: "MacOS", Distros: []buildpack.OSDistro{{Name: "MacOS", Version: "snow cheetah"}}}},
 				}
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
@@ -821,7 +821,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Targets: []buildpack.TargetMetadata{
 							{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
 								Distros: []buildpack.OSDistro{
-									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+									{Name: "Sceens 95", Version: "OSR1"}, {Name: "Sceens 95", Version: "OSR2.5"}}},
 							{Arch: "ARM64", OS: "MacOS", Distros: []buildpack.OSDistro{{Name: "MacOS", Version: "snow cheetah"}}}},
 					}
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
@@ -860,9 +860,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Targets: []buildpack.TargetMetadata{
 						{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
 							Distros: []buildpack.OSDistro{
-								{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+								{Name: "Sceens 95", Version: "OSR1"}, {Name: "Sceens 95", Version: "OSR2.5"}}},
 						{Arch: "Pentium M", OS: "Win98",
-							Distros: []buildpack.OSDistro{{Name: "Windows 2000", Version: "Server"}}},
+							Distros: []buildpack.OSDistro{{Name: "Screens 2000", Version: "Server"}}},
 					},
 				}
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
@@ -874,7 +874,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, ok, true)
 						outs := val.(buildpack.DetectOutputs)
 						h.AssertEq(t, outs.Code, -1)
-						h.AssertStringContains(t, outs.Err.Error(), `unable to satisfy target os/arch constraints; run image: {"os":"MacOS","arch":"ARM64","distro":{"name":"MacOS","version":"some kind of big cat"}}, buildpack: [{"os":"Win95","arch":"P6","arch-variant":"Pentium Pro","distros":[{"name":"Windows 95","version":"OSR1"},{"name":"Windows 95","version":"OSR2.5"}]},{"os":"Win98","arch":"Pentium M","distros":[{"name":"Windows 2000","version":"Server"}]}]`)
+						h.AssertStringContains(t, outs.Err.Error(), `unable to satisfy target os/arch constraints; run image: {"os":"MacOS","arch":"ARM64","distro":{"name":"MacOS","version":"some kind of big cat"}}, buildpack: [{"os":"Win95","arch":"P6","arch-variant":"Pentium Pro","distros":[{"name":"Sceens 95","version":"OSR1"},{"name":"Sceens 95","version":"OSR2.5"}]},{"os":"Win98","arch":"Pentium M","distros":[{"name":"Screens 2000","version":"Server"}]}]`)
 						return []buildpack.GroupElement{}, []files.BuildPlanEntry{}, nil
 					})
 

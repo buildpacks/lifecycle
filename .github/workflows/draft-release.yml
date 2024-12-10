@@ -24,7 +24,7 @@ jobs:
             exit 1
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
-      - name: Determine download urls for linux-x86-64, linux-arm64, linux-ppc64le, linux-s390x, and windows
+      - name: Determine download urls for linux-x86-64, linux-arm64, linux-ppc64le, linux-s390x
         id: artifact-urls
         # FIXME: this script should be updated to work with actions/github-script@v6
         uses: actions/github-script@v3

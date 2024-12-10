@@ -3,8 +3,6 @@ package launch_test
 import (
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -124,11 +122,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				process.Direct = true
 
 				// set command to something on the real path so exec.LookPath succeeds
-				if runtime.GOOS == "windows" {
-					process.Command = launch.NewRawCommand([]string{"notepad"})
-				} else {
-					process.Command = launch.NewRawCommand([]string{"sh"})
-				}
+				process.Command = launch.NewRawCommand([]string{"sh"})
 
 				mockEnv.EXPECT().Get("PATH").Return("some-path").AnyTimes()
 				launcher.Setenv = func(k string, v string) error {
@@ -154,11 +148,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if len(syscallExecArgsColl) != 1 {
 					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 				}
-				if runtime.GOOS == "windows" {
-					h.AssertEq(t, strings.ToLower(syscallExecArgsColl[0].argv0), `c:\windows\system32\notepad.exe`)
-				} else {
-					h.AssertMatch(t, syscallExecArgsColl[0].argv0, ".*/bin/sh$")
-				}
+				h.AssertMatch(t, syscallExecArgsColl[0].argv0, ".*/bin/sh$")
 			})
 
 			it("should set argv to command+args", func() {
@@ -166,11 +156,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if len(syscallExecArgsColl) != 1 {
 					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 				}
-				if runtime.GOOS == "windows" {
-					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"notepad", "arg1", "arg2"})
-				} else {
-					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"sh", "arg1", "arg2"})
-				}
+				h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"sh", "arg1", "arg2"})
 			})
 
 			it("should set envv", func() {
@@ -439,17 +425,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type"),
 					)
 
-					if runtime.GOOS == "windows" {
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1.bat"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1.bat"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2.bat"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2.bat"))
-					} else {
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2"))
-					}
+					mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1"))
+					mkfile(t, "", filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1"))
+					mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2"))
+					mkfile(t, "", filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2"))
 
 					mockEnv.EXPECT().AddRootDir(gomock.Any()).AnyTimes()
 					mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).AnyTimes()
@@ -458,17 +437,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				it("sets the profiles", func() {
 					h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
 					h.AssertEq(t, shell.nCalls, 1)
-					if runtime.GOOS == "windows" {
-						h.AssertEq(t, shell.process.Profiles, []string{
-							filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1.bat"),
-							filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2.bat"),
-						})
-					} else {
-						h.AssertEq(t, shell.process.Profiles, []string{
-							filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1"),
-							filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2"),
-						})
-					}
+					h.AssertEq(t, shell.process.Profiles, []string{
+						filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1"),
+						filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2"),
+					})
 				})
 
 				when("process has a type", func() {
@@ -479,21 +451,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					it("includes type-specifc  profiles", func() {
 						h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
 						h.AssertEq(t, shell.nCalls, 1)
-						if runtime.GOOS == "windows" {
-							h.AssertEq(t, shell.process.Profiles, []string{
-								filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1.bat"),
-								filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1.bat"),
-								filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2.bat"),
-								filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2.bat"),
-							})
-						} else {
-							h.AssertEq(t, shell.process.Profiles, []string{
-								filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1"),
-								filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1"),
-								filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2"),
-								filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2"),
-							})
-						}
+						h.AssertEq(t, shell.process.Profiles, []string{
+							filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "prof1"),
+							filepath.Join(tmpDir, "launch", "0.7_buildpack", "layer", "profile.d", "some-process-type", "prof1"),
+							filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "prof2"),
+							filepath.Join(tmpDir, "launch", "0.8_buildpack", "layer", "profile.d", "some-process-type", "prof2"),
+						})
 					})
 				})
 			})
@@ -591,31 +554,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("linux", func() {
-						it.Before(func() {
-							h.SkipIf(t, runtime.GOOS == "windows", "linux test")
-						})
-
 						it("is script", func() {
 							h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
 							h.AssertEq(t, shell.nCalls, 1)
 
 							if !shell.process.Script {
 								t.Fatalf("expected script process")
-							}
-						})
-					})
-
-					when("windows", func() {
-						it.Before(func() {
-							h.SkipIf(t, runtime.GOOS != "windows", "windows test")
-						})
-
-						it("is not script", func() {
-							h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
-							h.AssertEq(t, shell.nCalls, 1)
-
-							if shell.process.Script {
-								t.Fatalf("did not expect script process")
 							}
 						})
 					})
@@ -640,31 +584,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("linux", func() {
-						it.Before(func() {
-							h.SkipIf(t, runtime.GOOS == "windows", "linux test")
-						})
-
 						it("is script", func() {
 							h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
 							h.AssertEq(t, shell.nCalls, 1)
 
 							if !shell.process.Script {
 								t.Fatalf("expected script process")
-							}
-						})
-					})
-
-					when("windows", func() {
-						it.Before(func() {
-							h.SkipIf(t, runtime.GOOS != "windows", "windows test")
-						})
-
-						it("is not script", func() {
-							h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
-							h.AssertEq(t, shell.nCalls, 1)
-
-							if shell.process.Script {
-								t.Fatalf("did not expect script process")
 							}
 						})
 					})

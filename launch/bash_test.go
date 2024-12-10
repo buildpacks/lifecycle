@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -26,7 +25,6 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		h.SkipIf(t, runtime.GOOS == "windows", "skip bash tests on windows")
 		var err error
 		tmpDir, err = os.MkdirTemp("", "shell-test")
 		h.AssertNil(t, err)

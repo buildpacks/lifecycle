@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -45,8 +44,6 @@ var (
 )
 
 func TestExporter(t *testing.T) {
-	h.SkipIf(t, runtime.GOOS == "windows", "Exporter acceptance tests are not yet supported on Windows")
-
 	testImageDockerContext := filepath.Join("testdata", "exporter")
 	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
 

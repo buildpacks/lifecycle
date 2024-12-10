@@ -18,7 +18,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/layer"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	dockercli "github.com/docker/docker/client"
@@ -28,8 +27,7 @@ import (
 )
 
 const (
-	linuxBaseImage   = "gcr.io/distroless/static"
-	windowsBaseImage = "mcr.microsoft.com/windows/nanoserver:1809-amd64"
+	linuxBaseImage = "gcr.io/distroless/static"
 )
 
 // commandline flags
@@ -66,9 +64,6 @@ func main() {
 	}
 
 	baseImage := linuxBaseImage
-	if targetOS == "windows" {
-		baseImage = windowsBaseImage
-	}
 
 	var img imgutil.Image
 	if useDaemon {
@@ -140,9 +135,6 @@ func main() {
 		return
 	}
 	workDir := "/layers"
-	if targetOS == "windows" {
-		workDir = `c:\layers`
-	}
 	if err := img.SetWorkingDir(workDir); err != nil {
 		log.Print("Failed to set working directory:", err)
 		return
@@ -277,22 +269,12 @@ func lifecycleLayer() (string, error) {
 
 	var ntw *archive.NormalizingTarWriter
 	var mode int64
-	if targetOS == "windows" {
-		ntw = archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lf))
-		mode = 0777
-	} else {
-		ntw = archive.NewNormalizingTarWriter(tar.NewWriter(lf))
-		mode = 0755
-	}
+	ntw = archive.NewNormalizingTarWriter(tar.NewWriter(lf))
+	mode = 0755
 
 	ntw.WithModTime(archive.NormalizedModTime)
-	if targetOS == "windows" {
-		ntw.WithUID(1) // gets translated to user permissions in windows writer
-		ntw.WithGID(1) // gets translated to user permissions in windows writer
-	} else {
-		ntw.WithUID(0)
-		ntw.WithGID(0)
-	}
+	ntw.WithUID(0)
+	ntw.WithGID(0)
 	if err := ntw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     "/cnb",

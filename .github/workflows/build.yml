@@ -55,62 +55,10 @@ jobs:
         run: |
           make format || true
           make test
-  test-windows:
-    runs-on: windows-2019
-    steps:
-      - name: Set git to use LF and symlinks
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-          git config --global core.symlinks true
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: '0'
-      - name: Setup go
-        uses: actions/setup-go@v5
-        with:
-          check-latest: true
-          go-version-file: 'go.mod'
-      - name: Add runner IP to daemon insecure-registries and firewall
-        shell: powershell
-        run: |
-          # Get IP from default gateway interface
-          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
-
-          # Allow container-to-host registry traffic (from public interface, to the same interface)
-          New-NetfirewallRule -DisplayName test-registry -LocalAddress $IPAddress -RemoteAddress $IPAddress
-
-          # create or update daemon config to allow host as insecure-registry
-          $config=@{}
-          if (Test-Path C:\ProgramData\docker\config\daemon.json) {
-            $config=(Get-Content C:\ProgramData\docker\config\daemon.json | ConvertFrom-json)
-          }
-          $config | Add-Member -Force -Name "insecure-registries" -value @("$IPAddress/32") -MemberType NoteProperty
-          $config | Add-Member -Force -Name "allow-nondistributable-artifacts" -value @("$IPAddress/32") -MemberType NoteProperty
-          ConvertTo-json $config | Out-File -Encoding ASCII C:\ProgramData\docker\config\daemon.json
-
-          Restart-Service docker
-
-          # dump docker info for auditing
-          docker version
-          docker info
-      - name: Test
-        env:
-          TEST_COVERAGE: 1
-        run: |
-          make test
-      - name: Prepare Codecov
-        uses: crazy-max/ghaction-chocolatey@v3
-        with:
-          args: install codecov -y
-      - name: Run Codecov
-        run: |
-          codecov.exe -f .\out\tests\coverage-unit.txt -v --flag os_windows
   build-and-publish:
     needs:
       - test-linux-amd64
       - test-linux-arm64
-      - test-windows
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -176,14 +124,6 @@ jobs:
         with:
           name: lifecycle-linux-s390x-sha256
           path: out/lifecycle-v*+linux.s390x.tgz.sha256
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lifecycle-windows-x86-64
-          path: out/lifecycle-v*+windows.x86-64.tgz
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lifecycle-windows-x86-64-sha256
-          path: out/lifecycle-v*+windows.x86-64.tgz.sha256
       - name: Generate SBOM JSON
         uses: CycloneDX/gh-gomod-generate-sbom@v2
         with:
@@ -229,15 +169,11 @@ jobs:
           LINUX_S390X_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.s390x.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x -arch s390x | awk '{print $NF}')
           echo "LINUX_S390X_SHA: $LINUX_S390X_SHA"
 
-          WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
-          echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
-
           docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-ppc64le@${LINUX_PPC64LE_SHA} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x@${LINUX_S390X_SHA} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x@${LINUX_S390X_SHA}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
