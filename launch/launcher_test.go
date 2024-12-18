@@ -553,15 +553,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						process.Args = []string{}
 					})
 
-					when("linux", func() {
-						it("is script", func() {
-							h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
-							h.AssertEq(t, shell.nCalls, 1)
+					it("is script", func() {
+						h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
+						h.AssertEq(t, shell.nCalls, 1)
 
-							if !shell.process.Script {
-								t.Fatalf("expected script process")
-							}
-						})
+						if !shell.process.Script {
+							t.Fatalf("expected script process")
+						}
 					})
 				})
 			})
@@ -583,15 +581,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						process.Args = []string{}
 					})
 
-					when("linux", func() {
-						it("is script", func() {
-							h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
-							h.AssertEq(t, shell.nCalls, 1)
+					it("is script", func() {
+						h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
+						h.AssertEq(t, shell.nCalls, 1)
 
-							if !shell.process.Script {
-								t.Fatalf("expected script process")
-							}
-						})
+						if !shell.process.Script {
+							t.Fatalf("expected script process")
+						}
 					})
 				})
 			})
