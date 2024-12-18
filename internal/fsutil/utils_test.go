@@ -70,16 +70,6 @@ func testIO(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#RenameWithWindowsFallback", func() {
-		when("directory does not exist", func() {
-			it("returns not exist error", func() {
-				err := fsutil.RenameWithWindowsFallback("some-not-exist-dir", "dest-dir")
-				h.AssertNotNil(t, err)
-				h.AssertEq(t, os.IsNotExist(err), true)
-			})
-		})
-	})
-
 	when("#FilesWithExtensions", func() {
 		when("called with directory and extensions", func() {
 			it("filters the files", func() {

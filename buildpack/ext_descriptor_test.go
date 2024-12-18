@@ -39,13 +39,5 @@ func testExtDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Targets[0].OS, "")
 			h.AssertEq(t, descriptor.Targets[0].Arch, "")
 		})
-		it("slices, it dices, it even does windows", func() {
-			path := filepath.Join("testdata", "extension", "by-id", "D", "v1", "extension.toml")
-			descriptor, err := buildpack.ReadExtDescriptor(path)
-			h.AssertNil(t, err)
-			h.AssertEq(t, len(descriptor.Targets), 1)
-			h.AssertEq(t, descriptor.Targets[0].OS, "windows")
-			h.AssertEq(t, descriptor.Targets[0].Arch, "")
-		})
 	})
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -28,10 +27,8 @@ import (
 )
 
 func TestGenerator(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		spec.Run(t, "unit-new-generator", testGeneratorFactory, spec.Report(report.Terminal{}))
-		spec.Run(t, "unit-generator", testGenerator, spec.Report(report.Terminal{}))
-	}
+	spec.Run(t, "unit-new-generator", testGeneratorFactory, spec.Report(report.Terminal{}))
+	spec.Run(t, "unit-generator", testGenerator, spec.Report(report.Terminal{}))
 }
 
 func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -42,7 +41,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 					"LIBRARY_PATH",
 				},
 			},
-			Vars: env.NewVars(map[string]string{}, runtime.GOOS == "windows"),
+			Vars: env.NewVars(map[string]string{}, false),
 		}
 	})
 

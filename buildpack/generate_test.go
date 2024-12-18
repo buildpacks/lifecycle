@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -24,9 +23,7 @@ import (
 )
 
 func TestGenerate(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		spec.Run(t, "unit-generate", testGenerate, spec.Report(report.Terminal{}))
-	}
+	spec.Run(t, "unit-generate", testGenerate, spec.Report(report.Terminal{}))
 }
 
 func testGenerate(t *testing.T, when spec.G, it spec.S) {

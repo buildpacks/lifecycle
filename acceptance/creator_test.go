@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -30,8 +29,6 @@ var (
 )
 
 func TestCreator(t *testing.T) {
-	h.SkipIf(t, runtime.GOOS == "windows", "Creator acceptance tests are not yet supported on Windows")
-
 	testImageDockerContext := filepath.Join("testdata", "creator")
 	createTest = NewPhaseTest(t, "creator", testImageDockerContext)
 	createTest.Start(t)

@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/apex/log"
@@ -54,9 +53,6 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			h.AssertEq(t, configLayer.ID, "buildpacksio/lifecycle:process-types")
 			var mode int64 = 0755
-			if runtime.GOOS == "windows" {
-				mode = 0777
-			}
 			assertTarEntries(t, configLayer.TarPath, []*tar.Header{
 				{
 					Name:     tarPath("/cnb"),
@@ -118,9 +114,6 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			h.AssertEq(t, launcherLayer.ID, "buildpacksio/lifecycle:launcher")
 			var mode int64 = 0755
-			if runtime.GOOS == "windows" {
-				mode = 0777
-			}
 			assertTarEntries(t, launcherLayer.TarPath, []*tar.Header{
 				{
 					Name:     tarPath("/cnb"),

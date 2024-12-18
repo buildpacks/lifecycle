@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -191,21 +190,12 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				var err error
-				if runtime.GOOS == "windows" {
-					sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
-						{Paths: []string{"*.txt", "**\\*.txt"}},
-						{Paths: []string{"other-dir"}},
-						{Paths: []string{"dir-link\\*"}},
-						{Paths: []string{"..\\**\\dir-to-exclude"}},
-					})
-				} else {
-					sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
-						{Paths: []string{"*.txt", "**/*.txt"}},
-						{Paths: []string{"other-dir"}},
-						{Paths: []string{"dir-link/*"}},
-						{Paths: []string{"../**/dir-to-exclude"}},
-					})
-				}
+				sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
+					{Paths: []string{"*.txt", "**/*.txt"}},
+					{Paths: []string{"other-dir"}},
+					{Paths: []string{"dir-link/*"}},
+					{Paths: []string{"../**/dir-to-exclude"}},
+				})
 				h.AssertNil(t, err)
 			})
 
