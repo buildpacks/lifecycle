@@ -37,7 +37,8 @@ func (d *detectCmd) DefineFlags() {
 	cli.FlagNoColor(&d.NoColor)
 	cli.FlagOrderPath(&d.OrderPath)
 	cli.FlagPlanPath(&d.PlanPath)
-	cli.FlagPlatformDir(&d.PlatformDir)
+	// TODO: platform version at least
+	cli.FlagExecutionEnviornment(&d.ExecutionEnviornment)
 }
 
 // Args validates arguments and flags, and fills in default values.

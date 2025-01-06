@@ -3,6 +3,8 @@ set -eo pipefail
 
 echo "---> Hello World buildpack"
 
+echo "CNB_EXEC_ENV: ${CNB_EXEC_ENV}"
+
 # INPUT ARGUMENTS
 platform_dir=$2
 env_dir=${platform_dir}/env

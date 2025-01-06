@@ -29,6 +29,7 @@ type LifecycleInputs struct {
 	CacheImageRef         string
 	DefaultProcessType    string
 	DeprecatedRunImageRef string
+	ExecutionEnviornment  string
 	ExtendKind            string
 	ExtendedDir           string
 	ExtensionsDir         string
@@ -111,11 +112,12 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 
 		// Provided at build time
 
-		AppDir:      envOrDefault(EnvAppDir, DefaultAppDir),
-		LayersDir:   envOrDefault(EnvLayersDir, DefaultLayersDir),
-		LayoutDir:   os.Getenv(EnvLayoutDir),
-		OrderPath:   envOrDefault(EnvOrderPath, filepath.Join(PlaceholderLayers, DefaultOrderFile)),
-		PlatformDir: envOrDefault(EnvPlatformDir, DefaultPlatformDir),
+		AppDir:               envOrDefault(EnvAppDir, DefaultAppDir),
+		ExecutionEnviornment: envOrDefault(EnvExecEnv, DefaultExecutionEnv),
+		LayersDir:            envOrDefault(EnvLayersDir, DefaultLayersDir),
+		LayoutDir:            os.Getenv(EnvLayoutDir),
+		OrderPath:            envOrDefault(EnvOrderPath, filepath.Join(PlaceholderLayers, DefaultOrderFile)),
+		PlatformDir:          envOrDefault(EnvPlatformDir, DefaultPlatformDir),
 
 		// The following instruct the lifecycle where to write files and data during the build
 

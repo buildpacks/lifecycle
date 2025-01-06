@@ -109,6 +109,10 @@ func FlagPlatformDir(platformDir *string) {
 	flagSet.StringVar(platformDir, "platform", *platformDir, "path to platform directory")
 }
 
+func FlagExecutionEnviornment(execEnv *string) {
+	flagSet.StringVar(execEnv, "exec-env", *execEnv, "execution env")
+}
+
 // FlagParallelExport parses `parallel` flag
 func FlagParallelExport(parallelExport *bool) {
 	flagSet.BoolVar(parallelExport, "parallel", *parallelExport, "export app image and cache image in parallel")

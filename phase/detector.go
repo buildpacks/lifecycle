@@ -40,19 +40,20 @@ type DetectResolver interface {
 }
 
 type Detector struct {
-	AppDir         string
-	BuildConfigDir string
-	DirStore       DirStore
-	Executor       buildpack.DetectExecutor
-	HasExtensions  bool
-	Logger         log.LoggerHandlerWithLevel
-	Order          buildpack.Order
-	PlatformDir    string
-	Resolver       DetectResolver
-	Runs           *sync.Map
-	AnalyzeMD      files.Analyzed
-	PlatformAPI    *api.Version
-	OSDetector     *fsutil.DefaultDetector
+	AppDir               string
+	BuildConfigDir       string
+	DirStore             DirStore
+	Executor             buildpack.DetectExecutor
+	HasExtensions        bool
+	Logger               log.LoggerHandlerWithLevel
+	Order                buildpack.Order
+	PlatformDir          string
+	ExecutionEnviornment string
+	Resolver             DetectResolver
+	Runs                 *sync.Map
+	AnalyzeMD            files.Analyzed
+	PlatformAPI          *api.Version
+	OSDetector           *fsutil.DefaultDetector
 
 	// If detect fails, we want to print debug statements as info level.
 	// memHandler holds all log entries; we'll iterate through them at the end of detect,
@@ -64,17 +65,18 @@ type Detector struct {
 func (f *HermeticFactory) NewDetector(inputs platform.LifecycleInputs, logger log.LoggerHandlerWithLevel) (*Detector, error) {
 	memHandler := memory.New()
 	detector := &Detector{
-		AppDir:         inputs.AppDir,
-		BuildConfigDir: inputs.BuildConfigDir,
-		DirStore:       f.dirStore,
-		Executor:       &buildpack.DefaultDetectExecutor{},
-		Logger:         logger,
-		PlatformDir:    inputs.PlatformDir,
-		Resolver:       NewDefaultDetectResolver(&apexlog.Logger{Handler: memHandler}),
-		Runs:           &sync.Map{},
-		memHandler:     memHandler,
-		PlatformAPI:    f.platformAPI,
-		OSDetector:     &fsutil.DefaultDetector{},
+		AppDir:               inputs.AppDir,
+		BuildConfigDir:       inputs.BuildConfigDir,
+		DirStore:             f.dirStore,
+		ExecutionEnviornment: inputs.ExecutionEnviornment,
+		Executor:             &buildpack.DefaultDetectExecutor{},
+		Logger:               logger,
+		PlatformDir:          inputs.PlatformDir,
+		Resolver:             NewDefaultDetectResolver(&apexlog.Logger{Handler: memHandler}),
+		Runs:                 &sync.Map{},
+		memHandler:           memHandler,
+		PlatformAPI:          f.platformAPI,
+		OSDetector:           &fsutil.DefaultDetector{},
 	}
 	var err error
 	if detector.AnalyzeMD, err = f.configHandler.ReadAnalyzed(inputs.AnalyzedPath, logger); err != nil {
@@ -231,11 +233,12 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		go func(key string, descriptor buildpack.Descriptor) {
 			if _, ok := d.Runs.Load(key); !ok {
 				inputs := buildpack.DetectInputs{
-					AppDir:         d.AppDir,
-					BuildConfigDir: d.BuildConfigDir,
-					PlatformDir:    d.PlatformDir,
-					Env:            env.NewBuildEnv(os.Environ()),
-					TargetEnv:      platform.EnvVarsFor(d.OSDetector, runImageTargetInfo, d.Logger),
+					AppDir:               d.AppDir,
+					BuildConfigDir:       d.BuildConfigDir,
+					PlatformDir:          d.PlatformDir,
+					ExecutionEnviornment: d.ExecutionEnviornment,
+					Env:                  env.NewBuildEnv(os.Environ()),
+					TargetEnv:            platform.EnvVarsFor(d.OSDetector, runImageTargetInfo, d.Logger),
 				}
 				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger)) // this is where we finally invoke bin/detect
 			}

@@ -122,6 +122,7 @@ const (
 	EnvAppDir      = "CNB_APP_DIR"
 	EnvLayersDir   = "CNB_LAYERS_DIR"
 	EnvPlatformDir = "CNB_PLATFORM_DIR"
+	EnvExecEnv     = "CNB_EXEC_ENV"
 )
 
 // The following are the default locations of input directories if not specified.
@@ -209,6 +210,8 @@ const (
 
 	// EnvBuildImage is a reference to the build-time base image. It is needed when image extensions are used to extend the build-time base image.
 	EnvBuildImage = "CNB_BUILD_IMAGE"
+
+	DefaultExecutionEnv = "production"
 )
 
 // The following are configuration options for the output application image.

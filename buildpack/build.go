@@ -29,14 +29,15 @@ const (
 )
 
 type BuildInputs struct {
-	AppDir         string
-	BuildConfigDir string
-	LayersDir      string
-	PlatformDir    string
-	Env            BuildEnv
-	TargetEnv      []string
-	Out, Err       io.Writer
-	Plan           Plan
+	AppDir               string
+	BuildConfigDir       string
+	LayersDir            string
+	PlatformDir          string
+	Env                  BuildEnv
+	ExecutionEnviornment string
+	TargetEnv            []string
+	Out, Err             io.Writer
+	Plan                 Plan
 }
 
 type BuildEnv interface {
@@ -143,6 +144,10 @@ func runBuildCmd(d BpDescriptor, bpLayersDir, planPath string, inputs BuildInput
 	if err != nil {
 		return err
 	}
+
+	// TODO: platform version thing
+	cmd.Env = append(cmd.Env, EnvExecEnv+"="+inputs.ExecutionEnviornment)
+
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+d.WithRootDir)
 	if api.MustParse(d.WithAPI).AtLeast("0.8") {
 		cmd.Env = append(cmd.Env,

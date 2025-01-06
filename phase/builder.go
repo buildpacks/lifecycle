@@ -36,18 +36,19 @@ type BuildEnv interface {
 }
 
 type Builder struct {
-	AppDir         string
-	BuildConfigDir string
-	LayersDir      string
-	PlatformDir    string
-	BuildExecutor  buildpack.BuildExecutor
-	DirStore       DirStore
-	Group          buildpack.Group
-	Logger         log.Logger
-	Out, Err       io.Writer
-	Plan           files.Plan
-	PlatformAPI    *api.Version
-	AnalyzeMD      files.Analyzed
+	AppDir               string
+	BuildConfigDir       string
+	LayersDir            string
+	PlatformDir          string
+	BuildExecutor        buildpack.BuildExecutor
+	DirStore             DirStore
+	ExecutionEnviornment string
+	Group                buildpack.Group
+	Logger               log.Logger
+	Out, Err             io.Writer
+	Plan                 files.Plan
+	PlatformAPI          *api.Version
+	AnalyzeMD            files.Analyzed
 }
 
 func (b *Builder) Build() (*files.BuildMetadata, error) {
@@ -144,14 +145,15 @@ func (b *Builder) Build() (*files.BuildMetadata, error) {
 
 func (b *Builder) getBuildInputs() buildpack.BuildInputs {
 	return buildpack.BuildInputs{
-		AppDir:         b.AppDir,
-		BuildConfigDir: b.BuildConfigDir,
-		LayersDir:      b.LayersDir,
-		PlatformDir:    b.PlatformDir,
-		Env:            env.NewBuildEnv(os.Environ()),
-		TargetEnv:      platform.EnvVarsFor(&fsutil.DefaultDetector{}, b.AnalyzeMD.RunImageTarget(), b.Logger),
-		Out:            b.Out,
-		Err:            b.Err,
+		AppDir:               b.AppDir,
+		BuildConfigDir:       b.BuildConfigDir,
+		LayersDir:            b.LayersDir,
+		PlatformDir:          b.PlatformDir,
+		Env:                  env.NewBuildEnv(os.Environ()),
+		ExecutionEnviornment: b.ExecutionEnviornment,
+		TargetEnv:            platform.EnvVarsFor(&fsutil.DefaultDetector{}, b.AnalyzeMD.RunImageTarget(), b.Logger),
+		Out:                  b.Out,
+		Err:                  b.Err,
 	}
 }
 

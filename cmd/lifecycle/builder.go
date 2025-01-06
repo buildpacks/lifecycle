@@ -35,6 +35,8 @@ func (b *buildCmd) DefineFlags() {
 		cli.FlagNoColor(&b.NoColor)
 		cli.FlagPlanPath(&b.PlanPath)
 		cli.FlagPlatformDir(&b.PlatformDir)
+		//TODO: platform limit
+		cli.FlagExecutionEnviornment(&b.ExecutionEnviornment)
 	}
 }
 
@@ -74,19 +76,20 @@ func (b *buildCmd) Exec() error {
 
 func (b *buildCmd) build(group buildpack.Group, plan files.Plan, analyzedMD files.Analyzed) error {
 	builder := &phase.Builder{
-		AppDir:         b.AppDir,
-		BuildConfigDir: b.BuildConfigDir,
-		LayersDir:      b.LayersDir,
-		PlatformDir:    b.PlatformDir,
-		BuildExecutor:  &buildpack.DefaultBuildExecutor{},
-		DirStore:       platform.NewDirStore(b.BuildpacksDir, ""),
-		Group:          group,
-		Logger:         cmd.DefaultLogger,
-		Out:            cmd.Stdout,
-		Err:            cmd.Stderr,
-		Plan:           plan,
-		PlatformAPI:    b.PlatformAPI,
-		AnalyzeMD:      analyzedMD,
+		AppDir:               b.AppDir,
+		BuildConfigDir:       b.BuildConfigDir,
+		LayersDir:            b.LayersDir,
+		PlatformDir:          b.PlatformDir,
+		BuildExecutor:        &buildpack.DefaultBuildExecutor{},
+		DirStore:             platform.NewDirStore(b.BuildpacksDir, ""),
+		ExecutionEnviornment: b.ExecutionEnviornment,
+		Group:                group,
+		Logger:               cmd.DefaultLogger,
+		Out:                  cmd.Stdout,
+		Err:                  cmd.Stderr,
+		Plan:                 plan,
+		PlatformAPI:          b.PlatformAPI,
+		AnalyzeMD:            analyzedMD,
 	}
 	md, err := builder.Build()
 	if err != nil {
