@@ -2,7 +2,6 @@ package archive_test
 
 import (
 	"archive/tar"
-	"runtime"
 	"testing"
 	"time"
 
@@ -36,21 +35,6 @@ func testNormalizingTarWriter(t *testing.T, when spec.G, it spec.S) {
 			}))
 			h.AssertEq(t, ftw.getLastHeader().Uname, "")
 			h.AssertEq(t, ftw.getLastHeader().Gname, "")
-		})
-
-		when("windows", func() {
-			it.Before(func() {
-				if runtime.GOOS != "windows" {
-					t.Skip("windows specific test")
-				}
-			})
-
-			it("converts path separators", func() {
-				h.AssertNil(t, ntw.WriteHeader(&tar.Header{
-					Name: `c:\some\file\path`,
-				}))
-				h.AssertEq(t, ftw.getLastHeader().Name, "/some/file/path")
-			})
 		})
 
 		when("#WithUID", func() {

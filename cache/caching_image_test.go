@@ -4,8 +4,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
@@ -70,9 +68,6 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				defer from.Close()
 
-				if runtime.GOOS == "windows" {
-					layerSHA = strings.TrimPrefix(layerSHA, "sha256:")
-				}
 				to, err := os.Create(filepath.Join(tmpDir, "committed", layerSHA+".tar"))
 				h.AssertNil(t, err)
 				defer to.Close()

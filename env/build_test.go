@@ -1,7 +1,6 @@
 package env_test
 
 import (
-	"runtime"
 	"sort"
 	"testing"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/env"
-	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestBuildEnv(t *testing.T) {
@@ -64,15 +62,9 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 				"NO_PROXY=some-no-proxy",
 				"PATH=some-path",
 				"PKG_CONFIG_PATH=some-pkg-config-path",
-			}
-			// Environment variables in Windows are case insensitive, and are added by the lifecycle in uppercase.
-			if runtime.GOOS != "windows" {
-				expectedVars = append(
-					expectedVars,
-					"http_proxy=some-http-proxy",
-					"https_proxy=some-https-proxy",
-					"no_proxy=some-no-proxy",
-				)
+				"http_proxy=some-http-proxy",
+				"https_proxy=some-https-proxy",
+				"no_proxy=some-no-proxy",
 			}
 			if s := cmp.Diff(out, expectedVars); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
@@ -95,23 +87,6 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 			if s := cmp.Diff(benv.RootDirMap, env.POSIXBuildEnv); s != "" {
 				t.Fatalf("Unexpected root dir map\n%s\n", s)
 			}
-		})
-
-		when("building in Windows", func() {
-			it.Before(func() {
-				if runtime.GOOS != "windows" {
-					t.Skip("This test only applies to Windows builds")
-				}
-			})
-
-			it("ignores case when initializing", func() {
-				benv := env.NewBuildEnv([]string{
-					"Path=some-path",
-				})
-				out := benv.List()
-				h.AssertEq(t, len(out), 1)
-				h.AssertEq(t, out[0], "PATH=some-path")
-			})
 		})
 	})
 }

@@ -252,24 +252,5 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
 			h.AssertEq(t, len(descriptor.Targets[0].Distros), 0)
 		})
-
-		it("detects windows/* if batch files are present and ignores linux", func() {
-			path := filepath.Join("testdata", "buildpack", "by-id", "A", "v1", "buildpack.toml")
-			descriptor, err := buildpack.ReadBpDescriptor(path)
-			h.AssertNil(t, err)
-			// common sanity assertions
-			h.AssertEq(t, descriptor.WithAPI, "0.7")
-			h.AssertEq(t, descriptor.Buildpack.ID, "A")
-			h.AssertEq(t, descriptor.Buildpack.Name, "Buildpack A")
-			h.AssertEq(t, descriptor.Buildpack.Version, "v1")
-			h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack A Homepage")
-			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
-			// specific behaviors for this test
-			h.AssertEq(t, len(descriptor.Targets), 2)
-			h.AssertEq(t, descriptor.Targets[0].Arch, "")
-			h.AssertEq(t, descriptor.Targets[0].OS, "windows")
-			h.AssertEq(t, descriptor.Targets[1].Arch, "")
-			h.AssertEq(t, descriptor.Targets[1].OS, "linux")
-		})
 	})
 }

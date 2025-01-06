@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -31,31 +30,16 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		tr, tmpDir = newFakeTarReader(t)
-		// Golang for Windows only implements owner permissions
-		if runtime.GOOS == "windows" {
-			pathModes = []archive.PathMode{
-				{`root`, os.ModeDir + 0777},
-				{`root\readonly`, os.ModeDir + 0555},
-				{`root\readonly\readonlysub`, os.ModeDir + 0555},
-				{`root\readonly\readonlysub\somefile`, 0444},
-				{`root\standarddir`, os.ModeDir + 0777},
-				{`root\standarddir\somefile`, 0666},
-				{`root\nonexistdirnotintar`, os.ModeDir + 0777},
-				{`root\symlinkdir`, os.ModeSymlink + 0666},
-				{`root\symlinkfile`, os.ModeSymlink + 0666},
-			}
-		} else {
-			pathModes = []archive.PathMode{
-				{"root", os.ModeDir + 0755},
-				{"root/readonly", os.ModeDir + 0500},
-				{"root/readonly/readonlysub", os.ModeDir + 0500},
-				{"root/readonly/readonlysub/somefile", 0444},
-				{"root/standarddir", os.ModeDir + 0755},
-				{"root/standarddir/somefile", 0644},
-				{"root/nonexistdirnotintar", os.ModeDir + os.FileMode(int(os.ModePerm)&^originalUmask)},
-				{"root/symlinkdir", os.ModeSymlink + 0777},  // symlink permissions are not preserved from archive
-				{"root/symlinkfile", os.ModeSymlink + 0777}, // symlink permissions are not preserved from archive
-			}
+		pathModes = []archive.PathMode{
+			{"root", os.ModeDir + 0755},
+			{"root/readonly", os.ModeDir + 0500},
+			{"root/readonly/readonlysub", os.ModeDir + 0500},
+			{"root/readonly/readonlysub/somefile", 0444},
+			{"root/standarddir", os.ModeDir + 0755},
+			{"root/standarddir/somefile", 0644},
+			{"root/nonexistdirnotintar", os.ModeDir + os.FileMode(int(os.ModePerm)&^originalUmask)}, //nolint
+			{"root/symlinkdir", os.ModeSymlink + 0777},                                              // symlink permissions are not preserved from archive
+			{"root/symlinkfile", os.ModeSymlink + 0777},                                             // symlink permissions are not preserved from archive
 		}
 	})
 
@@ -110,12 +94,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 
-			if runtime.GOOS != "windows" {
-				h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
-			} else {
-				// Golang for Windows only implements owner permissions
-				h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0777)
-			}
+			h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
 		})
 	})
 }

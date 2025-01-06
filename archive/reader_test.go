@@ -3,7 +3,6 @@ package archive_test
 import (
 	"archive/tar"
 	"io"
-	"runtime"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -33,11 +32,7 @@ func testNormalizingTarReader(t *testing.T, when spec.G, it spec.S) {
 		it("converts path separators", func() {
 			hdr, err := ntr.Next()
 			h.AssertNil(t, err)
-			if runtime.GOOS == "windows" {
-				h.AssertEq(t, hdr.Name, `\some\path`)
-			} else {
-				h.AssertEq(t, hdr.Name, `/some/path`)
-			}
+			h.AssertEq(t, hdr.Name, `/some/path`)
 		})
 
 		when("#Strip", func() {
@@ -45,11 +40,7 @@ func testNormalizingTarReader(t *testing.T, when spec.G, it spec.S) {
 				ntr.Strip("/some")
 				hdr, err := ntr.Next()
 				h.AssertNil(t, err)
-				if runtime.GOOS == "windows" {
-					h.AssertEq(t, hdr.Name, `\path`)
-				} else {
-					h.AssertEq(t, hdr.Name, `/path`)
-				}
+				h.AssertEq(t, hdr.Name, `/path`)
 			})
 		})
 
@@ -58,11 +49,7 @@ func testNormalizingTarReader(t *testing.T, when spec.G, it spec.S) {
 				ntr.PrependDir("/super-dir")
 				hdr, err := ntr.Next()
 				h.AssertNil(t, err)
-				if runtime.GOOS == "windows" {
-					h.AssertEq(t, hdr.Name, `\super-dir\some\path`)
-				} else {
-					h.AssertEq(t, hdr.Name, `/super-dir/some/path`)
-				}
+				h.AssertEq(t, hdr.Name, `/super-dir/some/path`)
 			})
 		})
 
@@ -73,11 +60,7 @@ func testNormalizingTarReader(t *testing.T, when spec.G, it spec.S) {
 				ntr.ExcludePaths([]string{"excluded-dir"})
 				hdr, err := ntr.Next()
 				h.AssertNil(t, err)
-				if runtime.GOOS == "windows" {
-					h.AssertEq(t, hdr.Name, `\some\path`)
-				} else {
-					h.AssertEq(t, hdr.Name, `/some/path`)
-				}
+				h.AssertEq(t, hdr.Name, `/some/path`)
 			})
 		})
 	})

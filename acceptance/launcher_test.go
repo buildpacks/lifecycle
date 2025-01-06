@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -25,9 +24,6 @@ func TestLauncher(t *testing.T) {
 	launchTest = NewPhaseTest(t, "launcher", testImageDockerContext, withoutDaemonFixtures, withoutRegistry)
 
 	containerBinaryDir := filepath.Join("testdata", "launcher", "linux", "container", "cnb", "lifecycle")
-	if launchTest.targetDaemon.os == "windows" {
-		containerBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
-	}
 	withCustomContainerBinaryDir := func(_ *testing.T, phaseTest *PhaseTest) {
 		phaseTest.containerBinaryDir = containerBinaryDir
 	}
@@ -92,11 +88,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 				launchImage, "with user provided args",
 			)
-			if runtime.GOOS == "windows" {
-				assertOutput(t, cmd, `Executing web process-type "with user provided args"`)
-			} else {
-				assertOutput(t, cmd, "Executing web process-type with user provided args")
-			}
+			assertOutput(t, cmd, "Executing web process-type with user provided args")
 		})
 	})
 
@@ -109,15 +101,6 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				launchImage, "--",
 				"env",
 			)
-			if runtime.GOOS == "windows" {
-				cmd = exec.Command( //nolint
-					"docker", "run", "--rm",
-					`--entrypoint=launcher`,
-					"--env=CNB_PLATFORM_API=0.7",
-					launchImage, "--",
-					"cmd", "/c", "set",
-				)
-			}
 
 			assertOutput(t, cmd,
 				"SOME_VAR=some-bp-val",
@@ -160,22 +143,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				launchImage,
 				"echo", "$SOME_VAR", "$OTHER_VAR", "$WORKER_VAR",
 			)
-			if runtime.GOOS == "windows" {
-				cmd = exec.Command( //nolint
-					"docker", "run", "--rm",
-					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
-					launchImage,
-					"echo", "%SOME_VAR%", "%OTHER_VAR%", "%WORKER_VAR%",
-				)
-			}
 			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-bp-val other-bp-val worker-no-process-val")
 		})
 
 		it("passes through env vars from user, excluding excluded vars", func() {
 			args := []string{"echo", "$SOME_USER_VAR, $CNB_APP_DIR, $OTHER_VAR"}
-			if runtime.GOOS == "windows" {
-				args = []string{"echo", "%SOME_USER_VAR%, %CNB_APP_DIR%, %OTHER_VAR%"}
-			}
 			cmd := exec.Command("docker",
 				append(
 					[]string{
@@ -189,13 +161,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					args...)...,
 			) // #nosec G204
 
-			if runtime.GOOS == "windows" {
-				// windows values with spaces will contain quotes
-				// empty values on windows preserve variable names instead of interpolating to empty strings
-				assertOutput(t, cmd, "sourced bp profile\nsourced app profile\n\"some-user-val, %CNB_APP_DIR%, other-user-val**other-bp-val\"")
-			} else {
-				assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-user-val, , other-user-val**other-bp-val")
-			}
+			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-user-val, , other-user-val**other-bp-val")
 		})
 
 		it("adds buildpack bin dirs to the path", func() {
@@ -211,23 +177,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 	when("CMD provided starts with --", func() {
 		it("launches command directly", func() {
-			if runtime.GOOS == "windows" {
-				cmd := exec.Command( //nolint
-					"docker", "run", "--rm",
-					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
-					launchImage, "--",
-					"ping", "/?",
-				)
-				assertOutput(t, cmd, "Usage: ping")
-			} else {
-				cmd := exec.Command( //nolint
-					"docker", "run", "--rm",
-					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
-					launchImage, "--",
-					"echo", "something",
-				)
-				assertOutput(t, cmd, "something")
-			}
+			cmd := exec.Command( //nolint
+				"docker", "run", "--rm",
+				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
+				launchImage, "--",
+				"echo", "something",
+			)
+			assertOutput(t, cmd, "something")
 		})
 
 		it("sets env vars from layers", func() {
@@ -237,14 +193,6 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				launchImage, "--",
 				"env",
 			)
-			if runtime.GOOS == "windows" {
-				cmd = exec.Command( //nolint
-					"docker", "run", "--rm",
-					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
-					launchImage, "--",
-					"cmd", "/c", "set",
-				)
-			}
 
 			assertOutput(t, cmd,
 				"SOME_VAR=some-bp-val",
@@ -261,16 +209,6 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				launchImage, "--",
 				"env",
 			)
-			if runtime.GOOS == "windows" {
-				cmd = exec.Command( //nolint
-					"docker", "run", "--rm",
-					"--env", "CNB_APP_DIR=/workspace",
-					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "SOME_USER_VAR=some-user-val",
-					launchImage, "--",
-					"cmd", "/c", "set",
-				)
-			}
 
 			output, err := cmd.CombinedOutput()
 			if err != nil {
