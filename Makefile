@@ -38,7 +38,7 @@ GOFILES := $(shell $(GOCMD) run tools$/lister$/main.go)
 
 all: test build package
 
-GOOS_ARCHS = linux/amd64 linux/arm64 linux/ppc64le linux/s390x
+GOOS_ARCHS = linux/amd64 linux/arm64 linux/ppc64le linux/s390x darwin/amd64 darwin/arm64
 
 build: build-linux-amd64 build-linux-arm64 build-linux-ppc64le build-linux-s390x
 
@@ -104,33 +104,6 @@ $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher:
 endef
 
 $(foreach ga,$(GOOS_ARCHS),$(eval $(call build_targets,$(word 1, $(subst /, ,$(ga))),$(word 2, $(subst /, ,$(ga))))))
-
-## DARWIN ARM64/AMD64
-include lifecycle.mk
-include launcher.mk
-build-darwin-arm64: build-darwin-arm64-lifecycle build-darwin-arm64-launcher
-build-darwin-arm64-lifecycle:
-	$(eval GOARCH := arm64)
-	$(eval TARGET := darwin-arm64)
-	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
-	$(call build_lifecycle)
-build-darwin-arm64-launcher:
-	$(eval GOARCH := arm64)
-	$(eval TARGET := darwin-arm64)
-	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
-	$(call build_launcher)
-
-build-darwin-amd64: build-darwin-amd64-lifecycle build-darwin-amd64-launcher
-build-darwin-amd64-lifecycle:
-	$(eval GOARCH := amd64)
-	$(eval TARGET := darwin-amd64)
-	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
-	$(call build_lifecycle)
-build-darwin-amd64-launcher:
-	$(eval GOARCH := amd64)
-	$(eval TARGET := darwin-amd64)
-	$(eval OUT_DIR := $(BUILD_DIR)/$(TARGET)/lifecycle)
-	$(call build_launcher)
 
 generate-sbom: run-syft-linux-amd64 run-syft-linux-arm64 run-syft-linux-ppc64le run-syft-linux-s390x
 
