@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/image"
+
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
@@ -434,6 +436,22 @@ func assertImageOSAndArch(t *testing.T, imageName string, phaseTest *PhaseTest) 
 
 func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest *PhaseTest, expectedCreatedAt time.Time) { //nolint
 	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
+
+	if err != nil {
+		list, _ := h.DockerCli(t).ImageList(context.TODO(), image.ListOptions{})
+		fmt.Println("Error encountered running ImageInspectWithRaw. imageName: ", imageName)
+		fmt.Println(err)
+		for _, value := range list {
+			fmt.Println("Image Name: ", value)
+		}
+
+		if strings.Contains(err.Error(), "No such image") {
+			t.Log("Image not found, retrying...")
+			time.Sleep(1 * time.Second)
+			inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
+		}
+	}
+
 	h.AssertNil(t, err)
 	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
 	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
