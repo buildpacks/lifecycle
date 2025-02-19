@@ -82,8 +82,8 @@ jobs:
                 if (urlList.length === 0) {
                   throw "no artifacts found"
                 }
-                if (urlList.length != 12) {
-                  throw "there should be exactly 12 artifacts"
+                if (urlList.length != 10) {
+                  throw "there should be exactly 10 artifacts"
                 }
                 return urlList.join(",")
               })
