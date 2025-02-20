@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -61,6 +62,9 @@ func Run(c Command, withPhaseName string, asSubcommand bool) {
 
 	// We print a warning here, so we should disable color if needed and set the log level before exercising this logic.
 	for _, arg := range flagSet.Args() {
+		if arg == "" {
+			cmd.Exit(errors.New("empty image tag"))
+		}
 		if arg[0:1] == "-" {
 			cmd.DefaultLogger.Warnf("Warning: unconsumed flag-like positional arg: \n\t%s\n\t This will not be interpreted as a flag.\n\t Did you mean to put this before the first positional argument?", arg)
 		}
