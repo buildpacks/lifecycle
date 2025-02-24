@@ -64,13 +64,14 @@ func TestExporter(t *testing.T) {
 
 func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
-		var exportedImageName string
-
-		it.After(func() {
-			_, _, _ = h.RunE(exec.Command("docker", "rmi", exportedImageName)) // #nosec G204
-		})
 
 		when("daemon case", func() {
+			var exportedImageName string
+
+			it.After(func() {
+				_, _, _ = h.RunE(exec.Command("docker", "rmi", exportedImageName)) // #nosec G204
+			})
+
 			it("app is created", func() {
 				exportFlags := []string{"-daemon", "-log-level", "debug"}
 				exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
@@ -229,6 +230,12 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("registry case", func() {
+			var exportedImageName string
+
+			it.After(func() {
+				_, _, _ = h.RunE(exec.Command("docker", "rmi", exportedImageName)) // #nosec G204
+			})
+
 			it("app is created", func() {
 				var exportFlags []string
 				exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
@@ -561,10 +568,11 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("layout case", func() {
 			var (
-				containerName string
-				err           error
-				layoutDir     string
-				tmpDir        string
+				containerName     string
+				err               error
+				layoutDir         string
+				tmpDir            string
+				exportedImageName string
 			)
 
 			when("experimental mode is enabled", func() {
