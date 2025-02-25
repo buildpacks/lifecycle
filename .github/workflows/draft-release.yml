@@ -188,7 +188,7 @@ jobs:
             --draft \
             --notes-file ../body.txt \
             --prerelease \
-            --target $GITHUB_REF \
+            --target $GITHUB_REF_NAME \
             --title "lifecycle v${{ env.LIFECYCLE_VERSION }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -200,7 +200,7 @@ jobs:
             $(ls | sort | paste -sd " " -) \
             --draft \
             --notes-file ../body.txt \
-            --target $GITHUB_REF \
+            --target $GITHUB_REF_NAME \
             --title "lifecycle v${{ env.LIFECYCLE_VERSION }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
