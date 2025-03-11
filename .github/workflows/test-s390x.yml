@@ -55,7 +55,7 @@ jobs:
               fi
           done
       - name: Install dependencies and run all tests on s390x ZVSI
-        uses: appleboy/ssh-action@v1.2.1
+        uses: appleboy/ssh-action@v1.2.2
         env:
           GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
           GH_REF: ${{ github.ref }}
