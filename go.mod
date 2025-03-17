@@ -7,7 +7,7 @@ require (
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.9.1
 	github.com/buildpacks/imgutil v0.0.0-20240605145725-186f89b2d168
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
-	github.com/containerd/containerd v1.7.26
+	github.com/containerd/containerd v1.7.27
 	github.com/docker/docker v27.0.3+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.7.0
@@ -17,8 +17,8 @@ require (
 	github.com/moby/buildkit v0.14.1
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
-	golang.org/x/sync v0.11.0
-	golang.org/x/sys v0.30.0
+	golang.org/x/sync v0.12.0
+	golang.org/x/sys v0.31.0
 )
 
 require (
