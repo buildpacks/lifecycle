@@ -1,7 +1,7 @@
 module github.com/buildpacks/lifecycle
 
 require (
-	github.com/BurntSushi/toml v1.4.0
+	github.com/BurntSushi/toml v1.5.0
 	github.com/GoogleContainerTools/kaniko v1.23.2
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.9.1
@@ -17,8 +17,8 @@ require (
 	github.com/moby/buildkit v0.14.1
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
-	golang.org/x/sync v0.11.0
-	golang.org/x/sys v0.30.0
+	golang.org/x/sync v0.12.0
+	golang.org/x/sys v0.31.0
 )
 
 require (
