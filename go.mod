@@ -8,7 +8,7 @@ require (
 	github.com/buildpacks/imgutil v0.0.0-20240605145725-186f89b2d168
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.27
-	github.com/docker/docker v27.5.1+incompatible
+	github.com/docker/docker v27.0.3+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.2
@@ -99,7 +99,6 @@ require (
 	github.com/moby/swarmkit/v2 v2.0.0-20230911190601-f082dd7a0cee // indirect
 	github.com/moby/sys/mount v0.3.3 // indirect
 	github.com/moby/sys/mountinfo v0.7.1 // indirect
-	github.com/moby/sys/reexec v0.1.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/signal v0.7.0 // indirect
 	github.com/moby/sys/symlink v0.2.0 // indirect
