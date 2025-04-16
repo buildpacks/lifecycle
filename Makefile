@@ -145,7 +145,7 @@ install-syft:
 
 install-goimports:
 	@echo "> Installing goimports..."
-	$(GOCMD) install golang.org/x/tools/cmd/goimports@v0.1.2
+	$(GOCMD) install golang.org/x/tools/cmd/goimports@v0.32.0
 
 install-yj:
 	@echo "> Installing yj..."
@@ -157,7 +157,7 @@ install-mockgen:
 
 install-golangci-lint:
 	@echo "> Installing golangci-lint..."
-	$(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5
+	$(GOCMD) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.2
 
 lint: install-golangci-lint
 	@echo "> Linting code..."

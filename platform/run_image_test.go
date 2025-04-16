@@ -163,7 +163,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("run image set in runImage metadata", func() {
-			md.RunImage.RunImageForExport.Image = "run-image-in-metadata"
+			md.RunImage.Image = "run-image-in-metadata"
 
 			it("returns the run image from runImage metadata", func() {
 				result, err := platform.GetRunImageFromMetadata(inputs, md)
@@ -190,7 +190,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 			inputs.PlatformAPI = api.MustParse("0.11")
 
 			when("run image set in runImage metadata", func() {
-				md.RunImage.RunImageForExport.Image = "run-image-in-metadata"
+				md.RunImage.Image = "run-image-in-metadata"
 
 				it("fails to return at this platform version", func() {
 					result, err := platform.GetRunImageFromMetadata(inputs, md)

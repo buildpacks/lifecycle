@@ -196,7 +196,7 @@ func (r *rebaseCmd) setAppImage() error {
 		}
 
 		// we find the best mirror for the run image as this point
-		r.RunImageRef, err = platform.BestRunImageMirrorFor(registry, runImage, r.LifecycleInputs.AccessChecker())
+		r.RunImageRef, err = platform.BestRunImageMirrorFor(registry, runImage, r.AccessChecker())
 		if err != nil {
 			return err
 		}
