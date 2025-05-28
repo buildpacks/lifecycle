@@ -19,8 +19,8 @@ import (
 type analyzeCmd struct {
 	*platform.Platform
 
-	docker   client.CommonAPIClient // construct if necessary before dropping privileges
-	keychain authn.Keychain         // construct if necessary before dropping privileges
+	docker   client.APIClient // construct if necessary before dropping privileges
+	keychain authn.Keychain   // construct if necessary before dropping privileges
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).

@@ -18,7 +18,7 @@ func TestLocalImageHandler(t *testing.T) {
 func testLocalImageHandler(t *testing.T, when spec.G, it spec.S) {
 	var (
 		imageHandler image.Handler
-		dockerClient client.CommonAPIClient
+		dockerClient client.APIClient
 	)
 
 	when("Local handler", func() {
