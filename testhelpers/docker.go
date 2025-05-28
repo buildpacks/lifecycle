@@ -20,10 +20,11 @@ import (
 
 var (
 	dockerCliOnce sync.Once
-	dockerCliVal  dockercli.CommonAPIClient
+	dockerCliVal  dockercli.APIClient
 )
 
-func DockerCli(t *testing.T) dockercli.CommonAPIClient {
+// DockerCli returns a new docker client
+func DockerCli(t *testing.T) dockercli.APIClient {
 	dockerCliOnce.Do(func() {
 		var dockerCliErr error
 		dockerCliVal, dockerCliErr = dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))

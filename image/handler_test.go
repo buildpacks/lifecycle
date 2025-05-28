@@ -23,7 +23,7 @@ func testHandler(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController *gomock.Controller
 		mockKeychain   *testmockauth.MockKeychain
-		dockerClient   client.CommonAPIClient
+		dockerClient   client.APIClient
 	)
 
 	it.Before(func() {

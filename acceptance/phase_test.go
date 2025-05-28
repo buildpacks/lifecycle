@@ -428,14 +428,14 @@ func SBOMComponents() []string {
 }
 
 func assertImageOSAndArch(t *testing.T, imageName string, phaseTest *PhaseTest) { //nolint  - these functions are in fact used, i promise
-	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
+	inspect, err := h.DockerCli(t).ImageInspect(context.TODO(), imageName)
 	h.AssertNil(t, err)
 	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
 	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
 }
 
 func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest *PhaseTest, expectedCreatedAt time.Time) { //nolint
-	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
+	inspect, err := h.DockerCli(t).ImageInspect(context.TODO(), imageName)
 
 	if err != nil {
 		list, _ := h.DockerCli(t).ImageList(context.TODO(), image.ListOptions{})
@@ -448,7 +448,7 @@ func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest 
 		if strings.Contains(err.Error(), "No such image") {
 			t.Log("Image not found, retrying...")
 			time.Sleep(1 * time.Second)
-			inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
+			inspect, err = h.DockerCli(t).ImageInspect(context.TODO(), imageName)
 		}
 	}
 
