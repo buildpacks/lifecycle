@@ -143,21 +143,26 @@ install-syft:
 	@echo "> Installing syft..."
 	curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 
+define install-go-tool
+	@echo "> Installing $(1)..."
+	$(GOCMD) install $(1)@$(shell $(GOCMD) list -m -f '{{.Version}}' $(2))
+endef
+
 install-goimports:
 	@echo "> Installing goimports..."
-	$(GOCMD) install golang.org/x/tools/cmd/goimports@v0.32.0
+	$(call install-go-tool,golang.org/x/tools/cmd/goimports,golang.org/x/tools)
 
 install-yj:
 	@echo "> Installing yj..."
-	$(GOCMD) install github.com/sclevine/yj@v0.0.0-20210612025309-737bdf40a5d1
+	$(call install-go-tool,github.com/sclevine/yj,github.com/sclevine/yj)
 
 install-mockgen:
 	@echo "> Installing mockgen..."
-	$(GOCMD) install github.com/golang/mock/mockgen@v1.5.0
+	$(call install-go-tool,github.com/golang/mock/mockgen,github.com/golang/mock)
 
 install-golangci-lint:
 	@echo "> Installing golangci-lint..."
-	$(GOCMD) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.2
+	$(call install-go-tool,github.com/golangci/golangci-lint/v2/cmd/golangci-lint,github.com/golangci/golangci-lint/v2)
 
 lint: install-golangci-lint
 	@echo "> Linting code..."
