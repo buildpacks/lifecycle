@@ -83,7 +83,10 @@ jobs:
                   throw "no artifacts found"
                 }
                 if (urlList.length != 10) {
-                  throw "there should be exactly 10 artifacts"
+                  // found too many artifacts
+                  // list them and throw
+                  console.log(urlList);
+                  throw "there should be exactly 10 artifacts, found " + urlList.length + " artifacts"
                 }
                 return urlList.join(",")
               })
