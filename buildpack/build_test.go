@@ -291,7 +291,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					if _, err := executor.Build(descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
-					if s := cmp.Diff(h.CleanEndings(stdout.String()), "STDOUT: build out: A@v1\nSTDERR: build err: A@v1\n"); s != "" {
+					if s := cmp.Diff(h.CleanEndings(stdout.String()), "build out: A@v1\nbuild err: A@v1\n"); s != "" {
 						t.Fatalf("Unexpected stdout:\n%s\n", s)
 					}
 				})
