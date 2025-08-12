@@ -82,6 +82,9 @@ func main() {
 		if daemonArch == "x86_64" {
 			daemonArch = "amd64"
 		}
+		if daemonArch == "aarch64" {
+			daemonArch = "arm64"
+		}
 		if daemonArch != targetArch {
 			log.Fatal("Target architecture and daemon architecture must match")
 		}
