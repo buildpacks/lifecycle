@@ -383,8 +383,15 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		return nil, "", cmd.FailErr(err, "parsing run image reference")
 	}
 
+	// Load run image first - this WILL error if it fails
+	runImage, err := layout.NewImage(runImageIdentifier.Path)
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "access run image")
+	}
+
+	// Build options with the successfully loaded image as base
 	var opts = []imgutil.ImageOption{
-		layout.FromBaseImagePath(runImageIdentifier.Path),
+		layout.FromBaseImageInstance(runImage.UnderlyingImage()),
 	}
 
 	if e.supportsHistory() {
@@ -425,10 +432,6 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		return nil, "", err
 	}
 
-	runImage, err := layout.NewImage(runImageIdentifier.Path)
-	if err != nil {
-		return nil, "", cmd.FailErr(err, "access run image")
-	}
 	runImageID, err := runImage.Identifier()
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "get run image reference")
