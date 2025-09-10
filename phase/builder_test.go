@@ -245,6 +245,48 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		})
 
+		it("passes ExecEnv to BuildInputs", func() {
+			builder.ExecEnv = "development"
+			bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+			executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, _ llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertEq(t, inputs.ExecEnv, "development")
+					return buildpack.BuildOutputs{}, nil
+				},
+			)
+			bpB := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
+			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
+			dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
+			executor.EXPECT().Build(*bpB, gomock.Any(), gomock.Any()).Do(
+				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, _ llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertEq(t, inputs.ExecEnv, "development")
+					return buildpack.BuildOutputs{}, nil
+				})
+			_, err := builder.Build()
+			h.AssertNil(t, err)
+		})
+
+		it("passes empty ExecEnv when not set", func() {
+			builder.ExecEnv = ""
+			bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+			executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, _ llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertEq(t, inputs.ExecEnv, "")
+					return buildpack.BuildOutputs{}, nil
+				},
+			)
+			bpB := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
+			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
+			dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
+			executor.EXPECT().Build(*bpB, gomock.Any(), gomock.Any()).Do(
+				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, _ llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertEq(t, inputs.ExecEnv, "")
+					return buildpack.BuildOutputs{}, nil
+				})
+			_, err := builder.Build()
+			h.AssertNil(t, err)
+		})
+
 		it("provides the updated environment to the next buildpack", func() {
 			bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
 

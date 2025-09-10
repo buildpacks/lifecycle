@@ -29,6 +29,7 @@ type LifecycleInputs struct {
 	CacheImageRef         string
 	DefaultProcessType    string
 	DeprecatedRunImageRef string
+	ExecEnv               string
 	ExtendKind            string
 	ExtendedDir           string
 	ExtensionsDir         string
@@ -112,6 +113,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		// Provided at build time
 
 		AppDir:      envOrDefault(EnvAppDir, DefaultAppDir),
+		ExecEnv:     envOrDefault(EnvExecEnv, DefaultExecEnv),
 		LayersDir:   envOrDefault(EnvLayersDir, DefaultLayersDir),
 		LayoutDir:   os.Getenv(EnvLayoutDir),
 		OrderPath:   envOrDefault(EnvOrderPath, filepath.Join(PlaceholderLayers, DefaultOrderFile)),
