@@ -1599,6 +1599,264 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("execution environment filtering", func() {
+		var (
+			detector *phase.Detector
+			executor *testmock.MockDetectExecutor
+			resolver *testmock.MockDetectResolver
+		)
+
+		it.Before(func() {
+			configHandler.EXPECT().ReadAnalyzed("some-analyzed-path", gomock.Any()).Return(files.Analyzed{}, nil).AnyTimes()
+			configHandler.EXPECT().ReadOrder("some-order-path").Return(buildpack.Order{}, buildpack.Order{}, nil)
+			var err error
+			detector, err = detectorFactory.NewDetector(platform.LifecycleInputs{
+				AnalyzedPath:   "some-analyzed-path",
+				AppDir:         "some-app-dir",
+				BuildConfigDir: "some-build-config-dir",
+				OrderPath:      "some-order-path",
+				PlatformDir:    "some-platform-dir",
+				ExecEnv:        "test",
+			}, logger)
+			h.AssertNil(t, err)
+			// override factory-provided services
+			executor = testmock.NewMockDetectExecutor(mockController)
+			resolver = testmock.NewMockDetectResolver(mockController)
+			detector.Executor = executor
+			detector.Resolver = resolver
+			detector.PlatformAPI = api.MustParse("0.15") // Enable execution environment filtering
+		})
+
+		when("Platform API < 0.15", func() {
+			it("does not filter buildpacks based on execution environment", func() {
+				detector.PlatformAPI = api.MustParse("0.14")
+				detector.ExecEnv = "test"
+
+				bpA1 := &buildpack.BpDescriptor{
+					WithAPI:   "0.12",
+					Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1", ExecEnv: []string{"production"}}},
+				}
+				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+				executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{})
+
+				resolver.EXPECT().Resolve(gomock.Any(), detector.Runs).Do(
+					func(group []buildpack.GroupElement, _ *sync.Map) {
+						h.AssertEq(t, len(group), 1)
+						h.AssertEq(t, group[0].ID, "A")
+						h.AssertEq(t, group[0].Version, "v1")
+					})
+
+				detector.Order = buildpack.Order{{Group: []buildpack.GroupElement{
+					{ID: "A", Version: "v1"},
+				}}}
+				_, _, _ = detector.Detect()
+			})
+		})
+
+		when("buildpack API < 0.12", func() {
+			it("ignores exec-env field and allows buildpack to run", func() {
+				detector.ExecEnv = "test"
+
+				bpA1 := &buildpack.BpDescriptor{
+					WithAPI:   "0.11", // API < 0.12
+					Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1", ExecEnv: []string{"production"}}},
+				}
+				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+				executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{})
+
+				resolver.EXPECT().Resolve(gomock.Any(), detector.Runs).Do(
+					func(group []buildpack.GroupElement, _ *sync.Map) {
+						h.AssertEq(t, len(group), 1)
+						h.AssertEq(t, group[0].ID, "A")
+						h.AssertEq(t, group[0].Version, "v1")
+					})
+
+				detector.Order = buildpack.Order{{Group: []buildpack.GroupElement{
+					{ID: "A", Version: "v1"},
+				}}}
+				_, _, _ = detector.Detect()
+			})
+		})
+
+		when("buildpack API >= 0.12", func() {
+			when("buildpack has no exec-env specified", func() {
+				it("allows buildpack to run in any execution environment", func() {
+					detector.ExecEnv = "test"
+
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}, // No ExecEnv specified
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{})
+
+					resolver.EXPECT().Resolve(gomock.Any(), detector.Runs).Do(
+						func(group []buildpack.GroupElement, _ *sync.Map) {
+							h.AssertEq(t, len(group), 1)
+							h.AssertEq(t, group[0].ID, "A")
+							h.AssertEq(t, group[0].Version, "v1")
+						})
+
+					detector.Order = buildpack.Order{{Group: []buildpack.GroupElement{
+						{ID: "A", Version: "v1"},
+					}}}
+					_, _, _ = detector.Detect()
+				})
+			})
+
+			when("buildpack supports all execution environments with '*'", func() {
+				it("allows buildpack to run", func() {
+					detector.ExecEnv = "test"
+
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1", ExecEnv: []string{"*"}}},
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{})
+
+					resolver.EXPECT().Resolve(gomock.Any(), detector.Runs).Do(
+						func(group []buildpack.GroupElement, _ *sync.Map) {
+							h.AssertEq(t, len(group), 1)
+							h.AssertEq(t, group[0].ID, "A")
+							h.AssertEq(t, group[0].Version, "v1")
+						})
+
+					detector.Order = buildpack.Order{{Group: []buildpack.GroupElement{
+						{ID: "A", Version: "v1"},
+					}}}
+					_, _, _ = detector.Detect()
+				})
+			})
+
+			when("buildpack supports the current execution environment", func() {
+				it("allows buildpack to run", func() {
+					detector.ExecEnv = "test"
+
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1", ExecEnv: []string{"production", "test"}}},
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{})
+
+					resolver.EXPECT().Resolve(gomock.Any(), detector.Runs).Do(
+						func(group []buildpack.GroupElement, _ *sync.Map) {
+							h.AssertEq(t, len(group), 1)
+							h.AssertEq(t, group[0].ID, "A")
+							h.AssertEq(t, group[0].Version, "v1")
+						})
+
+					detector.Order = buildpack.Order{{Group: []buildpack.GroupElement{
+						{ID: "A", Version: "v1"},
+					}}}
+					_, _, _ = detector.Detect()
+				})
+			})
+
+			when("buildpack does not support the current execution environment", func() {
+				it("skips the buildpack", func() {
+					detector.ExecEnv = "test"
+
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1", ExecEnv: []string{"production"}}},
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+					// executor.Detect should NOT be called for this buildpack
+
+					bpB1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1", ExecEnv: []string{"test"}}},
+					}
+					dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil).AnyTimes()
+					executor.EXPECT().Detect(bpB1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{})
+
+					resolver.EXPECT().Resolve(gomock.Any(), detector.Runs).Do(
+						func(group []buildpack.GroupElement, _ *sync.Map) {
+							h.AssertEq(t, len(group), 1)
+							h.AssertEq(t, group[0].ID, "B")
+							h.AssertEq(t, group[0].Version, "v1")
+						})
+
+					detector.Order = buildpack.Order{{Group: []buildpack.GroupElement{
+						{ID: "A", Version: "v1"}, // This gets skipped
+						{ID: "B", Version: "v1"}, // This gets processed
+					}}}
+					_, _, _ = detector.Detect()
+				})
+			})
+
+			when("optional buildpack does not support the current execution environment", func() {
+				it("skips the optional buildpack without affecting the group", func() {
+					detector.ExecEnv = "test"
+
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1", ExecEnv: []string{"production"}}},
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+					// executor.Detect should NOT be called for this buildpack
+
+					bpB1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1", ExecEnv: []string{"test"}}},
+					}
+					dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil).AnyTimes()
+					executor.EXPECT().Detect(bpB1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{})
+
+					resolver.EXPECT().Resolve(gomock.Any(), detector.Runs).Do(
+						func(group []buildpack.GroupElement, _ *sync.Map) {
+							h.AssertEq(t, len(group), 1)
+							h.AssertEq(t, group[0].ID, "B")
+							h.AssertEq(t, group[0].Version, "v1")
+						})
+
+					detector.Order = buildpack.Order{{Group: []buildpack.GroupElement{
+						{ID: "A", Version: "v1", Optional: true}, // Optional, gets skipped
+						{ID: "B", Version: "v1"},                 // This gets processed
+					}}}
+					_, _, _ = detector.Detect()
+				})
+			})
+		})
+
+		when("extension filtering", func() {
+			it("filters extensions based on execution environment", func() {
+				detector.ExecEnv = "test"
+
+				extA1 := &buildpack.ExtDescriptor{
+					WithAPI:   "0.12",
+					Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1", ExecEnv: []string{"production"}}},
+				}
+				dirStore.EXPECT().LookupExt("A", "v1").Return(extA1, nil).AnyTimes()
+				// executor.Detect should NOT be called for this extension
+
+				extB1 := &buildpack.ExtDescriptor{
+					WithAPI:   "0.12",
+					Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1", ExecEnv: []string{"test"}}},
+				}
+				dirStore.EXPECT().LookupExt("B", "v1").Return(extB1, nil).AnyTimes()
+				executor.EXPECT().Detect(extB1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{})
+
+				resolver.EXPECT().Resolve(gomock.Any(), detector.Runs).Do(
+					func(group []buildpack.GroupElement, _ *sync.Map) {
+						h.AssertEq(t, len(group), 1)
+						h.AssertEq(t, group[0].ID, "B")
+						h.AssertEq(t, group[0].Version, "v1")
+						h.AssertEq(t, group[0].Extension, true)
+						h.AssertEq(t, group[0].Optional, true)
+					})
+
+				detector.Order = buildpack.Order{{Group: []buildpack.GroupElement{
+					{ID: "A", Version: "v1", Extension: true, Optional: true}, // This gets skipped
+					{ID: "B", Version: "v1", Extension: true, Optional: true}, // This gets processed
+				}}}
+				_, _, _ = detector.Detect()
+			})
+		})
+	})
+
 	when("#PrependExtensions", func() {
 		it("prepends the extensions order to each group in the buildpacks order", func() {
 			orderBp := buildpack.Order{

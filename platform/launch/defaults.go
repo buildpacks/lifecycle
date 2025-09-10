@@ -12,6 +12,9 @@ const (
 	EnvNoColor     = "CNB_NO_COLOR" // defaults to false
 	EnvPlatformAPI = "CNB_PLATFORM_API"
 	EnvProcessType = "CNB_PROCESS_TYPE"
+	// EnvExecEnv is the target execution environment. Standard values include "production", "test", and "development".
+	EnvExecEnv     = "CNB_EXEC_ENV"
+	DefaultExecEnv = "production"
 
 	DefaultPlatformAPI = ""
 	DefaultProcessType = "web"

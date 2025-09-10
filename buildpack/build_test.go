@@ -207,6 +207,57 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, isUnset(actual), true)
 				})
 
+				when("CNB_EXEC_ENV", func() {
+					when("buildpack API >= 0.12", func() {
+						it.Before(func() {
+							descriptor.WithAPI = "0.12"
+						})
+
+						it("sets CNB_EXEC_ENV when ExecEnv is provided", func() {
+							inputs.ExecEnv = "test"
+
+							if _, err := executor.Build(descriptor, inputs, logger); err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+
+							actual := h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-exec-env-A-v1"))
+							h.AssertEq(t, actual, "test")
+						})
+
+						it("does not set CNB_EXEC_ENV when ExecEnv is empty", func() {
+							inputs.ExecEnv = ""
+
+							if _, err := executor.Build(descriptor, inputs, logger); err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+
+							actual := h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-exec-env-A-v1"))
+							if !isUnset(actual) {
+								t.Fatalf("expected CNB_EXEC_ENV to be unset, but was: %s", actual)
+							}
+						})
+					})
+
+					when("buildpack API < 0.12", func() {
+						it.Before(func() {
+							descriptor.WithAPI = "0.11"
+						})
+
+						it("does not set CNB_EXEC_ENV even when ExecEnv is provided", func() {
+							inputs.ExecEnv = "test"
+
+							if _, err := executor.Build(descriptor, inputs, logger); err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+
+							actual := h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-exec-env-A-v1"))
+							if !isUnset(actual) {
+								t.Fatalf("expected CNB_EXEC_ENV to be unset for API < 0.12, but was: %s", actual)
+							}
+						})
+					})
+				})
+
 				it("loads env vars from <platform>/env", func() {
 					h.Mkfile(t, "some-data",
 						filepath.Join(platformDir, "env", "SOME_VAR"),
@@ -842,6 +893,32 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, len(br.Processes), 1)
 							h.AssertEq(t, br.Processes[0].WorkingDirectory, "/working-directory")
+						})
+
+						it("sets the execution environment", func() {
+							h.Mkfile(t,
+								"[[processes]]\n"+
+									`command = ["some-cmd"]`+"\n"+
+									`exec-env = ["development", "test"]`,
+								filepath.Join(appDir, "launch-A-v1.toml"),
+							)
+							br, err := executor.Build(descriptor, inputs, logger)
+							h.AssertNil(t, err)
+							h.AssertEq(t, len(br.Processes), 1)
+							h.AssertEq(t, br.Processes[0].ExecEnv, []string{"development", "test"})
+						})
+
+						it("handles empty execution environment", func() {
+							h.Mkfile(t,
+								"[[processes]]\n"+
+									`command = ["some-cmd"]`,
+								filepath.Join(appDir, "launch-A-v1.toml"),
+							)
+							br, err := executor.Build(descriptor, inputs, logger)
+							h.AssertNil(t, err)
+							h.AssertEq(t, len(br.Processes), 1)
+							var expectedExecEnv []string
+							h.AssertEq(t, br.Processes[0].ExecEnv, expectedExecEnv)
 						})
 					})
 

@@ -29,6 +29,7 @@ type ProcessEntry struct {
 	Direct           *bool          `toml:"direct" json:"direct"`
 	Default          bool           `toml:"default,omitempty" json:"default,omitempty"`
 	WorkingDirectory string         `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+	ExecEnv          []string       `toml:"exec-env,omitempty" json:"exec-env,omitempty"`
 }
 
 // DecodeLaunchTOML reads a launch.toml file
@@ -91,6 +92,7 @@ func (p *ProcessEntry) ToLaunchProcess(bpID string) launch.Process {
 		Default:          p.Default,
 		BuildpackID:      bpID,
 		WorkingDirectory: p.WorkingDirectory,
+		ExecEnv:          p.ExecEnv,
 	}
 }
 

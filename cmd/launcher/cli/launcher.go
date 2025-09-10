@@ -41,6 +41,7 @@ func RunLaunch() error {
 		DefaultProcessType: defaultProcessType,
 		LayersDir:          cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir),
 		AppDir:             cmd.EnvOrDefault(platform.EnvAppDir, platform.DefaultAppDir),
+		ExecEnv:            cmd.EnvOrDefault(platform.EnvExecEnv, platform.DefaultExecEnv),
 		PlatformAPI:        p.API(),
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
