@@ -86,7 +86,7 @@ jobs:
           fi
       - name: Scan latest release image
         id: scan-image
-        uses: anchore/scan-action@v6
+        uses: anchore/scan-action@v7
         with:
           image: buildpacksio/lifecycle:${{ steps.read-versions.outputs.latest-release-version }}
           fail-build: true
