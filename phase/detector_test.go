@@ -97,6 +97,105 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotNil(t, detector.Runs)
 		})
 
+		when("Platform API >= 0.15", func() {
+			it("reads and merges system buildpacks", func() {
+				detectorFactory015 := phase.NewHermeticFactory(
+					api.MustParse("0.15"),
+					apiVerifier,
+					configHandler,
+					dirStore,
+				)
+
+				order := buildpack.Order{
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+				}
+				system := files.System{
+					Pre: files.SystemBuildpacks{
+						Buildpacks: []files.SystemBuildpack{
+							{ID: "pre-bp", Version: "0.5.0"},
+						},
+					},
+					Post: files.SystemBuildpacks{
+						Buildpacks: []files.SystemBuildpack{
+							{ID: "post-bp", Version: "9.0.0"},
+						},
+					},
+				}
+				configHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
+				configHandler.EXPECT().ReadSystem("some-system-path", gomock.Any()).Return(system, nil)
+
+				t.Log("verifies buildpack apis")
+				preBp := &buildpack.BpDescriptor{WithAPI: "0.10"}
+				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "pre-bp", "0.5.0").Return(preBp, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "pre-bp@0.5.0", "0.10", logger)
+
+				bpA1 := &buildpack.BpDescriptor{WithAPI: "0.10"}
+				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.10", logger)
+
+				postBp := &buildpack.BpDescriptor{WithAPI: "0.10"}
+				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "post-bp", "9.0.0").Return(postBp, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "post-bp@9.0.0", "0.10", logger)
+
+				detector, err := detectorFactory015.NewDetector(platform.LifecycleInputs{
+					AnalyzedPath:   "some-analyzed-path",
+					AppDir:         "some-app-dir",
+					BuildConfigDir: "some-build-config-dir",
+					OrderPath:      "some-order-path",
+					SystemPath:     "some-system-path",
+					PlatformDir:    "some-platform-dir",
+				}, logger)
+				h.AssertNil(t, err)
+
+				t.Log("system buildpacks are prepended and appended to the order")
+				h.AssertEq(t, len(detector.Order), 1)
+				h.AssertEq(t, len(detector.Order[0].Group), 3)
+				h.AssertEq(t, detector.Order[0].Group[0].ID, "pre-bp")
+				h.AssertEq(t, detector.Order[0].Group[0].Version, "0.5.0")
+				h.AssertEq(t, detector.Order[0].Group[1].ID, "A")
+				h.AssertEq(t, detector.Order[0].Group[1].Version, "v1")
+				h.AssertEq(t, detector.Order[0].Group[2].ID, "post-bp")
+				h.AssertEq(t, detector.Order[0].Group[2].Version, "9.0.0")
+			})
+		})
+
+		when("Platform API < 0.15", func() {
+			it("does not read system buildpacks", func() {
+				detectorFactory014 := phase.NewHermeticFactory(
+					api.MustParse("0.14"),
+					apiVerifier,
+					configHandler,
+					dirStore,
+				)
+
+				order := buildpack.Order{
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+				}
+				configHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
+				// NOTE: ReadSystem should NOT be called for Platform API < 0.15
+
+				t.Log("verifies buildpack apis")
+				bpA1 := &buildpack.BpDescriptor{WithAPI: "0.10"}
+				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.10", logger)
+
+				detector, err := detectorFactory014.NewDetector(platform.LifecycleInputs{
+					AnalyzedPath:   "some-analyzed-path",
+					AppDir:         "some-app-dir",
+					BuildConfigDir: "some-build-config-dir",
+					OrderPath:      "some-order-path",
+					SystemPath:     "some-system-path",
+					PlatformDir:    "some-platform-dir",
+				}, logger)
+				h.AssertNil(t, err)
+
+				t.Log("system buildpacks are not merged")
+				h.AssertEq(t, len(detector.Order), 1)
+				h.AssertEq(t, len(detector.Order[0].Group), 1)
+				h.AssertEq(t, detector.Order[0].Group[0].ID, "A")
+			})
+		})
+
 		when("there are extensions", func() {
 			it("prepends the extensions order to the buildpacks order", func() {
 				orderBp := buildpack.Order{
