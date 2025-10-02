@@ -7,11 +7,10 @@ package testmock
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	log "github.com/buildpacks/lifecycle/log"
 	files "github.com/buildpacks/lifecycle/platform/files"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockConfigHandler is a mock of ConfigHandler interface.
@@ -111,4 +110,19 @@ func (m *MockConfigHandler) ReadRun(arg0 string, arg1 log.Logger) (files.Run, er
 func (mr *MockConfigHandlerMockRecorder) ReadRun(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadRun", reflect.TypeOf((*MockConfigHandler)(nil).ReadRun), arg0, arg1)
+}
+
+// ReadSystem mocks base method.
+func (m *MockConfigHandler) ReadSystem(arg0 string, arg1 log.Logger) (files.System, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadSystem", arg0, arg1)
+	ret0, _ := ret[0].(files.System)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadSystem indicates an expected call of ReadSystem.
+func (mr *MockConfigHandlerMockRecorder) ReadSystem(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadSystem", reflect.TypeOf((*MockConfigHandler)(nil).ReadSystem), arg0, arg1)
 }

@@ -7,11 +7,10 @@ package testmock
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-
 	extend "github.com/buildpacks/lifecycle/internal/extend"
 	log "github.com/buildpacks/lifecycle/log"
+	gomock "github.com/golang/mock/gomock"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 // MockDockerfileApplier is a mock of DockerfileApplier interface.

@@ -7,9 +7,8 @@ package testmock
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	phase "github.com/buildpacks/lifecycle/phase"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockCacheHandler is a mock of CacheHandler interface.
