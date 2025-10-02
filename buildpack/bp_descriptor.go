@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/buildpacks/lifecycle/layers"
+
 	"github.com/BurntSushi/toml"
 )
 
@@ -17,7 +19,7 @@ type BpDescriptor struct {
 	WithRootDir string           `toml:"-"`
 	Targets     []TargetMetadata `toml:"targets"`
 	Stacks      []StackMetadata  `tome:"stacks"` // just for backwards compat so we can check if it's the bionic stack, which we translate to a target
-
+	Slices      []layers.Slice   `toml:"slices"`
 }
 
 type StackMetadata struct {

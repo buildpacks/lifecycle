@@ -74,6 +74,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		if err != nil {
 			return nil, err
 		}
+		slices = append(slices, bpTOML.Slices...)
 
 		b.Logger.Debug("Finding plan")
 		inputs.Plan = filteredPlan.Find(buildpack.KindBuildpack, bp.ID)

@@ -874,7 +874,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("slices", func() {
 				it("aggregates slices from each buildpack", func() {
-					bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+					bpA := &buildpack.BpDescriptor{
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+						Slices: []layers.Slice{
+							{Paths: []string{"static-path-from-buildpack-toml"}},
+						},
+					}
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 					executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).Return(buildpack.BuildOutputs{
 						Slices: []layers.Slice{
@@ -895,6 +900,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					metadata, err := builder.Build()
 					h.AssertNil(t, err)
 					if s := cmp.Diff(metadata.Slices, []layers.Slice{
+						{Paths: []string{"static-path-from-buildpack-toml"}},
 						{Paths: []string{"some-bpA-path", "some-other-bpA-path"}},
 						{Paths: []string{"duplicate-path"}},
 						{Paths: []string{"extra-path"}},
