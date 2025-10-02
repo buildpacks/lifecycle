@@ -29,6 +29,9 @@ type createCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (c *createCmd) DefineFlags() {
+	if c.PlatformAPI.AtLeast("0.15") {
+		cli.FlagSystemPath(&c.SystemPath)
+	}
 	if c.PlatformAPI.AtLeast("0.13") {
 		cli.FlagInsecureRegistries(&c.InsecureRegistries)
 	}

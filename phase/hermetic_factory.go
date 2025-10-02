@@ -8,6 +8,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 // HermeticFactory is used to construct lifecycle phases that do NOT require access to an image repository.
@@ -44,8 +45,9 @@ func (f *HermeticFactory) getExtensions(groupPath string, logger log.Logger) ([]
 	return group.GroupExtensions, nil
 }
 
-func (f *HermeticFactory) getOrder(path string, logger log.Logger) (order buildpack.Order, hasExtensions bool, err error) {
-	orderBp, orderExt, orderErr := f.configHandler.ReadOrder(path)
+func (f *HermeticFactory) getOrderWithSystem(orderPath string, systemPath string, logger log.Logger) (order buildpack.Order, hasExtensions bool, err error) {
+	// Read the base order
+	orderBp, orderExt, orderErr := f.configHandler.ReadOrder(orderPath)
 	if orderErr != nil {
 		err = errors.Wrap(orderErr, "reading order")
 		return
@@ -53,11 +55,67 @@ func (f *HermeticFactory) getOrder(path string, logger log.Logger) (order buildp
 	if len(orderExt) > 0 {
 		hasExtensions = true
 	}
+
+	// Read and merge system buildpacks only if Platform API >= 0.15
+	if f.platformAPI.AtLeast("0.15") {
+		system, sysErr := f.configHandler.ReadSystem(systemPath, logger)
+		if sysErr != nil {
+			err = errors.Wrap(sysErr, "reading system")
+			return
+		}
+
+		// Merge system buildpacks with order
+		orderBp = mergeSystemBuildpacks(orderBp, system, logger)
+	}
+
 	if err = f.verifyOrder(orderBp, orderExt, logger); err != nil {
 		return
 	}
 	order = PrependExtensions(orderBp, orderExt)
 	return
+}
+
+// mergeSystemBuildpacks merges system.pre and system.post buildpacks with the order
+func mergeSystemBuildpacks(order buildpack.Order, system files.System, logger log.Logger) buildpack.Order {
+	if len(system.Pre.Buildpacks) == 0 && len(system.Post.Buildpacks) == 0 {
+		return order
+	}
+
+	var merged buildpack.Order
+
+	// Convert system buildpacks to group elements
+	preBuildpacks := convertSystemToGroupElements(system.Pre.Buildpacks)
+	postBuildpacks := convertSystemToGroupElements(system.Post.Buildpacks)
+
+	if len(preBuildpacks) > 0 {
+		logger.Debugf("Prepending %d system buildpack(s) to order", len(preBuildpacks))
+	}
+	if len(postBuildpacks) > 0 {
+		logger.Debugf("Appending %d system buildpack(s) to order", len(postBuildpacks))
+	}
+
+	// For each group in the order, prepend and append system buildpacks
+	for _, group := range order {
+		newGroup := buildpack.Group{
+			Group:           append(append(preBuildpacks, group.Group...), postBuildpacks...),
+			GroupExtensions: group.GroupExtensions,
+		}
+		merged = append(merged, newGroup)
+	}
+
+	return merged
+}
+
+// convertSystemToGroupElements converts system buildpack references to group elements
+func convertSystemToGroupElements(systemBps []files.SystemBuildpack) []buildpack.GroupElement {
+	var elements []buildpack.GroupElement
+	for _, sysBp := range systemBps {
+		elements = append(elements, buildpack.GroupElement{
+			ID:      sysBp.ID,
+			Version: sysBp.Version,
+		})
+	}
+	return elements
 }
 
 func (f *HermeticFactory) verifyGroup(group []buildpack.GroupElement, logger log.Logger) error {

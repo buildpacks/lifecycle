@@ -51,6 +51,7 @@ type LifecycleInputs struct {
 	RunImageRef           string
 	RunPath               string
 	StackPath             string
+	SystemPath            string
 	UID                   int
 	GID                   int
 	ForceRebase           bool
@@ -108,6 +109,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		ExtensionsDir:  envOrDefault(EnvExtensionsDir, DefaultExtensionsDir),
 		RunPath:        envOrDefault(EnvRunPath, DefaultRunPath),
 		StackPath:      envOrDefault(EnvStackPath, DefaultStackPath),
+		SystemPath:     envOrDefault(EnvSystemPath, CNBSystemPath),
 
 		// Provided at build time
 

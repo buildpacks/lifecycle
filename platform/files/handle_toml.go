@@ -195,3 +195,19 @@ func (h *TOMLHandler) ReadStack(path string, logger log.Logger) (Stack, error) {
 	}
 	return stackMD, nil
 }
+
+// ReadSystem reads the provided system.toml file.
+// It logs a debug message and returns an empty System if the file does not exist.
+func (h *TOMLHandler) ReadSystem(path string, logger log.Logger) (System, error) {
+	var system struct {
+		System System `toml:"system"`
+	}
+	if _, err := toml.DecodeFile(path, &system); err != nil {
+		if os.IsNotExist(err) {
+			logger.Debugf("No system buildpacks found at path %q", path)
+			return System{}, nil
+		}
+		return System{}, fmt.Errorf("failed to read system file: %w", err)
+	}
+	return system.System, nil
+}
