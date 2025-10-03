@@ -7,8 +7,9 @@ package testmock
 import (
 	reflect "reflect"
 
-	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	gomock "github.com/golang/mock/gomock"
+
+	buildpack "github.com/buildpacks/lifecycle/buildpack"
 )
 
 // MockDirStore is a mock of DirStore interface.

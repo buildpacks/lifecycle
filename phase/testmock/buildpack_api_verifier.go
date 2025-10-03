@@ -7,8 +7,9 @@ package testmock
 import (
 	reflect "reflect"
 
-	log "github.com/buildpacks/lifecycle/log"
 	gomock "github.com/golang/mock/gomock"
+
+	log "github.com/buildpacks/lifecycle/log"
 )
 
 // MockBuildpackAPIVerifier is a mock of BuildpackAPIVerifier interface.

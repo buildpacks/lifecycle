@@ -8,9 +8,10 @@ import (
 	reflect "reflect"
 	sync "sync"
 
+	gomock "github.com/golang/mock/gomock"
+
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	files "github.com/buildpacks/lifecycle/platform/files"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockDetectResolver is a mock of DetectResolver interface.

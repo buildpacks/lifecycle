@@ -7,9 +7,10 @@ package testmock
 import (
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	log "github.com/buildpacks/lifecycle/log"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockGenerateExecutor is a mock of GenerateExecutor interface.

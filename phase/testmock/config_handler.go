@@ -7,10 +7,11 @@ package testmock
 import (
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	log "github.com/buildpacks/lifecycle/log"
 	files "github.com/buildpacks/lifecycle/platform/files"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockConfigHandler is a mock of ConfigHandler interface.
