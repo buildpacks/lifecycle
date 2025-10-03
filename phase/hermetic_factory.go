@@ -83,19 +83,21 @@ func mergeSystemBuildpacks(order buildpack.Order, system files.System, logger lo
 
 	var merged buildpack.Order
 
-	// Convert system buildpacks to group elements
-	preBuildpacks := convertSystemToGroupElements(system.Pre.Buildpacks)
-	postBuildpacks := convertSystemToGroupElements(system.Post.Buildpacks)
-
-	if len(preBuildpacks) > 0 {
-		logger.Debugf("Prepending %d system buildpack(s) to order", len(preBuildpacks))
-	}
-	if len(postBuildpacks) > 0 {
-		logger.Debugf("Appending %d system buildpack(s) to order", len(postBuildpacks))
-	}
-
-	// For each group in the order, prepend and append system buildpacks
+	// For each group in the order, prepend and append system buildpacks (skipping duplicates)
 	for _, group := range order {
+		// Filter out pre-buildpacks that are already in the group
+		preBuildpacks := filterDuplicates(convertSystemToGroupElements(system.Pre.Buildpacks), group.Group)
+
+		// Filter out post-buildpacks that are already in the group
+		postBuildpacks := filterDuplicates(convertSystemToGroupElements(system.Post.Buildpacks), group.Group)
+
+		if len(preBuildpacks) > 0 {
+			logger.Debugf("Prepending %d system buildpack(s) to group", len(preBuildpacks))
+		}
+		if len(postBuildpacks) > 0 {
+			logger.Debugf("Appending %d system buildpack(s) to group", len(postBuildpacks))
+		}
+
 		newGroup := buildpack.Group{
 			Group:           append(append(preBuildpacks, group.Group...), postBuildpacks...),
 			GroupExtensions: group.GroupExtensions,
@@ -104,6 +106,24 @@ func mergeSystemBuildpacks(order buildpack.Order, system files.System, logger lo
 	}
 
 	return merged
+}
+
+// filterDuplicates filters out buildpacks from systemBps that already exist in existingGroup (by ID only)
+func filterDuplicates(systemBps []buildpack.GroupElement, existingGroup []buildpack.GroupElement) []buildpack.GroupElement {
+	var filtered []buildpack.GroupElement
+	for _, sysBp := range systemBps {
+		duplicate := false
+		for _, existing := range existingGroup {
+			if sysBp.ID == existing.ID {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			filtered = append(filtered, sysBp)
+		}
+	}
+	return filtered
 }
 
 // convertSystemToGroupElements converts system buildpack references to group elements
