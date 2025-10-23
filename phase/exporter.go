@@ -80,6 +80,8 @@ type ExportOptions struct {
 	LauncherConfig LauncherConfig
 	// DefaultProcessType is the user-provided default process type.
 	DefaultProcessType string
+	// ExecEnv is the target execution environment.
+	ExecEnv string
 	// RunImageRef is the run image reference for the layer metadata label.
 	RunImageRef string
 	// RunImageForExport is run image metadata for the layer metadata label for Platform API >= 0.12.
@@ -524,6 +526,15 @@ func (e *Exporter) setLabels(opts ExportOptions, meta files.LayersMetadata, buil
 		e.Logger.Infof("Adding label '%s'", label.Key)
 		if err := opts.WorkingImage.SetLabel(label.Key, label.Value); err != nil {
 			return errors.Wrapf(err, "set buildpack-provided label '%s'", label.Key)
+		}
+	}
+
+	// Note: This is gated by Platform API 0.15, not Buildpack API
+	// The platform controls the Platform API version and determines when this is available
+	if e.PlatformAPI.AtLeast("0.15") && opts.ExecEnv != "" {
+		e.Logger.Infof("Adding label '%s'", platform.ExecEnvLabel)
+		if err := opts.WorkingImage.SetLabel(platform.ExecEnvLabel, opts.ExecEnv); err != nil {
+			return errors.Wrap(err, "set execution environment label")
 		}
 	}
 	return nil
