@@ -69,6 +69,11 @@ func (l *Launcher) LaunchProcess(self string, proc Process) error {
 	}
 	proc.WorkingDirectory = getProcessWorkingDirectory(proc, l.AppDir)
 
+	err := SetUmask(l.Env)
+	if err != nil {
+		return errors.Wrap(err, "umask")
+	}
+
 	if proc.Direct {
 		return l.launchDirect(proc)
 	}
