@@ -3,10 +3,15 @@
 package launch
 
 import (
+	"fmt"
 	"strconv"
 	"syscall"
 
 	"github.com/pkg/errors"
+)
+
+const (
+	umaskEnvVar = "CNB_LAUNCH_UMASK"
 )
 
 // SetUmask on unix systems from the value in the `UMASK` environment variable
@@ -16,12 +21,15 @@ func SetUmask(env Env) error {
 
 // SetUmaskWith the injected function umaskFn
 func SetUmaskWith(env Env, umaskFn func(int) int) error {
-	if umask := env.Get("UMASK"); umask != "" {
-		u, err := strconv.ParseInt(umask, 8, 0)
-		if err != nil {
-			return errors.Wrap(err, "invalid umask value")
-		}
-		umaskFn(int(u))
+	umask := env.Get(umaskEnvVar)
+	if umask == "" {
+		return nil
 	}
+
+	u, err := strconv.ParseInt(umask, 8, 0)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("invalid umask value %s", umask))
+	}
+	umaskFn(int(u))
 	return nil
 }

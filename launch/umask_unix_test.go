@@ -33,7 +33,7 @@ func testUmask(t *testing.T, when spec.G, it spec.S) {
 
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
-					environ := env.NewLaunchEnv([]string{"UMASK=" + tt.umask}, "", "")
+					environ := env.NewLaunchEnv([]string{"CNB_LAUNCH_UMASK=" + tt.umask}, "", "")
 
 					var called int
 					spy := func(m int) int {
@@ -50,7 +50,7 @@ func testUmask(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("returns error for invalid umask", func() {
-			environ := env.NewLaunchEnv([]string{"UMASK=invalid"}, "", "")
+			environ := env.NewLaunchEnv([]string{"CNB_LAUNCH_UMASK=invalid"}, "", "")
 
 			err := launch.SetUmaskWith(environ, func(int) int { return 0 })
 

@@ -124,6 +124,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				// set command to something on the real path so exec.LookPath succeeds
 				process.Command = launch.NewRawCommand([]string{"sh"})
 
+				launcher.Setumask = func(_ launch.Env) error {
+					return nil
+				}
 				mockEnv.EXPECT().Get("PATH").Return("some-path").AnyTimes()
 				launcher.Setenv = func(k string, v string) error {
 					if k == "PATH" {
@@ -373,6 +376,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				shell = &fakeShell{}
 				launcher.Shell = shell
+				launcher.Setumask = func(_ launch.Env) error {
+					return nil
+				}
 			})
 
 			it("sets Caller to self", func() {
