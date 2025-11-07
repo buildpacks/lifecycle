@@ -46,6 +46,19 @@ func DockerImageRemove(t *testing.T, name string) {
 	Run(t, exec.Command("docker", "rmi", name, "--force")) // #nosec G204
 }
 
+// DockerImageRemoveSafe removes a Docker image without failing the test if the image doesn't exist
+// This is useful for cleanup in defer statements where the image may have already been removed
+func DockerImageRemoveSafe(t *testing.T, name string) {
+	t.Helper()
+	cmd := exec.Command("docker", "image", "rm", name, "--force") // #nosec G204
+	output, exitCode, err := RunE(cmd)
+
+	// Only log if there was an error other than "no such image"
+	if err != nil && !strings.Contains(output, "No such image") && !strings.Contains(output, "unrecognized image") {
+		t.Logf("Warning: Failed to remove image %s (exit code %d): %s", name, exitCode, output)
+	}
+}
+
 func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	t.Helper()
 	args := formatArgs([]string{image}, ops...)
