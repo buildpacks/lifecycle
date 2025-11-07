@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/docker/docker/api/types/image"
 	dockercli "github.com/docker/docker/client"
@@ -180,4 +182,57 @@ func checkResponse(responseBody io.Reader) error {
 	}
 
 	return nil
+}
+
+// ImageInspectWithRetry attempts to inspect a Docker image with retry logic and detailed diagnostics
+// This is useful for handling race conditions where images may not be immediately available
+func ImageInspectWithRetry(t *testing.T, dockerCli dockercli.APIClient, imageName string) (image.InspectResponse, error) {
+	t.Helper()
+
+	maxRetries := 5
+	backoffDelays := []time.Duration{100 * time.Millisecond, 200 * time.Millisecond, 500 * time.Millisecond, 1 * time.Second, 2 * time.Second}
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), imageName)
+		if err == nil {
+			if attempt > 0 {
+				t.Logf("Successfully inspected image %q after %d retries", imageName, attempt)
+			}
+			return inspect, nil
+		}
+
+		lastErr = err
+
+		// Log diagnostic information on error
+		if strings.Contains(err.Error(), "No such image") {
+			t.Logf("Attempt %d/%d: Image %q not found, will retry after %v", attempt+1, maxRetries, imageName, backoffDelays[attempt])
+
+			// List available images for debugging
+			if attempt == 0 {
+				list, listErr := dockerCli.ImageList(context.TODO(), image.ListOptions{})
+				if listErr == nil {
+					t.Logf("Available images in daemon:")
+					for _, img := range list {
+						t.Logf("  - RepoTags: %v, RepoDigests: %v, ID: %s", img.RepoTags, img.RepoDigests, img.ID)
+					}
+				} else {
+					t.Logf("Failed to list images: %v", listErr)
+				}
+			}
+
+			// Wait before retrying (unless this is the last attempt)
+			if attempt < maxRetries-1 {
+				time.Sleep(backoffDelays[attempt])
+			}
+		} else {
+			// For non-"No such image" errors, don't retry
+			t.Logf("ImageInspect failed with non-retryable error: %v", err)
+			return image.InspectResponse{}, err
+		}
+	}
+
+	// All retries exhausted
+	t.Logf("Failed to inspect image %q after %d attempts. Last error: %v", imageName, maxRetries, lastErr)
+	return image.InspectResponse{}, fmt.Errorf("failed to inspect image after %d retries: %w", maxRetries, lastErr)
 }

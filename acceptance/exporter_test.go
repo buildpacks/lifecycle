@@ -134,7 +134,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					exportArgs = append(exportArgs, exportedImageName)
 
 					// get run image top layer
-					inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportTest.targetRegistry.fixtures.ReadOnlyRunImage)
+					inspect, err := h.ImageInspectWithRetry(t, h.DockerCli(t), exportTest.targetRegistry.fixtures.ReadOnlyRunImage)
 					h.AssertNil(t, err)
 					layers := inspect.RootFS.Layers
 					runImageFixtureTopLayerSHA := layers[len(layers)-1]
@@ -170,7 +170,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					}
 					assertDaemonImageHasHistory(t, exportedImageName, expectedHistory)
 					t.Log("bases the exported image on the extended run image")
-					inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName)
+					inspect, err = h.ImageInspectWithRetry(t, h.DockerCli(t), exportedImageName)
 					h.AssertNil(t, err)
 					h.AssertEq(t, inspect.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<sha>/blobs/sha256/<config>
 					t.Log("Adds extension layers")
@@ -446,7 +446,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.Run(t, exec.Command("docker", "pull", exportedImageName))
 							defer h.Run(t, exec.Command("docker", "image", "rm", exportedImageName))
 							// Verify the app has the correct sha for the layer
-							inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName)
+							inspect, err := h.ImageInspectWithRetry(t, h.DockerCli(t), exportedImageName)
 							h.AssertNil(t, err)
 							var lmd files.LayersMetadata
 							lmdJSON := inspect.Config.Labels["io.buildpacks.lifecycle.metadata"]
