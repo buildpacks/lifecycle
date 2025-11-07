@@ -193,8 +193,8 @@ func ImageInspectWithRetry(t *testing.T, dockerCli dockercli.APIClient, imageNam
 	backoffDelays := []time.Duration{100 * time.Millisecond, 200 * time.Millisecond, 500 * time.Millisecond, 1 * time.Second, 2 * time.Second}
 
 	var lastErr error
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), imageName)
+	for attempt := range maxRetries {
+		inspect, err := dockerCli.ImageInspect(context.TODO(), imageName)
 		if err == nil {
 			if attempt > 0 {
 				t.Logf("Successfully inspected image %q after %d retries", imageName, attempt)
