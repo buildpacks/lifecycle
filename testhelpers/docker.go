@@ -197,6 +197,47 @@ func checkResponse(responseBody io.Reader) error {
 	return nil
 }
 
+// DockerPullWithRetry pulls a Docker image with retry logic
+// This is useful when pulling from local registries that may have timing issues
+func DockerPullWithRetry(t *testing.T, imageName string) error {
+	t.Helper()
+
+	maxRetries := 5
+	backoffDelays := []time.Duration{100 * time.Millisecond, 200 * time.Millisecond, 500 * time.Millisecond, 1 * time.Second, 2 * time.Second}
+
+	var lastErr error
+	for attempt := range maxRetries {
+		cmd := exec.Command("docker", "pull", imageName) // #nosec G204
+		output, exitCode, err := RunE(cmd)
+
+		if err == nil {
+			if attempt > 0 {
+				t.Logf("Successfully pulled image %q after %d retries", imageName, attempt)
+			}
+			return nil
+		}
+
+		lastErr = err
+
+		// Log diagnostic information
+		t.Logf("Attempt %d/%d: Failed to pull image %q (exit code %d): %s", attempt+1, maxRetries, imageName, exitCode, output)
+
+		// Wait before retrying (unless this is the last attempt)
+		if attempt < maxRetries-1 {
+			t.Logf("Retrying after %v", backoffDelays[attempt])
+			time.Sleep(backoffDelays[attempt])
+		}
+	}
+
+	// All retries exhausted - try one more time to get detailed output
+	t.Logf("All retries exhausted for pulling image %q", imageName)
+	cmd := exec.Command("docker", "pull", imageName) // #nosec G204
+	output, exitCode, _ := RunE(cmd)
+	t.Logf("Final pull attempt output (exit code %d): %s", exitCode, output)
+
+	return fmt.Errorf("failed to pull image %q after %d retries, last error: %w", imageName, maxRetries, lastErr)
+}
+
 // ImageInspectWithRetry attempts to inspect a Docker image with retry logic and detailed diagnostics
 // This is useful for handling race conditions where images may not be immediately available
 func ImageInspectWithRetry(t *testing.T, dockerCli dockercli.APIClient, imageName string) (image.InspectResponse, error) {

@@ -443,7 +443,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							)
 							h.AssertStringContains(t, output, "Skipping reuse for layer corrupted_buildpack:corrupted-layer: expected layer contents to have SHA 'sha256:258dfa0cc987efebc17559694866ebc91139e7c0e574f60d1d4092f53d7dff59'; found 'sha256:9e0b77ed599eafdab8611f7eeefef084077f91f02f1da0a3870c7ff20a08bee8'")
 							h.AssertStringContains(t, output, "Saving "+exportedImageName)
-							h.Run(t, exec.Command("docker", "pull", exportedImageName))
+							err := h.DockerPullWithRetry(t, exportedImageName)
+							h.AssertNil(t, err)
 							defer h.DockerImageRemoveSafe(t, exportedImageName)
 							// Verify the app has the correct sha for the layer
 							inspect, err := h.ImageInspectWithRetry(t, h.DockerCli(t), exportedImageName)
