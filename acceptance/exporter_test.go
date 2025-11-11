@@ -253,7 +253,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				)
 				h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-				h.Run(t, exec.Command("docker", "pull", exportedImageName))
+				err := h.DockerPullWithRetry(t, exportedImageName)
+				h.AssertNil(t, err)
 				assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 			})
 
@@ -306,7 +307,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					)
 					h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-					h.Run(t, exec.Command("docker", "pull", exportedImageName))
+					err := h.DockerPullWithRetry(t, exportedImageName)
+					h.AssertNil(t, err)
 					assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, expectedTime)
 				})
 			})
@@ -332,9 +334,11 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						)
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 						// To detect whether the export of cacheImage and exportedImage is successful
-						h.Run(t, exec.Command("docker", "pull", exportedImageName))
+						err := h.DockerPullWithRetry(t, exportedImageName)
+						h.AssertNil(t, err)
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
-						h.Run(t, exec.Command("docker", "pull", cacheImageName))
+						err = h.DockerPullWithRetry(t, cacheImageName)
+						h.AssertNil(t, err)
 					})
 
 					when("parallel export is enabled", func() {
@@ -356,9 +360,11 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							)
 							h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-							h.Run(t, exec.Command("docker", "pull", exportedImageName))
+							err := h.DockerPullWithRetry(t, exportedImageName)
+							h.AssertNil(t, err)
 							assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
-							h.Run(t, exec.Command("docker", "pull", cacheImageName))
+							err = h.DockerPullWithRetry(t, cacheImageName)
+							h.AssertNil(t, err)
 						})
 					})
 
@@ -384,7 +390,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							testEmptyLayerSHA := calculateEmptyLayerSha(t)
 
 							// Retrieve the cache image from the ephemeral registry
-							h.Run(t, exec.Command("docker", "pull", cacheImageName))
+							err := h.DockerPullWithRetry(t, cacheImageName)
+							h.AssertNil(t, err)
 							logger := cmd.DefaultLogger
 
 							subject, err := cache.NewImageCacheFromName(cacheImageName, authn.DefaultKeychain, logger, cache.NewImageDeleter(cache.NewImageComparer(), logger, api.MustParse(platformAPI).LessThan("0.13")))
@@ -522,7 +529,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					)
 					h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-					h.Run(t, exec.Command("docker", "pull", exportedImageName))
+					err := h.DockerPullWithRetry(t, exportedImageName)
+					h.AssertNil(t, err)
 					assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					t.Log("bases the exported image on the extended run image")
 					ref, imageAuth, err = auth.ReferenceForRepoName(authn.DefaultKeychain, exportedImageName)
