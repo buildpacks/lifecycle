@@ -156,7 +156,8 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				)
 				h.AssertStringContains(t, output, "Saving "+createdImageName)
 
-				h.Run(t, exec.Command("docker", "pull", createdImageName))
+				err := h.DockerPullWithRetry(t, createdImageName)
+				h.AssertNil(t, err)
 				assertImageOSAndArch(t, createdImageName, createTest)
 
 				output = h.DockerRun(t,
