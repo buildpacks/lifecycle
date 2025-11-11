@@ -529,7 +529,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					)
 					h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-					err := h.DockerPullWithRetry(t, exportedImageName)
+					err = h.DockerPullWithRetry(t, exportedImageName)
 					h.AssertNil(t, err)
 					assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					t.Log("bases the exported image on the extended run image")
