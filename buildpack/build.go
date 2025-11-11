@@ -25,7 +25,7 @@ const (
 	// EnvLayersDir is the absolute path of the buildpack layers directory (read-write); a different copy is provided for each buildpack;
 	// contents may be saved to either or both of: the final output image or the cache
 	EnvLayersDir = "CNB_LAYERS_DIR"
-	// Also provided during build: EnvBuildpackDir, EnvPlatformDir (see detect.go)
+	// Also provided during build: EnvBuildpackDir, EnvPlatformDir, EnvExecEnv (see detect.go)
 )
 
 type BuildInputs struct {
@@ -35,6 +35,7 @@ type BuildInputs struct {
 	PlatformDir    string
 	Env            BuildEnv
 	TargetEnv      []string
+	ExecEnv        string
 	Out, Err       io.Writer
 	Plan           Plan
 }
@@ -153,6 +154,9 @@ func runBuildCmd(d BpDescriptor, bpLayersDir, planPath string, inputs BuildInput
 	}
 	if api.MustParse(d.API()).AtLeast("0.10") {
 		cmd.Env = append(cmd.Env, inputs.TargetEnv...)
+	}
+	if api.MustParse(d.API()).AtLeast("0.12") && inputs.ExecEnv != "" {
+		cmd.Env = append(cmd.Env, "CNB_EXEC_ENV="+inputs.ExecEnv)
 	}
 
 	if err = cmd.Run(); err != nil {
