@@ -18,6 +18,9 @@ type detectCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (d *detectCmd) DefineFlags() {
+	if d.PlatformAPI.AtLeast("0.15") {
+		cli.FlagSystemPath(&d.SystemPath)
+	}
 	if d.PlatformAPI.AtLeast("0.12") {
 		cli.FlagRunPath(&d.RunPath)
 	}
