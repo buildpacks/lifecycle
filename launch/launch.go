@@ -22,6 +22,7 @@ type Process struct {
 	Default          bool         `toml:"default,omitempty" json:"default,omitempty"`
 	BuildpackID      string       `toml:"buildpack-id" json:"buildpackID"`
 	WorkingDirectory string       `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+	ExecEnv          []string     `toml:"exec-env,omitempty" json:"exec-env,omitempty"`
 	PlatformAPI      *api.Version `toml:"-" json:"-"`
 }
 

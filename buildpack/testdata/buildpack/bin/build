@@ -19,6 +19,7 @@ echo -n "${CNB_BUILDPACK_DIR:-unset}" > "build-env-cnb-buildpack-dir-${bp_id}-${
 echo -n "${CNB_LAYERS_DIR:-unset}" > "build-env-cnb-layers-dir-${bp_id}-${bp_version}"
 echo -n "${CNB_OUTPUT_DIR:-unset}" > "build-env-cnb-output-dir-${bp_id}-${bp_version}"
 echo -n "${CNB_PLATFORM_DIR:-unset}" > "build-env-cnb-platform-dir-${bp_id}-${bp_version}"
+echo -n "${CNB_EXEC_ENV:-unset}" > "build-env-cnb-exec-env-${bp_id}-${bp_version}"
 
 cp -a "$platform_dir/env" "build-env-${bp_id}-${bp_version}"
 
