@@ -418,5 +418,71 @@ fail: fail_detect_buildpack@some_version`
 				h.AssertEq(t, analyzedMD.RunImage.Image, "some-run-image-from-extension")
 			})
 		})
+
+		when("Platform API >= 0.15", func() {
+			when("system.toml is provided", func() {
+				var copyDir, containerName string
+
+				it.Before(func() {
+					containerName = "test-container-" + h.RandString(10)
+					var err error
+					copyDir, err = os.MkdirTemp("", "test-docker-copy-")
+					h.AssertNil(t, err)
+				})
+
+				it.After(func() {
+					if h.DockerContainerExists(t, containerName) {
+						h.Run(t, exec.Command("docker", "rm", containerName))
+					}
+					os.RemoveAll(copyDir)
+				})
+
+				it("merges system buildpacks with order", func() {
+					if api.MustParse(platformAPI).LessThan("0.15") {
+						t.Skip("skipping test for Platform API < 0.15")
+					}
+					output := h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						"/layers",
+						detectImage,
+						h.WithFlags("--user", userID,
+							"--env", "CNB_ORDER_PATH=/cnb/orders/middle_order.toml",
+							"--env", "CNB_SYSTEM_PATH=/cnb/system.toml",
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+						),
+						h.WithArgs("-log-level=debug"),
+					)
+
+					t.Log("system buildpacks are prepended and appended to the order")
+					// Expected order after merging:
+					// 1. always_detect_buildpack (pre)
+					// 2. buildpack_for_ext (from middle_order.toml)
+					// 3. simple_buildpack (post)
+
+					// check group.toml - should contain all three buildpacks
+					foundGroupTOML := filepath.Join(copyDir, "layers", "group.toml")
+					group, err := files.Handler.ReadGroup(foundGroupTOML)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(group.Group), 3)
+					h.AssertEq(t, group.Group[0].ID, "always_detect_buildpack")
+					h.AssertEq(t, group.Group[0].Version, "always_detect_buildpack_version")
+					h.AssertEq(t, group.Group[1].ID, "buildpack_for_ext")
+					h.AssertEq(t, group.Group[1].Version, "buildpack_for_ext_version")
+					h.AssertEq(t, group.Group[2].ID, "simple_buildpack")
+					h.AssertEq(t, group.Group[2].Version, "simple_buildpack_version")
+
+					// check output contains all buildpacks
+					h.AssertStringContains(t, output, "always_detect_buildpack always_detect_buildpack_version")
+					h.AssertStringContains(t, output, "buildpack_for_ext buildpack_for_ext_version")
+					h.AssertStringContains(t, output, "simple_buildpack simple_buildpack_version")
+
+					// check debug logs show system buildpack merging
+					h.AssertStringContains(t, output, "Prepending 1 system buildpack(s) to order")
+					h.AssertStringContains(t, output, "Appending 1 system buildpack(s) to order")
+				})
+			})
+		})
 	}
 }

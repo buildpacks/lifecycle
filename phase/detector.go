@@ -80,7 +80,7 @@ func (f *HermeticFactory) NewDetector(inputs platform.LifecycleInputs, logger lo
 	if detector.AnalyzeMD, err = f.configHandler.ReadAnalyzed(inputs.AnalyzedPath, logger); err != nil {
 		return nil, err
 	}
-	if detector.Order, detector.HasExtensions, err = f.getOrder(inputs.OrderPath, logger); err != nil {
+	if detector.Order, detector.HasExtensions, err = f.getOrderWithSystem(inputs.OrderPath, inputs.SystemPath, logger); err != nil {
 		return nil, err
 	}
 	return detector, nil
