@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/moby/moby/api/types/image"
 	dockercli "github.com/moby/moby/client"
-	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/pkg/errors"
 )
 

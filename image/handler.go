@@ -3,8 +3,8 @@ package image
 
 import (
 	"github.com/buildpacks/imgutil"
-	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/moby/moby/client"
 )
 
 // Handler wraps initialization of an [imgutil] image.

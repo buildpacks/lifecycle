@@ -10,8 +10,8 @@ import (
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/moby/moby/client"
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"

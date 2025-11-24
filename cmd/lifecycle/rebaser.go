@@ -6,9 +6,9 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/auth"
@@ -25,7 +25,7 @@ type rebaseCmd struct {
 	*platform.Platform
 
 	docker   client.APIClient // construct if necessary before dropping privileges
-	keychain authn.Keychain         // construct if necessary before dropping privileges
+	keychain authn.Keychain   // construct if necessary before dropping privileges
 
 	appImage imgutil.Image
 }
