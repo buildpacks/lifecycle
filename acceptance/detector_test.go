@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -28,11 +29,11 @@ var (
 )
 
 func TestDetector(t *testing.T) {
-	info, err := h.DockerCli(t).Info(context.TODO())
+	info, err := h.DockerCli(t).Info(context.TODO(), client.InfoOptions{})
 	h.AssertNil(t, err)
 
-	detectorDaemonOS = info.OSType
-	detectorDaemonArch = info.Architecture
+	detectorDaemonOS = info.Info.OSType
+	detectorDaemonArch = info.Info.Architecture
 	if detectorDaemonArch == "x86_64" {
 		detectorDaemonArch = "amd64"
 	}

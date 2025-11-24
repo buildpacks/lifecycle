@@ -661,7 +661,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 func assertDaemonImageDoesNotHaveHistory(t *testing.T, repoName string) {
 	history, err := h.DockerCli(t).ImageHistory(context.TODO(), repoName)
 	h.AssertNil(t, err)
-	for _, hs := range history {
+	for _, hs := range history.Items {
 		h.AssertEq(t, hs.Created, imgutil.NormalizedDateTime.Unix())
 		h.AssertEq(t, hs.CreatedBy, "")
 	}
@@ -670,8 +670,8 @@ func assertDaemonImageDoesNotHaveHistory(t *testing.T, repoName string) {
 func assertDaemonImageHasHistory(t *testing.T, repoName string, expectedHistory []string) {
 	history, err := h.DockerCli(t).ImageHistory(context.TODO(), repoName)
 	h.AssertNil(t, err)
-	h.AssertEq(t, len(history), len(expectedHistory))
-	for idx, hs := range history {
+	h.AssertEq(t, len(history.Items), len(expectedHistory))
+	for idx, hs := range history.Items {
 		h.AssertEq(t, hs.Created, imgutil.NormalizedDateTime.Unix())
 		h.AssertEq(t, hs.CreatedBy, expectedHistory[idx])
 	}
