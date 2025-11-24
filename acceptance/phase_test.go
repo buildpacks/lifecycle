@@ -20,6 +20,7 @@ import (
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
+	"github.com/moby/moby/client"
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -90,10 +91,10 @@ func NewPhaseTest(t *testing.T, phaseName, testImageDockerContext string, phaseO
 }
 
 func newTargetDaemon(t *testing.T) *targetDaemon {
-	info, err := h.DockerCli(t).Info(context.TODO())
+	info, err := h.DockerCli(t).Info(context.TODO(), client.InfoOptions{})
 	h.AssertNil(t, err)
 
-	arch := info.Architecture
+	arch := info.Info.Architecture
 	if arch == "x86_64" {
 		arch = "amd64"
 	}
@@ -102,7 +103,7 @@ func newTargetDaemon(t *testing.T) *targetDaemon {
 	}
 
 	return &targetDaemon{
-		os:       info.OSType,
+		os:       info.Info.OSType,
 		arch:     arch,
 		fixtures: nil,
 	}
