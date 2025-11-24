@@ -3,7 +3,7 @@ package image
 
 import (
 	"github.com/buildpacks/imgutil"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 )
 

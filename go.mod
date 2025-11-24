@@ -4,7 +4,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.11.0
-	github.com/buildpacks/imgutil v0.0.0-20250626173435-7c19c278f3d2
+	github.com/buildpacks/imgutil v0.0.0-20251124184330-0166615a54d8
 	github.com/chainguard-dev/kaniko v1.25.4
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.29
@@ -15,6 +15,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/heroku/color v0.0.6
 	github.com/moby/buildkit v0.26.1
+	github.com/moby/moby/api v1.52.0
+	github.com/moby/moby/client v0.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.18.0
@@ -113,7 +115,7 @@ require (
 	github.com/docker/cli v28.5.0+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.4 // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
+	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect

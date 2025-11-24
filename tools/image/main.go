@@ -13,15 +13,14 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/docker/docker/api/types/image"
 	"github.com/pkg/errors"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	dockercli "github.com/moby/moby/client"
 
 	"github.com/buildpacks/lifecycle/archive"
 )
@@ -71,14 +70,14 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to initialize docker client:", err)
 		}
-		info, err := dockerClient.Info(context.Background())
+		info, err := dockerClient.Info(context.Background(), dockercli.InfoOptions{})
 		if err != nil {
 			log.Fatal("Failed to to get daemon info:", err)
 		}
-		if info.OSType != targetOS {
+		if info.Info.OSType != targetOS {
 			log.Fatal("Target OS and daemon OS must match")
 		}
-		daemonArch := info.Architecture
+		daemonArch := info.Info.Architecture
 		if daemonArch == "x86_64" {
 			daemonArch = "amd64"
 		}
@@ -309,11 +308,11 @@ func lifecycleLayer() (string, error) {
 	return lf.Name(), nil
 }
 
-func pullImage(dockerCli dockercli.CommonAPIClient, ref string) error {
-	rc, err := dockerCli.ImagePull(context.Background(), ref, image.PullOptions{})
+func pullImage(dockerCli dockercli.APIClient, ref string) error {
+	rc, err := dockerCli.ImagePull(context.Background(), ref, dockercli.ImagePullOptions{})
 	if err != nil {
 		// Retry
-		rc, err = dockerCli.ImagePull(context.Background(), ref, image.PullOptions{})
+		rc, err = dockerCli.ImagePull(context.Background(), ref, dockercli.ImagePullOptions{})
 		if err != nil {
 			return err
 		}

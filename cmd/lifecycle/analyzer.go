@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle/auth"

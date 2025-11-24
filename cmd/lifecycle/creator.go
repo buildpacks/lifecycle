@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
@@ -200,7 +200,7 @@ func (c *createCmd) Exec() error {
 	return exportCmd.export(group, cacheStore, analyzedMD)
 }
 
-func startPinging(docker client.CommonAPIClient) (stopPinging func()) {
+func startPinging(docker client.APIClient) (stopPinging func()) {
 	pingCtx, cancelPing := context.WithCancel(context.Background())
 	pingDoneChan := make(chan struct{})
 	go func() {
@@ -212,7 +212,7 @@ func startPinging(docker client.CommonAPIClient) (stopPinging func()) {
 		for {
 			select {
 			case <-time.After(time.Millisecond * 500):
-				_, err := docker.Ping(pingCtx)
+				_, err := docker.Ping(pingCtx, client.PingOptions{})
 				if err != nil && !errors.Is(err, context.Canceled) {
 					cmd.DefaultLogger.Warnf("ping error: %v", err)
 				}

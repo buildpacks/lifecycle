@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/image"
-	dockercli "github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/image"
+	dockercli "github.com/moby/moby/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/pkg/errors"
 )
@@ -124,8 +124,8 @@ func DockerVolumeExists(t *testing.T, volumeName string) bool {
 }
 
 // FIXME: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
-func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) error {
-	rc, err := dockerCli.ImagePush(context.Background(), ref, image.PushOptions{RegistryAuth: auth})
+func PushImage(dockerCli dockercli.APIClient, ref string, auth string) error {
+	rc, err := dockerCli.ImagePush(context.Background(), ref, dockercli.ImagePushOptions{RegistryAuth: auth})
 	if err != nil {
 		return errors.Wrap(err, "pushing image")
 	}
@@ -253,7 +253,7 @@ func ImageInspectWithRetry(t *testing.T, dockerCli dockercli.APIClient, imageNam
 			if attempt > 0 {
 				t.Logf("Successfully inspected image %q after %d retries", imageName, attempt)
 			}
-			return inspect, nil
+			return inspect.InspectResponse, nil
 		}
 
 		lastErr = err
@@ -264,10 +264,10 @@ func ImageInspectWithRetry(t *testing.T, dockerCli dockercli.APIClient, imageNam
 
 			// List available images for debugging
 			if attempt == 0 {
-				list, listErr := dockerCli.ImageList(context.TODO(), image.ListOptions{})
+				list, listErr := dockerCli.ImageList(context.TODO(), dockercli.ImageListOptions{})
 				if listErr == nil {
 					t.Logf("Available images in daemon:")
-					for _, img := range list {
+					for _, img := range list.Items {
 						t.Logf("  - RepoTags: %v, RepoDigests: %v, ID: %s", img.RepoTags, img.RepoDigests, img.ID)
 					}
 				} else {

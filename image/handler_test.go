@@ -3,7 +3,7 @@ package image
 import (
 	"testing"
 
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
