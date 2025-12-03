@@ -150,6 +150,11 @@ func FlagStackPath(stackPath *string) {
 	flagSet.StringVar(stackPath, "stack", *stackPath, "path to stack.toml")
 }
 
+// FlagSystemPath sets the system path flag
+func FlagSystemPath(systemPath *string) {
+	flagSet.StringVar(systemPath, "system", *systemPath, "path to system.toml")
+}
+
 func FlagTags(tags *str.Slice) {
 	flagSet.Var(tags, "tag", "additional tags")
 }

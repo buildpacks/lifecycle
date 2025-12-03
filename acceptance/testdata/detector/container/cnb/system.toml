@@ -1,0 +1,10 @@
+[system]
+  [system.pre]
+    [[system.pre.buildpacks]]
+      id = "always_detect_buildpack"
+      version = "always_detect_buildpack_version"
+
+  [system.post]
+    [[system.post.buildpacks]]
+      id = "simple_buildpack"
+      version = "simple_buildpack_version"
