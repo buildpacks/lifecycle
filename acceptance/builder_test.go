@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -24,14 +25,14 @@ var (
 )
 
 func TestBuilder(t *testing.T) {
-	info, err := h.DockerCli(t).Info(context.TODO())
+	info, err := h.DockerCli(t).Info(context.TODO(), client.InfoOptions{})
 	h.AssertNil(t, err)
 
 	// These variables are clones of the variables in analyzer_test.go.
 	// You can find the same variables there without `builder` prefix.
 	// These lines are added for supporting windows tests.
-	builderDaemonOS = info.OSType
-	builderDaemonArch = info.Architecture
+	builderDaemonOS = info.Info.OSType
+	builderDaemonArch = info.Info.Architecture
 	if builderDaemonArch == "x86_64" {
 		builderDaemonArch = "amd64"
 	} else if builderDaemonArch == "aarch64" {

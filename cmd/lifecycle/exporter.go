@@ -12,10 +12,10 @@ import (
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -37,8 +37,8 @@ import (
 type exportCmd struct {
 	*platform.Platform
 
-	docker   client.CommonAPIClient // construct if necessary before dropping privileges
-	keychain authn.Keychain         // construct if necessary before dropping privileges
+	docker   client.APIClient // construct if necessary before dropping privileges
+	keychain authn.Keychain   // construct if necessary before dropping privileges
 
 	persistedData exportData
 }
