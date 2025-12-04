@@ -129,6 +129,10 @@ const (
 	EnvAppDir      = "CNB_APP_DIR"
 	EnvLayersDir   = "CNB_LAYERS_DIR"
 	EnvPlatformDir = "CNB_PLATFORM_DIR"
+
+	// EnvExecEnv is the target execution environment. Standard values include "production", "test", and "development".
+	EnvExecEnv     = "CNB_EXEC_ENV"
+	DefaultExecEnv = "production"
 )
 
 // The following are the default locations of input directories if not specified.

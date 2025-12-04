@@ -220,6 +220,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 			AdditionalNames:    e.AdditionalTags,
 			AppDir:             e.AppDir,
 			DefaultProcessType: e.DefaultProcessType,
+			ExecEnv:            e.ExecEnv,
 			ExtendedDir:        e.ExtendedDir,
 			LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
 			LayersDir:          e.LayersDir,
