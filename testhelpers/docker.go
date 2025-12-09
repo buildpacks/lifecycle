@@ -214,13 +214,21 @@ func DockerPullWithRetry(t *testing.T, imageName string) error {
 			if attempt > 0 {
 				t.Logf("Successfully pulled image %q after %d retries", imageName, attempt)
 			}
-			return nil
+			t.Logf("Pull output for %q: %s", imageName, output)
+			// Verify the image is available via Docker API before returning
+			// This ensures the image is fully indexed and available for inspection
+			inspect, err := DockerCli(t).ImageInspect(context.TODO(), imageName)
+			if err == nil {
+				t.Logf("Image %q successfully pulled and verified (ID: %s)", imageName, inspect.ID)
+				return nil
+			}
+			t.Logf("Image %q pulled but not yet available via API (attempt %d/%d), will retry: %v", imageName, attempt+1, maxRetries, err)
+			lastErr = err
+		} else {
+			lastErr = err
+			// Log diagnostic information
+			t.Logf("Attempt %d/%d: Failed to pull image %q (exit code %d): %s", attempt+1, maxRetries, imageName, exitCode, output)
 		}
-
-		lastErr = err
-
-		// Log diagnostic information
-		t.Logf("Attempt %d/%d: Failed to pull image %q (exit code %d): %s", attempt+1, maxRetries, imageName, exitCode, output)
 
 		// Wait before retrying (unless this is the last attempt)
 		if attempt < maxRetries-1 {
