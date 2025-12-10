@@ -29,9 +29,9 @@ func TestVersion(t *testing.T) {
 	var err error
 	buildDir, err = os.MkdirTemp("", "lifecycle-acceptance")
 	h.AssertNil(t, err)
-	defer func() {
+	t.Cleanup(func() {
 		h.AssertNil(t, os.RemoveAll(buildDir))
-	}()
+	})
 
 	outDir := filepath.Join(buildDir, fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH), "lifecycle")
 	h.AssertNil(t, os.MkdirAll(outDir, 0755))
