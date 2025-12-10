@@ -19,8 +19,8 @@ require (
 	github.com/osscontainertools/kaniko v1.26.3
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
-	golang.org/x/sync v0.18.0
-	golang.org/x/sys v0.38.0
+	golang.org/x/sync v0.19.0
+	golang.org/x/sys v0.39.0
 )
 
 require (
@@ -318,4 +318,4 @@ tool github.com/golang/mock/mockgen
 
 tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
-go 1.25.3
+go 1.25.5
