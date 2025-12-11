@@ -48,7 +48,7 @@ func TestBuilder(t *testing.T) {
 			"-f", filepath.Join(builderDockerContext, dockerfileName),
 		),
 	)
-	defer h.DockerImageRemoveSafe(t, builderImage)
+	t.Cleanup(func() { h.DockerImageRemoveSafe(t, builderImage) })
 
 	spec.Run(t, "acceptance-builder", testBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
