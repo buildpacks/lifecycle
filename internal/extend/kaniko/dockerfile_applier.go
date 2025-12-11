@@ -29,6 +29,9 @@ type DockerfileApplier struct {
 }
 
 func NewDockerfileApplier() (*DockerfileApplier, error) {
+	if err := os.MkdirAll(filepath.Join(kanikoDir, "cache", "base"), 0755); err != nil {
+		return nil, err
+	}
 	workDir, err := os.MkdirTemp(kanikoDir, "work.dir")
 	if err != nil {
 		return nil, err
