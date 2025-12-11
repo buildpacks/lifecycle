@@ -32,7 +32,7 @@ func TestCreator(t *testing.T) {
 	testImageDockerContext := filepath.Join("testdata", "creator")
 	createTest = NewPhaseTest(t, "creator", testImageDockerContext)
 	createTest.Start(t)
-	t.Cleanup(func() { createTest.Stop(t) })
+	defer createTest.Stop(t)
 
 	createImage = createTest.testImageRef
 	creatorPath = createTest.containerBinaryPath

@@ -32,7 +32,7 @@ func TestAnalyzer(t *testing.T) {
 	testImageDockerContext := filepath.Join("testdata", "analyzer")
 	analyzeTest = NewPhaseTest(t, "analyzer", testImageDockerContext)
 	analyzeTest.Start(t)
-	t.Cleanup(func() { analyzeTest.Stop(t) })
+	defer analyzeTest.Stop(t)
 
 	analyzeImage = analyzeTest.testImageRef
 	analyzerPath = analyzeTest.containerBinaryPath

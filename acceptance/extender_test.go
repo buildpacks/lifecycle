@@ -47,7 +47,7 @@ func TestExtender(t *testing.T) {
 	testImageDockerContext := filepath.Join("testdata", "extender")
 	extendTest = NewPhaseTest(t, "extender", testImageDockerContext)
 	extendTest.Start(t)
-	t.Cleanup(func() { extendTest.Stop(t) })
+	defer extendTest.Stop(t)
 
 	extendImage = extendTest.testImageRef
 	extenderPath = extendTest.containerBinaryPath
@@ -162,15 +162,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					t.Log("cleans the kaniko directory")
 					fis, err := os.ReadDir(kanikoDir)
 					h.AssertNil(t, err)
-					var expectedFiles = []string{"cache"}
-					var actualFiles []string
-					for _, fi := range fis {
-						if fi.Name() == "layers" {
-							continue
-						}
-						actualFiles = append(actualFiles, fi.Name())
-					}
-					h.AssertEq(t, actualFiles, expectedFiles)
+					h.AssertEq(t, len(fis), 1) // 1: /kaniko/cache
 
 					t.Log("second build extends the build image by pulling from the cache directory")
 					secondOutput := h.DockerRunWithCombinedOutput(t,
@@ -228,22 +220,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					t.Log("cleans the kaniko directory")
 					caches, err := os.ReadDir(kanikoDir)
 					h.AssertNil(t, err)
-					var expectedFiles = []string{"cache"}
-					var actualFiles []string
-					for _, fi := range caches {
-						if fi.Name() == "layers" {
-							continue
-						}
-						actualFiles = append(actualFiles, fi.Name())
-					}
-					if len(actualFiles) != 1 || actualFiles[0] != "cache" {
-						var names []string
-						for _, fi := range caches {
-							names = append(names, fi.Name())
-						}
-						t.Logf("kanikoDir contents (1): %v", names)
-					}
-					h.AssertEq(t, actualFiles, expectedFiles)
+					h.AssertEq(t, len(caches), 1) // 1: /kaniko/cache
 
 					t.Log("second build extends the build image by pulling from the cache directory")
 					secondOutput := h.DockerRunWithCombinedOutput(t,
@@ -264,21 +241,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					t.Log("cleans the kaniko directory")
 					caches, err = os.ReadDir(kanikoDir)
 					h.AssertNil(t, err)
-					actualFiles = nil
-					for _, fi := range caches {
-						if fi.Name() == "layers" {
-							continue
-						}
-						actualFiles = append(actualFiles, fi.Name())
-					}
-					if len(actualFiles) != 1 || actualFiles[0] != "cache" {
-						var names []string
-						for _, fi := range caches {
-							names = append(names, fi.Name())
-						}
-						t.Logf("kanikoDir contents (2): %v", names)
-					}
-					h.AssertEq(t, actualFiles, expectedFiles)
+					h.AssertEq(t, len(caches), 1) // 1: /kaniko/cache
 				})
 			})
 		})
@@ -291,41 +254,20 @@ func assertExpectedImage(t *testing.T, imagePath, platformAPI string) {
 	configFile, err := image.ConfigFile()
 	h.AssertNil(t, err)
 	h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false")
-	_, err = image.Layers()
+	layers, err := image.Layers()
 	h.AssertNil(t, err)
 	history := configFile.History
 	h.AssertEq(t, len(history), len(configFile.RootFS.DiffIDs))
-	var expectedLayers []string
 	if api.MustParse(platformAPI).AtLeast("0.13") {
-		expectedLayers = []string{
-			"Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl",
-			"Layer: 'COPY run-file /', Created by extension: curl",
-			"Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree",
-			"Layer: 'COPY shared-file /shared-run', Created by extension: tree",
-		}
+		h.AssertEq(t, len(layers), 7) // base (3), curl (2), tree (2)
+		h.AssertEq(t, history[3].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl")
+		h.AssertEq(t, history[4].CreatedBy, "Layer: 'COPY run-file /', Created by extension: curl")
+		h.AssertEq(t, history[5].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree")
+		h.AssertEq(t, history[6].CreatedBy, "Layer: 'COPY shared-file /shared-run', Created by extension: tree")
 	} else {
-		expectedLayers = []string{
-			"Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl",
-			"Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree",
-		}
-	}
-
-	lastIndex := -1
-	for _, expected := range expectedLayers {
-		found := false
-		for i, hItem := range history {
-			if hItem.CreatedBy == expected {
-				if i <= lastIndex {
-					t.Errorf("expected layer %q to appear after index %d", expected, lastIndex)
-				}
-				lastIndex = i
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("expected layer %q not found in history", expected)
-		}
+		h.AssertEq(t, len(layers), 5) // base (3), curl (1), tree (1)
+		h.AssertEq(t, history[3].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl")
+		h.AssertEq(t, history[4].CreatedBy, "Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree")
 	}
 }
 
