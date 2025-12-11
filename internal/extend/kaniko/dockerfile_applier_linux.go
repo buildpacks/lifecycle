@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/chainguard-dev/kaniko/pkg/config"
+	"github.com/chainguard-dev/kaniko/pkg/executor"
+	"github.com/chainguard-dev/kaniko/pkg/image"
+	"github.com/chainguard-dev/kaniko/pkg/util"
+	"github.com/chainguard-dev/kaniko/pkg/util/proc"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/osscontainertools/kaniko/pkg/config"
-	"github.com/osscontainertools/kaniko/pkg/executor"
-	"github.com/osscontainertools/kaniko/pkg/image"
-	"github.com/osscontainertools/kaniko/pkg/util"
-	"github.com/osscontainertools/kaniko/pkg/util/proc"
 
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/log"
@@ -39,7 +39,7 @@ func (a *DockerfileApplier) Apply(dockerfile extend.Dockerfile, toBaseImage v1.I
 	opts := createOptions(baseImageRef, dockerfile, withBuildOptions)
 
 	// update ignore paths; kaniko does this here:
-	// https://github.com/osscontainertools/kaniko/blob/v1.9.2/cmd/executor/cmd/root.go#L124
+	// https://github.com/chainguard-dev/kaniko/blob/v1.9.2/cmd/executor/cmd/root.go#L124
 	if opts.IgnoreVarRun {
 		// from kaniko:
 		// /var/run is a special case. It's common to mount in /var/run/docker.sock
@@ -59,7 +59,7 @@ func (a *DockerfileApplier) Apply(dockerfile extend.Dockerfile, toBaseImage v1.I
 	}
 
 	// change to root directory; kaniko does this here:
-	// https://github.com/osscontainertools/kaniko/blob/v1.9.2/cmd/executor/cmd/root.go#L160
+	// https://github.com/chainguard-dev/kaniko/blob/v1.9.2/cmd/executor/cmd/root.go#L160
 	if err = os.Chdir("/"); err != nil {
 		return nil, err
 	}

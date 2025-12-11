@@ -48,7 +48,7 @@ func TestExporter(t *testing.T) {
 	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
 
 	exportTest.Start(t, updateTOMLFixturesWithTestRegistry)
-	t.Cleanup(func() { exportTest.Stop(t) })
+	defer exportTest.Stop(t)
 
 	exportImage = exportTest.testImageRef
 	exporterPath = exportTest.containerBinaryPath
