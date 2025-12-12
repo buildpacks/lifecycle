@@ -103,7 +103,6 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertNil(t, err)
 				baseImageDigest := baseImageHash.String()
 				baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
-				h.AssertNil(t, os.MkdirAll(baseCacheDir, 0755))
 
 				// write sparse image
 				layoutImage, err := sparse.NewImage(filepath.Join(baseCacheDir, baseImageDigest), remoteImage)
