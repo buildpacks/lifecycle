@@ -55,6 +55,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			configHandler,
 			dirStore,
 		)
+
+		// Mock ReadSystem for Platform API >= 0.15 (returns empty by default)
+		if api.Platform.Latest().AtLeast("0.15") {
+			configHandler.EXPECT().ReadSystem(gomock.Any(), gomock.Any()).Return(files.System{}, nil).AnyTimes()
+		}
 	})
 
 	it.After(func() {
@@ -99,6 +104,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		when("Platform API >= 0.15", func() {
 			it("reads and merges system buildpacks", func() {
+				configHandler = testmock.NewMockConfigHandler(mockController)
+
 				detectorFactory015 := phase.NewHermeticFactory(
 					api.MustParse("0.15"),
 					apiVerifier,
@@ -121,6 +128,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}
+				configHandler.EXPECT().ReadAnalyzed("some-analyzed-path", gomock.Any()).Return(files.Analyzed{}, nil)
 				configHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
 				configHandler.EXPECT().ReadSystem("some-system-path", gomock.Any()).Return(system, nil)
 
