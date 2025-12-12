@@ -78,6 +78,7 @@ func (b *buildCmd) build(group buildpack.Group, plan files.Plan, analyzedMD file
 		BuildConfigDir: b.BuildConfigDir,
 		LayersDir:      b.LayersDir,
 		PlatformDir:    b.PlatformDir,
+		ExecEnv:        b.ExecEnv,
 		BuildExecutor:  &buildpack.DefaultBuildExecutor{},
 		DirStore:       platform.NewDirStore(b.BuildpacksDir, ""),
 		Group:          group,

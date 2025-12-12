@@ -171,6 +171,54 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 						}
 					})
 
+					when("CNB_EXEC_ENV", func() {
+						when("buildpack API >= 0.12", func() {
+							it.Before(func() {
+								descriptor.WithAPI = "0.12"
+							})
+
+							it("sets CNB_EXEC_ENV when ExecEnv is provided", func() {
+								mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
+								inputs.ExecEnv = "test"
+
+								executor.Detect(descriptor, inputs, logger)
+
+								actual := rdappfile("detect-env-cnb-exec-env-A-v1")
+								h.AssertEq(t, actual, "test")
+							})
+
+							it("does not set CNB_EXEC_ENV when ExecEnv is empty", func() {
+								mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
+								inputs.ExecEnv = ""
+
+								executor.Detect(descriptor, inputs, logger)
+
+								actual := rdappfile("detect-env-cnb-exec-env-A-v1")
+								if !isUnset(actual) {
+									t.Fatalf("expected CNB_EXEC_ENV to be unset, but was: %s", actual)
+								}
+							})
+						})
+
+						when("buildpack API < 0.12", func() {
+							it.Before(func() {
+								descriptor.WithAPI = "0.11"
+							})
+
+							it("does not set CNB_EXEC_ENV even when ExecEnv is provided", func() {
+								mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
+								inputs.ExecEnv = "test"
+
+								executor.Detect(descriptor, inputs, logger)
+
+								actual := rdappfile("detect-env-cnb-exec-env-A-v1")
+								if !isUnset(actual) {
+									t.Fatalf("expected CNB_EXEC_ENV to be unset for API < 0.12, but was: %s", actual)
+								}
+							})
+						})
+					})
+
 					it("errors when <platform>/env cannot be loaded", func() {
 						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(nil, errors.New("some error"))
 

@@ -269,6 +269,160 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
+
+			when("execution environment filtering", func() {
+				it.Before(func() {
+					launcher.PlatformAPI = api.MustParse("0.15") // Enable execution environment filtering
+					launcher.ExecEnv = "test"
+					launcher.DefaultProcessType = "web"
+					launcher.Processes = []launch.Process{
+						{
+							Type:        "web",
+							Command:     launch.NewRawCommand([]string{"web-server"}),
+							Args:        []string{"--port", "8080"},
+							BuildpackID: "some-buildpack",
+						},
+						{
+							Type:        "prod-only",
+							Command:     launch.NewRawCommand([]string{"prod-command"}),
+							Args:        []string{},
+							BuildpackID: "some-buildpack",
+							ExecEnv:     []string{"production"},
+						},
+						{
+							Type:        "test-only",
+							Command:     launch.NewRawCommand([]string{"test-command"}),
+							Args:        []string{},
+							BuildpackID: "some-buildpack",
+							ExecEnv:     []string{"test"},
+						},
+						{
+							Type:        "multi-env",
+							Command:     launch.NewRawCommand([]string{"multi-command"}),
+							Args:        []string{},
+							BuildpackID: "some-buildpack",
+							ExecEnv:     []string{"production", "test"},
+						},
+						{
+							Type:        "wildcard",
+							Command:     launch.NewRawCommand([]string{"wildcard-command"}),
+							Args:        []string{},
+							BuildpackID: "some-buildpack",
+							ExecEnv:     []string{"*"},
+						},
+					}
+				})
+
+				when("Platform API < 0.15", func() {
+					it("ignores execution environment and returns any process", func() {
+						launcher.PlatformAPI = api.MustParse("0.14")
+						launcher.ExecEnv = "test"
+						launcher.DefaultProcessType = "prod-only" // This would normally be filtered out
+
+						proc, err := launcher.ProcessFor([]string{})
+						h.AssertNil(t, err)
+						h.AssertEq(t, proc.Type, "prod-only")
+					})
+				})
+
+				when("Platform API >= 0.15", func() {
+					when("process has no exec-env specified", func() {
+						it("returns the process (applies to all execution environments)", func() {
+							launcher.DefaultProcessType = "web"
+
+							proc, err := launcher.ProcessFor([]string{})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc.Type, "web")
+						})
+					})
+
+					when("process supports wildcard execution environment", func() {
+						it("returns the process", func() {
+							launcher.DefaultProcessType = "wildcard"
+
+							proc, err := launcher.ProcessFor([]string{})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc.Type, "wildcard")
+						})
+					})
+
+					when("process supports the current execution environment", func() {
+						it("returns the process", func() {
+							launcher.DefaultProcessType = "test-only"
+
+							proc, err := launcher.ProcessFor([]string{})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc.Type, "test-only")
+						})
+
+						it("returns the process when multiple environments are supported", func() {
+							launcher.DefaultProcessType = "multi-env"
+
+							proc, err := launcher.ProcessFor([]string{})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc.Type, "multi-env")
+						})
+					})
+
+					when("process does not support the current execution environment", func() {
+						it("returns an error", func() {
+							launcher.DefaultProcessType = "prod-only"
+
+							_, err := launcher.ProcessFor([]string{})
+							h.AssertNotNil(t, err)
+							h.AssertStringContains(t, err.Error(), "prod-only")
+						})
+					})
+
+					when("multiple processes exist with same type but different exec-env", func() {
+						it.Before(func() {
+							launcher.Processes = append(launcher.Processes, []launch.Process{
+								{
+									Type:        "duplicate",
+									Command:     launch.NewRawCommand([]string{"prod-version"}),
+									BuildpackID: "some-buildpack",
+									ExecEnv:     []string{"production"},
+								},
+								{
+									Type:        "duplicate",
+									Command:     launch.NewRawCommand([]string{"test-version"}),
+									BuildpackID: "some-buildpack",
+									ExecEnv:     []string{"test"},
+								},
+							}...)
+						})
+
+						it("returns the first process that supports the current execution environment", func() {
+							launcher.DefaultProcessType = "duplicate"
+
+							proc, err := launcher.ProcessFor([]string{})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc.Type, "duplicate")
+							h.AssertEq(t, proc.Command.Entries, []string{"test-version"})
+						})
+					})
+
+					when("execution environment is empty", func() {
+						it("only matches processes with no exec-env specified", func() {
+							launcher.ExecEnv = ""
+							launcher.DefaultProcessType = "web" // This has no ExecEnv, so should work
+
+							proc, err := launcher.ProcessFor([]string{})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc.Type, "web")
+						})
+
+						it("does not match processes with specific exec-env requirements", func() {
+							launcher.ExecEnv = ""
+							launcher.DefaultProcessType = "prod-only" // This has ExecEnv: ["production"]
+
+							_, err := launcher.ProcessFor([]string{})
+							h.AssertNotNil(t, err)
+							h.AssertStringContains(t, err.Error(), "prod-only")
+						})
+					})
+				})
+			})
 		})
 	})
 }

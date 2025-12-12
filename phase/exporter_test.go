@@ -828,6 +828,50 @@ version = "4.5.6"
 				h.AssertNil(t, err)
 				h.AssertEq(t, label, "other-label-value")
 			})
+
+			when("execution environment label", func() {
+				when("Platform API >= 0.15", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.15")
+					})
+
+					it("adds execution environment label when ExecEnv is provided", func() {
+						opts.ExecEnv = "development"
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						label, err := fakeAppImage.Label("io.buildpacks.exec-env")
+						h.AssertNil(t, err)
+						h.AssertEq(t, label, "development")
+					})
+
+					it("does not add execution environment label when ExecEnv is empty", func() {
+						opts.ExecEnv = ""
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						label, err := fakeAppImage.Label("io.buildpacks.exec-env")
+						h.AssertNil(t, err)
+						h.AssertEq(t, label, "")
+					})
+				})
+
+				when("Platform API < 0.15", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.14")
+					})
+
+					it("does not add execution environment label even when ExecEnv is provided", func() {
+						opts.ExecEnv = "development"
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						label, err := fakeAppImage.Label("io.buildpacks.exec-env")
+						h.AssertNil(t, err)
+						h.AssertEq(t, label, "")
+					})
+				})
+			})
 		})
 
 		when("previous image doesn't exist", func() {
