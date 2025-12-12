@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+## always detect
+
+platform_path=$1
+plan_path=$2
+
+echo "ENV"
+env
+
+echo "platform_path: $platform_path"
+echo "app_dir: $(pwd)"
+
+cat >> "${plan_path}" <<EOL
+[[provides]]
+name = "some_requirement"
+EOL

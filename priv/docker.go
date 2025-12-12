@@ -33,7 +33,7 @@ func DockerClient() (*client.Client, error) {
 		}
 		opts = append(opts, opt)
 	}
-	return client.NewClientWithOpts(opts...)
+	return client.New(opts...)
 }
 
 type unclosableConn struct {

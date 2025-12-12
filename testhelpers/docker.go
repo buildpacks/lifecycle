@@ -29,7 +29,7 @@ var (
 func DockerCli(t *testing.T) dockercli.APIClient {
 	dockerCliOnce.Do(func() {
 		var dockerCliErr error
-		dockerCliVal, dockerCliErr = dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
+		dockerCliVal, dockerCliErr = dockercli.New(dockercli.FromEnv)
 		AssertNil(t, dockerCliErr)
 	})
 	return dockerCliVal
