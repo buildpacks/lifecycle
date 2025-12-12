@@ -66,7 +66,7 @@ func main() {
 
 	var img imgutil.Image
 	if useDaemon {
-		dockerClient, err := dockercli.NewClientWithOpts(dockercli.FromEnv)
+		dockerClient, err := dockercli.New(dockercli.FromEnv)
 		if err != nil {
 			log.Fatal("Failed to initialize docker client:", err)
 		}
