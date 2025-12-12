@@ -1,0 +1,6 @@
+api = "0.10"
+
+[buildpack]
+    id = "always_detect_buildpack"
+    version = "always_detect_buildpack_version"
+    name = "Always Detect Buildpack"

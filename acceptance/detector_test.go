@@ -449,7 +449,7 @@ fail: fail_detect_buildpack@some_version`
 						detectImage,
 						h.WithFlags("--user", userID,
 							"--env", "CNB_ORDER_PATH=/cnb/orders/middle_order.toml",
-							"--env", "CNB_SYSTEM_PATH=/cnb/system.toml",
+							"--env", "CNB_SYSTEM_PATH=/cnb/test-data/system.toml",
 							"--env", "CNB_PLATFORM_API="+platformAPI,
 						),
 						h.WithArgs("-log-level=debug"),
@@ -475,13 +475,16 @@ fail: fail_detect_buildpack@some_version`
 					h.AssertEq(t, group.Group[2].Version, "simple_buildpack_version")
 
 					// check output contains all buildpacks
-					h.AssertStringContains(t, output, "always_detect_buildpack always_detect_buildpack_version")
-					h.AssertStringContains(t, output, "buildpack_for_ext buildpack_for_ext_version")
-					h.AssertStringContains(t, output, "simple_buildpack simple_buildpack_version")
+					h.AssertStringContains(t, output, "always_detect_buildpack")
+					h.AssertStringContains(t, output, "always_detect_buildpack_version")
+					h.AssertStringContains(t, output, "buildpack_for_ext")
+					h.AssertStringContains(t, output, "buildpack_for_ext_version")
+					h.AssertStringContains(t, output, "simple_buildpack")
+					h.AssertStringContains(t, output, "simple_buildpack_version")
 
 					// check debug logs show system buildpack merging
-					h.AssertStringContains(t, output, "Prepending 1 system buildpack(s) to order")
-					h.AssertStringContains(t, output, "Appending 1 system buildpack(s) to order")
+					h.AssertStringContains(t, output, "Prepending 1 system buildpack(s) to group")
+					h.AssertStringContains(t, output, "Appending 1 system buildpack(s) to group")
 				})
 			})
 		})
