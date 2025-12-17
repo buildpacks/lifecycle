@@ -116,9 +116,6 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 	dirStore := platform.NewDirStore(c.BuildpacksDir, c.ExtensionsDir)
-	if err != nil {
-		return err
-	}
 
 	// Analyze
 	var (
