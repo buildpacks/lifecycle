@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/chainguard-dev/kaniko/pkg/config"
 	"github.com/containerd/containerd/platforms"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
+	"github.com/osscontainertools/kaniko/pkg/config"
 
 	"github.com/buildpacks/lifecycle/internal/extend"
 )
