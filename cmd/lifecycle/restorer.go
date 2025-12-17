@@ -8,7 +8,7 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
-	"github.com/buildpacks/imgutil/layout/sparse"
+
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/moby/moby/client"
@@ -285,16 +285,20 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 	}
 	path := filepath.Join(baseCacheDir, h.String())
 	cmd.DefaultLogger.Debugf("Saving image metadata to %s...", path)
-	sparseImage, err := sparse.NewImage(
+	preserveDigest := func(opts *imgutil.ImageOptions) {
+		opts.PreserveDigest = true
+	}
+	layoutImage, err := layout.NewImage(
 		path,
-		remoteImage.UnderlyingImage(),
+		layout.FromBaseImageInstance(remoteImage.UnderlyingImage()),
 		layout.WithMediaTypes(imgutil.DefaultTypes),
+		preserveDigest,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize sparse image: %w", err)
+		return nil, fmt.Errorf("failed to initialize layout image: %w", err)
 	}
-	if err = sparseImage.Save(); err != nil {
-		return nil, fmt.Errorf("failed to save sparse image: %w", err)
+	if err = layoutImage.Save(); err != nil {
+		return nil, fmt.Errorf("failed to save layout image: %w", err)
 	}
 	return remoteImage, nil
 }
