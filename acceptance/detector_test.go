@@ -47,7 +47,7 @@ func TestDetector(t *testing.T) {
 		detectDockerContext,
 		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
 	)
-	defer h.DockerImageRemoveSafe(t, detectImage)
+	t.Cleanup(func() { h.DockerImageRemoveSafe(t, detectImage) })
 
 	for _, platformAPI := range api.Platform.Supported {
 		if platformAPI.LessThan("0.12") {

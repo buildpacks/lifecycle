@@ -28,7 +28,7 @@ func TestLauncher(t *testing.T) {
 		phaseTest.containerBinaryDir = containerBinaryDir
 	}
 	launchTest.Start(t, withCustomContainerBinaryDir)
-	defer launchTest.Stop(t)
+	t.Cleanup(func() { launchTest.Stop(t) })
 
 	launchImage = launchTest.testImageRef
 	launcherPath = launchTest.containerBinaryPath
