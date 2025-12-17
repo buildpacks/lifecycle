@@ -145,7 +145,7 @@ install-syft:
 
 define install-go-tool
 	@echo "> Installing $(1)..."
-	$(GOCMD) install $(1)@$(shell $(GOCMD) list -m -f '{{.Version}}' $(2))
+	GOTOOLCHAIN=go1.25.3 $(GOCMD) install $(1)@$(shell $(GOCMD) list -m -f '{{.Version}}' $(2))
 endef
 
 install-goimports:
