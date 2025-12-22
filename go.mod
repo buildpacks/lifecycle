@@ -1,20 +1,20 @@
 module github.com/buildpacks/lifecycle
 
 require (
-	github.com/BurntSushi/toml v1.5.0
+	github.com/BurntSushi/toml v1.6.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.11.0
 	github.com/buildpacks/imgutil v0.0.0-20251202182233-51c1c8c186ea
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
-	github.com/containerd/containerd v1.7.29
+	github.com/containerd/containerd v1.7.30
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.7
 	github.com/google/uuid v1.6.0
 	github.com/heroku/color v0.0.6
-	github.com/moby/buildkit v0.26.2
-	github.com/moby/moby/api v1.52.1-0.20251202205847-de45c2ae4f52
+	github.com/moby/buildkit v0.26.3
+	github.com/moby/moby/api v1.53.0-rc.1
 	github.com/moby/moby/client v0.2.2-0.20251202205847-de45c2ae4f52
 	github.com/osscontainertools/kaniko v1.26.3
 	github.com/pkg/errors v0.9.1
