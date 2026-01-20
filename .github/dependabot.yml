@@ -4,6 +4,10 @@ updates:
   directory: "/"
   schedule:
     interval: weekly
+  # This block ignores RC versions for all Go dependencies
+  ignore:
+    - dependency-name: "*"
+      versions: ["*-rc*"]
   groups:
     # Group all minor/patch go dependencies into a single PR.
     go-dependencies:
