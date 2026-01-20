@@ -11,6 +11,7 @@ A reference implementation of the [Cloud Native Buildpacks specification](https:
 ## Supported APIs
 | Lifecycle Version | Platform APIs                                                                                                                                    | Buildpack APIs                                                                                                                 |
 |-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| 0.21.x            | [0.7][p/0.7], [0.8][p/0.8], [0.9][p/0.9], [0.10][p/0.10], [0.11][p/0.11], [0.12][p/0.12], [0.13][p/0.13], [0.14][p/0.14], [0.15][p/0.15]        | [0.7][b/0.7], [0.8][b/0.8], [0.9][b/0.9], [0.10][b/0.10], [0.11][b/0.11], [0.12][b/0.12]                                       |
 | 0.20.x            | [0.7][p/0.7], [0.8][p/0.8], [0.9][p/0.9], [0.10][p/0.10], [0.11][p/0.11], [0.12][p/0.12], [0.13][p/0.13], [0.14][p/0.14]                         | [0.7][b/0.7], [0.8][b/0.8], [0.9][b/0.9], [0.10][b/0.10], [0.11][b/0.11]                                                       |
 | 0.19.x            | [0.7][p/0.7], [0.8][p/0.8], [0.9][p/0.9], [0.10][p/0.10], [0.11][p/0.11], [0.12][p/0.12], [0.13][p/0.13]                                         | [0.7][b/0.7], [0.8][b/0.8], [0.9][b/0.9], [0.10][b/0.10], [0.11][b/0.11]                                                       |
 | 0.18.x            | [0.7][p/0.7], [0.8][p/0.8], [0.9][p/0.9], [0.10][p/0.10], [0.11][p/0.11], [0.12][p/0.12]                                                         | [0.7][b/0.7], [0.8][b/0.8], [0.9][b/0.9], [0.10][b/0.10]                                                                       |
@@ -30,6 +31,7 @@ A reference implementation of the [Cloud Native Buildpacks specification](https:
 [b/0.9]: https://github.com/buildpacks/spec/tree/buildpack/v0.9/buildpack.md
 [b/0.10]: https://github.com/buildpacks/spec/tree/buildpack/v0.10/buildpack.md
 [b/0.11]: https://github.com/buildpacks/spec/tree/buildpack/v0.11/buildpack.md
+[b/0.12]: https://github.com/buildpacks/spec/tree/buildpack/0.12/buildpack.md
 [p/0.2]: https://github.com/buildpacks/spec/blob/platform/v0.2/platform.md
 [p/0.3]: https://github.com/buildpacks/spec/blob/platform/v0.3/platform.md
 [p/0.4]: https://github.com/buildpacks/spec/blob/platform/v0.4/platform.md
@@ -43,6 +45,7 @@ A reference implementation of the [Cloud Native Buildpacks specification](https:
 [p/0.12]: https://github.com/buildpacks/spec/blob/platform/v0.12/platform.md
 [p/0.13]: https://github.com/buildpacks/spec/blob/platform/v0.13/platform.md
 [p/0.14]: https://github.com/buildpacks/spec/blob/platform/v0.14/platform.md
+[p/0.15]: https://github.com/buildpacks/spec/blob/platform/0.15/platform.md
 
 \* denotes unreleased version
 
