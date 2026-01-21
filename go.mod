@@ -15,7 +15,7 @@ require (
 	github.com/heroku/color v0.0.6
 	github.com/moby/buildkit v0.26.3
 	github.com/moby/moby/api v1.53.0-rc.2
-	github.com/moby/moby/client v0.2.2-0.20251202205847-de45c2ae4f52
+	github.com/moby/moby/client v0.2.2-rc.2
 	github.com/osscontainertools/kaniko v1.26.4
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
