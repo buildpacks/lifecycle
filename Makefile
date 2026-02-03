@@ -242,3 +242,21 @@ package-linux-s390x: PACKAGER=./tools/packager/main.go
 package-linux-s390x:
 	@echo "> Packaging lifecycle for $(GOOS)/$(GOARCH)..."
 	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH) -version $(LIFECYCLE_VERSION)
+
+package-freebsd-amd64: GOOS:=freebsd
+package-freebsd-amd64: GOARCH:=amd64
+package-freebsd-amd64: INPUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+package-freebsd-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).$(GOARCH).tgz
+package-freebsd-amd64: PACKAGER=./tools/packager/main.go
+package-freebsd-amd64:
+	@echo "> Packaging lifecycle for $(GOOS)/$(GOARCH)..."
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH) -version $(LIFECYCLE_VERSION)
+
+package-freebsd-arm64: GOOS:=freebsd
+package-freebsd-arm64: GOARCH:=arm64
+package-freebsd-arm64: INPUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+package-freebsd-arm64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).$(GOARCH).tgz
+package-freebsd-arm64: PACKAGER=./tools/packager/main.go
+package-freebsd-arm64:
+	@echo "> Packaging lifecycle for $(GOOS)/$(GOARCH)..."
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH) -version $(LIFECYCLE_VERSION)
