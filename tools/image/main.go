@@ -31,6 +31,7 @@ const (
 
 // commandline flags
 var (
+	baseImage            string
 	lifecyclePath        string      // path to lifecycle TGZ
 	tags                 stringSlice // tag reference to write lifecycle image
 	targetOS, targetArch string      // operating system and CPU architecture
@@ -50,6 +51,7 @@ func (s *stringSlice) Set(value string) error {
 
 // Creates lifecycle image from lifecycle tgz
 func main() {
+	flag.StringVar(&baseImage, "baseImage", linuxBaseImage, "base image")
 	flag.StringVar(&lifecyclePath, "lifecyclePath", "", "path to lifecycle TGZ")
 	flag.StringVar(&targetOS, "os", runtime.GOOS, "operating system")
 	flag.StringVar(&targetArch, "arch", runtime.GOARCH, "CPU architecture")
@@ -61,8 +63,6 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-
-	baseImage := linuxBaseImage
 
 	var img imgutil.Image
 	if useDaemon {
