@@ -7,11 +7,14 @@ import (
 	"strings"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/internal/patch"
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
@@ -31,8 +34,22 @@ type Rebaser struct {
 	Force       bool
 }
 
+// RebaseOpts contains optional configuration for the Rebase operation.
+type RebaseOpts struct {
+	// LayerPatches contains configuration for patching buildpack-contributed layers.
+	LayerPatches files.LayerPatchesFile
+	// Keychain is used for authenticating to registries when loading patch images.
+	Keychain authn.Keychain
+	// InsecureRegistries is a list of registries to access without TLS verification.
+	InsecureRegistries []string
+	// UseDaemon indicates whether to load patch images from the local Docker daemon.
+	UseDaemon bool
+	// DockerClient is the Docker client for loading images from the daemon.
+	DockerClient client.APIClient
+}
+
 // Rebase changes the underlying base image for an application image.
-func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, outputImageRef string, additionalNames []string) (files.RebaseReport, error) {
+func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, outputImageRef string, additionalNames []string, opts RebaseOpts) (files.RebaseReport, error) {
 	defer log.NewMeasurement("Rebaser", r.Logger)()
 	appPlatformAPI, err := workingImage.Env(platform.EnvPlatformAPI)
 	if err != nil {
@@ -106,6 +123,19 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		}
 	}
 
+	// Apply layer patches if configured (experimental feature)
+	var patchCleanup func()
+	if len(opts.LayerPatches.Patches) > 0 {
+		patchCleanup, err = r.applyLayerPatches(workingImage, &origMetadata, opts)
+		if err != nil {
+			return files.RebaseReport{}, fmt.Errorf("apply layer patches: %w", err)
+		}
+	}
+	// Defer cleanup of patch temp files until after image is saved
+	if patchCleanup != nil {
+		defer patchCleanup()
+	}
+
 	// set metadata label
 	data, err := json.Marshal(origMetadata)
 	if err != nil {
@@ -133,6 +163,25 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return files.RebaseReport{}, err
 	}
 	return report, err
+}
+
+// applyLayerPatches applies buildpack layer patches to the working image.
+// Returns a cleanup function that must be called after the image is saved to clean up temp files.
+func (r *Rebaser) applyLayerPatches(workingImage imgutil.Image, metadata *files.LayersMetadataCompat, opts RebaseOpts) (func(), error) {
+	// Get target OS/arch from the working image
+	targetOS, err := workingImage.OS()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get working image OS: %w", err)
+	}
+	targetArch, err := workingImage.Architecture()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get working image architecture: %w", err)
+	}
+	targetVariant, _ := workingImage.Variant() // May not be set
+
+	patcher := patch.NewLayerPatcher(r.Logger, opts.Keychain, opts.InsecureRegistries, opts.UseDaemon, opts.DockerClient)
+	_, cleanup, err := patcher.ApplyPatches(workingImage, metadata, opts.LayerPatches, targetOS, targetArch, targetVariant)
+	return cleanup, err
 }
 
 func containsName(origMetadata files.LayersMetadataCompat, newBaseName string) bool {

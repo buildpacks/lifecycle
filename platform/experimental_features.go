@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	FeatureDockerfiles = "Dockerfiles"
-	LayoutFormat       = "export to OCI layout format"
+	FeatureDockerfiles   = "Dockerfiles"
+	FeatureLayerPatches  = "Layer Patches"
+	LayoutFormat         = "export to OCI layout format"
 )
 
 var ExperimentalMode = envOrDefault(EnvExperimentalMode, DefaultExperimentalMode)

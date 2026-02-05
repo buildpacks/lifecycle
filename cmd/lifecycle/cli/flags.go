@@ -180,6 +180,10 @@ func FlagInsecureRegistries(insecureRegistries *str.Slice) {
 	flagSet.Var(insecureRegistries, "insecure-registry", "insecure registries")
 }
 
+func FlagLayerPatches(layerPatchesPath *string) {
+	flagSet.StringVar(layerPatchesPath, "layer-patches", *layerPatchesPath, "path to layer patches JSON file")
+}
+
 // deprecated
 
 // DeprecatedFlagRunImage sets the run image

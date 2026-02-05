@@ -2,6 +2,7 @@
 package files
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -210,4 +211,23 @@ func (h *TOMLHandler) ReadSystem(path string, logger log.Logger) (System, error)
 		return System{}, fmt.Errorf("failed to read system file: %w", err)
 	}
 	return system.System, nil
+}
+
+// ReadLayerPatches reads the provided layer patches JSON file.
+// It returns an error if the file does not exist or cannot be parsed.
+func (h *TOMLHandler) ReadLayerPatches(path string, logger log.Logger) (LayerPatchesFile, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return LayerPatchesFile{}, fmt.Errorf("layer patches file not found at path %q", path)
+		}
+		return LayerPatchesFile{}, fmt.Errorf("failed to read layer patches file: %w", err)
+	}
+
+	var patches LayerPatchesFile
+	if err := json.Unmarshal(data, &patches); err != nil {
+		return LayerPatchesFile{}, fmt.Errorf("failed to parse layer patches file: %w", err)
+	}
+
+	return patches, nil
 }
