@@ -86,7 +86,7 @@ func testRebaser(platformAPI string) func(t *testing.T, when spec.G, it spec.S) 
 					rebaserOutputImageName := "some-image:tag"
 					// This will fail because the image doesn't exist, but we're testing
 					// that the experimental flag is accepted
-					output, _, err := h.DockerRunWithError(t,
+					_, _, err := h.DockerRunWithError(t,
 						rebaserImage,
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
