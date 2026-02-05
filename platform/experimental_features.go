@@ -6,6 +6,7 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 )
 
+// Experimental feature names for use with GuardExperimental.
 const (
 	FeatureDockerfiles  = "Dockerfiles"
 	FeatureLayerPatches = "Layer Patches"

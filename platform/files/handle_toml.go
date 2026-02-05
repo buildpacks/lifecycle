@@ -215,8 +215,8 @@ func (h *TOMLHandler) ReadSystem(path string, logger log.Logger) (System, error)
 
 // ReadLayerPatches reads the provided layer patches JSON file.
 // It returns an error if the file does not exist or cannot be parsed.
-func (h *TOMLHandler) ReadLayerPatches(path string, logger log.Logger) (LayerPatchesFile, error) {
-	data, err := os.ReadFile(path)
+func (h *TOMLHandler) ReadLayerPatches(path string) (LayerPatchesFile, error) {
+	data, err := os.ReadFile(path) //nolint:gosec // path is provided by platform operator
 	if err != nil {
 		if os.IsNotExist(err) {
 			return LayerPatchesFile{}, fmt.Errorf("layer patches file not found at path %q", path)

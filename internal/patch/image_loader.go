@@ -1,3 +1,5 @@
+// Package patch provides functionality for patching buildpack-contributed layers
+// in OCI images during the rebase phase of the Cloud Native Buildpacks lifecycle.
 package patch
 
 import (
@@ -15,8 +17,8 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
-// PatchImageLoader handles loading patch images from registries or the local Docker daemon.
-type PatchImageLoader struct {
+// ImageLoader handles loading patch images from registries or the local Docker daemon.
+type ImageLoader struct {
 	Keychain           authn.Keychain
 	InsecureRegistries []string
 	Logger             log.Logger
@@ -24,9 +26,9 @@ type PatchImageLoader struct {
 	DockerClient       client.APIClient
 }
 
-// NewPatchImageLoader creates a new PatchImageLoader.
-func NewPatchImageLoader(keychain authn.Keychain, insecureRegistries []string, logger log.Logger, useDaemon bool, dockerClient client.APIClient) *PatchImageLoader {
-	return &PatchImageLoader{
+// NewImageLoader creates a new ImageLoader.
+func NewImageLoader(keychain authn.Keychain, insecureRegistries []string, logger log.Logger, useDaemon bool, dockerClient client.APIClient) *ImageLoader {
+	return &ImageLoader{
 		Keychain:           keychain,
 		InsecureRegistries: insecureRegistries,
 		Logger:             logger,
@@ -39,7 +41,7 @@ func NewPatchImageLoader(keychain authn.Keychain, insecureRegistries []string, l
 // It tries the primary image first, then falls back to mirrors if the primary fails.
 // For multi-arch images, it selects the matching OS/arch variant.
 // Returns nil without error if no matching variant is found (skip with warning).
-func (l *PatchImageLoader) LoadPatchImage(patch files.LayerPatch, targetOS, targetArch, targetVariant string) (imgutil.Image, files.LayersMetadataCompat, error) {
+func (l *ImageLoader) LoadPatchImage(patch files.LayerPatch, targetOS, targetArch, targetVariant string) (imgutil.Image, files.LayersMetadataCompat, error) {
 	// Try primary image first
 	img, md, err := l.tryLoadImage(patch.PatchImage, targetOS, targetArch, targetVariant)
 	if err == nil && img != nil {
@@ -66,7 +68,7 @@ func (l *PatchImageLoader) LoadPatchImage(patch files.LayerPatch, targetOS, targ
 }
 
 // tryLoadImage attempts to load a single image reference.
-func (l *PatchImageLoader) tryLoadImage(imageRef, targetOS, targetArch, targetVariant string) (imgutil.Image, files.LayersMetadataCompat, error) {
+func (l *ImageLoader) tryLoadImage(imageRef, targetOS, targetArch, targetVariant string) (imgutil.Image, files.LayersMetadataCompat, error) {
 	var img imgutil.Image
 	var err error
 
@@ -128,7 +130,7 @@ func (l *PatchImageLoader) tryLoadImage(imageRef, targetOS, targetArch, targetVa
 }
 
 // extractLayerMetadata extracts the lifecycle layers metadata from the image label.
-func (l *PatchImageLoader) extractLayerMetadata(img imgutil.Image) (files.LayersMetadataCompat, error) {
+func (l *ImageLoader) extractLayerMetadata(img imgutil.Image) (files.LayersMetadataCompat, error) {
 	var md files.LayersMetadataCompat
 	if err := image.DecodeLabel(img, platform.LifecycleMetadataLabel, &md); err != nil {
 		return files.LayersMetadataCompat{}, fmt.Errorf("failed to decode lifecycle metadata label: %w", err)

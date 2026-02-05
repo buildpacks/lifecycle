@@ -8,7 +8,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -29,7 +28,7 @@ func testLayerPatches(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	})
 
 	when("ReadLayerPatches", func() {
@@ -47,9 +46,9 @@ func testLayerPatches(t *testing.T, when spec.G, it spec.S) {
 					]
 				}`
 				path := filepath.Join(tmpDir, "patches.json")
-				h.AssertNil(t, os.WriteFile(path, []byte(content), 0644))
+				h.AssertNil(t, os.WriteFile(path, []byte(content), 0600))
 
-				patches, err := files.Handler.ReadLayerPatches(path, cmd.DefaultLogger)
+				patches, err := files.Handler.ReadLayerPatches(path)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, len(patches.Patches), 1)
@@ -79,9 +78,9 @@ func testLayerPatches(t *testing.T, when spec.G, it spec.S) {
 					]
 				}`
 				path := filepath.Join(tmpDir, "patches.json")
-				h.AssertNil(t, os.WriteFile(path, []byte(content), 0644))
+				h.AssertNil(t, os.WriteFile(path, []byte(content), 0600))
 
-				patches, err := files.Handler.ReadLayerPatches(path, cmd.DefaultLogger)
+				patches, err := files.Handler.ReadLayerPatches(path)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, len(patches.Patches), 2)
@@ -92,9 +91,9 @@ func testLayerPatches(t *testing.T, when spec.G, it spec.S) {
 			it("returns empty patches", func() {
 				content := `{"patches": []}`
 				path := filepath.Join(tmpDir, "patches.json")
-				h.AssertNil(t, os.WriteFile(path, []byte(content), 0644))
+				h.AssertNil(t, os.WriteFile(path, []byte(content), 0600))
 
-				patches, err := files.Handler.ReadLayerPatches(path, cmd.DefaultLogger)
+				patches, err := files.Handler.ReadLayerPatches(path)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, len(patches.Patches), 0)
@@ -105,7 +104,7 @@ func testLayerPatches(t *testing.T, when spec.G, it spec.S) {
 			it("returns an error", func() {
 				path := filepath.Join(tmpDir, "nonexistent.json")
 
-				_, err := files.Handler.ReadLayerPatches(path, cmd.DefaultLogger)
+				_, err := files.Handler.ReadLayerPatches(path)
 
 				h.AssertNotNil(t, err)
 				h.AssertStringContains(t, err.Error(), "layer patches file not found")
@@ -116,9 +115,9 @@ func testLayerPatches(t *testing.T, when spec.G, it spec.S) {
 			it("returns an error", func() {
 				content := `{"patches": invalid}`
 				path := filepath.Join(tmpDir, "patches.json")
-				h.AssertNil(t, os.WriteFile(path, []byte(content), 0644))
+				h.AssertNil(t, os.WriteFile(path, []byte(content), 0600))
 
-				_, err := files.Handler.ReadLayerPatches(path, cmd.DefaultLogger)
+				_, err := files.Handler.ReadLayerPatches(path)
 
 				h.AssertNotNil(t, err)
 				h.AssertStringContains(t, err.Error(), "failed to parse layer patches file")
@@ -137,9 +136,9 @@ func testLayerPatches(t *testing.T, when spec.G, it spec.S) {
 					]
 				}`
 				path := filepath.Join(tmpDir, "patches.json")
-				h.AssertNil(t, os.WriteFile(path, []byte(content), 0644))
+				h.AssertNil(t, os.WriteFile(path, []byte(content), 0600))
 
-				patches, err := files.Handler.ReadLayerPatches(path, cmd.DefaultLogger)
+				patches, err := files.Handler.ReadLayerPatches(path)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, len(patches.Patches), 1)

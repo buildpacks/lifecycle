@@ -180,6 +180,7 @@ func FlagInsecureRegistries(insecureRegistries *str.Slice) {
 	flagSet.Var(insecureRegistries, "insecure-registry", "insecure registries")
 }
 
+// FlagLayerPatches sets the path to a JSON file describing layer patches to apply during rebase.
 func FlagLayerPatches(layerPatchesPath *string) {
 	flagSet.StringVar(layerPatchesPath, "layer-patches", *layerPatchesPath, "path to layer patches JSON file")
 }

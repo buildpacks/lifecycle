@@ -16,8 +16,8 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
-// PatchResult represents the result of applying a single layer patch.
-type PatchResult struct {
+// Result represents the result of applying a single layer patch.
+type Result struct {
 	BuildpackID   string
 	BuildpackIdx  int
 	LayerName     string
@@ -57,7 +57,7 @@ func (p *LayerPatcher) ApplyPatches(
 	metadata *files.LayersMetadataCompat,
 	patches files.LayerPatchesFile,
 	targetOS, targetArch, targetVariant string,
-) ([]PatchResult, func(), error) {
+) ([]Result, func(), error) {
 	noopCleanup := func() {}
 
 	if len(patches.Patches) == 0 {
@@ -72,11 +72,11 @@ func (p *LayerPatcher) ApplyPatches(
 		return nil, noopCleanup, fmt.Errorf("failed to create temp directory for patches: %w", err)
 	}
 	cleanup := func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	}
 
 	matcher := NewLayerMatcher()
-	loader := NewPatchImageLoader(p.Keychain, p.InsecureRegistries, p.Logger, p.UseDaemon, p.DockerClient)
+	loader := NewImageLoader(p.Keychain, p.InsecureRegistries, p.Logger, p.UseDaemon, p.DockerClient)
 
 	// Phase 1: Validate all patches and collect the operations to perform
 	var operations []patchOperation
@@ -97,7 +97,7 @@ func (p *LayerPatcher) ApplyPatches(
 	}
 
 	// Phase 2: Apply all validated operations
-	var results []PatchResult
+	var results []Result
 	for _, op := range operations {
 		result, err := p.applyOperation(workingImage, metadata, op, tmpDir)
 		if err != nil {
@@ -128,7 +128,7 @@ func (p *LayerPatcher) validatePatch(
 	patchIndex int,
 	metadata *files.LayersMetadataCompat,
 	matcher *LayerMatcher,
-	loader *PatchImageLoader,
+	loader *ImageLoader,
 	targetOS, targetArch, targetVariant string,
 ) ([]patchOperation, error) {
 	// Find matching layers in the working image
@@ -195,47 +195,47 @@ func (p *LayerPatcher) applyOperation(
 	metadata *files.LayersMetadataCompat,
 	op patchOperation,
 	tmpDir string,
-) (PatchResult, error) {
+) (Result, error) {
 	// Get the layer from the patch image
 	// Note: imgutil doesn't support removing individual layers, so the old layer blob
 	// remains but metadata will point to the new layer
 	diffID := op.patchLayerMD.SHA
 	if diffID == "" {
-		return PatchResult{}, fmt.Errorf("patch layer has no SHA")
+		return Result{}, fmt.Errorf("patch layer has no SHA")
 	}
 
 	// Get the layer reader from the patch image
 	layerReader, err := op.patchImage.GetLayer(diffID)
 	if err != nil {
-		return PatchResult{}, fmt.Errorf("failed to get layer %s from patch image: %w", diffID, err)
+		return Result{}, fmt.Errorf("failed to get layer %s from patch image: %w", diffID, err)
 	}
-	defer layerReader.Close()
+	defer func() { _ = layerReader.Close() }()
 
 	// Write the layer to a temporary file since imgutil requires a file path
 	// Files are stored in tmpDir and cleaned up by the caller after the image is saved
 	tmpFile, err := os.CreateTemp(tmpDir, "layer-patch-*.tar")
 	if err != nil {
-		return PatchResult{}, fmt.Errorf("failed to create temp file for layer: %w", err)
+		return Result{}, fmt.Errorf("failed to create temp file for layer: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 
 	_, err = io.Copy(tmpFile, layerReader)
-	tmpFile.Close()
+	_ = tmpFile.Close()
 	if err != nil {
-		return PatchResult{}, fmt.Errorf("failed to write layer to temp file: %w", err)
+		return Result{}, fmt.Errorf("failed to write layer to temp file: %w", err)
 	}
 
 	// Make the path absolute
 	absPath, err := filepath.Abs(tmpPath)
 	if err != nil {
-		return PatchResult{}, fmt.Errorf("failed to get absolute path: %w", err)
+		return Result{}, fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
 	// Add the new layer to the working image
 	// Using AddLayerWithDiffIDAndHistory to preserve the layer's identity
 	err = workingImage.AddLayerWithDiffIDAndHistory(absPath, diffID, v1.History{})
 	if err != nil {
-		return PatchResult{}, fmt.Errorf("failed to add layer to working image: %w", err)
+		return Result{}, fmt.Errorf("failed to add layer to working image: %w", err)
 	}
 
 	// Update the metadata for this layer
@@ -252,7 +252,7 @@ func (p *LayerPatcher) applyOperation(
 	p.Logger.Infof("Patched layer %s:%s (SHA: %s -> %s)",
 		op.match.BuildpackID, layerName, originalSHA, op.patchLayerMD.SHA)
 
-	return PatchResult{
+	return Result{
 		BuildpackID:   op.match.BuildpackID,
 		BuildpackIdx:  bpIdx,
 		LayerName:     layerName,

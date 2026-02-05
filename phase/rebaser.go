@@ -28,6 +28,7 @@ var (
 	msgUnableToSatisfyTargetConstraints = "unable to satisfy target os/arch constraints; new run image: %s, old run image: %s"
 )
 
+// Rebaser performs the rebase operation, replacing the base image layers of an application image.
 type Rebaser struct {
 	Logger      log.Logger
 	PlatformAPI *api.Version

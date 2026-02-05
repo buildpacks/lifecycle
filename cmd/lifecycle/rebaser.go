@@ -138,7 +138,7 @@ func (r *rebaseCmd) Exec() error {
 	// Load layer patches if specified
 	var layerPatches files.LayerPatchesFile
 	if r.LayerPatchesPath != "" {
-		layerPatches, err = files.Handler.ReadLayerPatches(r.LayerPatchesPath, cmd.DefaultLogger)
+		layerPatches, err = files.Handler.ReadLayerPatches(r.LayerPatchesPath)
 		if err != nil {
 			return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "read layer patches")
 		}
