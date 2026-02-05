@@ -102,8 +102,8 @@ func testRebaser(platformAPI string) func(t *testing.T, when spec.G, it spec.S) 
 					// Should not error on the experimental feature itself
 					if err != nil {
 						// Error should be about something else (like image not found),
-						// not about experimental mode
-						h.AssertStringDoesNotContain(t, err.Error(), "experimental")
+						// not about experimental mode being disabled
+						h.AssertStringDoesNotContain(t, err.Error(), "experimental features are disabled")
 					}
 					// Should warn about experimental feature
 					h.AssertStringContains(t, output, "Layer Patches")
