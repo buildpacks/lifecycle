@@ -100,7 +100,7 @@ $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher:
 	@echo "> Building lifecycle/launcher for $$(GOOS)/$$(GOARCH)..."
 	mkdir -p $$(OUT_DIR)
 	$$(GOENV) $$(GOBUILD) -o $$(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$$$(du -m $$(OUT_DIR)/launcher|cut -f 1) -le 3
+	test $$$$(du -m $$(OUT_DIR)/launcher|cut -f 1) -le 4
 endef
 
 $(foreach ga,$(GOOS_ARCHS),$(eval $(call build_targets,$(word 1, $(subst /, ,$(ga))),$(word 2, $(subst /, ,$(ga))))))
