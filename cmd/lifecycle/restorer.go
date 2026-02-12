@@ -214,11 +214,9 @@ func (r *restoreCmd) runImageAccessCheck(runImageName string) (string, error) {
 		return "", err
 	}
 
-	if !runToml.Contains(runImageName) {
-		return runImageName, nil
-	}
-
-	return platform.BestRunImageMirrorFor("", runToml.FindByRef(runImageName), r.AccessChecker())
+	// For Platform API 0.14+, use the new function that validates the already-selected
+	// run image from analyzed.toml without retrying the primary image first (issue #1590)
+	return platform.ResolveRunImageFromAnalyzed(runImageName, runToml, r.AccessChecker())
 }
 
 func (r *restoreCmd) needsUpdating(runImage *files.RunImage, group buildpack.Group) bool {

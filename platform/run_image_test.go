@@ -1,6 +1,7 @@
 package platform_test
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -274,6 +275,121 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNotNil(t, err)
 				expected := "failed to find accessible run image"
 				h.AssertStringContains(t, err.Error(), expected)
+			})
+		})
+	})
+
+	when(".ResolveRunImageFromAnalyzed", func() {
+		when("Platform API 0.14+", func() {
+			it("should use already-selected mirror from analyzed.toml", func() {
+				// Reproduces issue #1590
+				// The restorer should validate the already-selected mirror from analyzed.toml
+				// without retrying the primary image first
+				//
+				// The scenario:
+				//   1. Analyzer already selected "localhost:5000/pack-test/run" (accessible mirror)
+				//   2. Wrote it to analyzed.toml as run-image.image
+				//   3. Restorer reads this value: runImageName = "localhost:5000/pack-test/run"
+				//   4. Restorer has run.toml with primary + mirrors
+				//   5. Restorer should validate the already-selected mirror
+
+				// STEP 1: The run image name from analyzed.toml (already selected by analyzer)
+				runImageNameFromAnalyzed := "localhost:5000/pack-test/run"
+
+				// STEP 2: The run.toml with full entry (primary + mirrors)
+				runToml := files.Run{
+					Images: []files.RunImageForExport{
+						{
+							Image:   "pack-test/run",                          // Primary - INACCESSIBLE
+							Mirrors: []string{"localhost:5000/pack-test/run"}, // Mirror - accessible
+						},
+					},
+				}
+
+				// STEP 3: Access checker - simulates the real scenario
+				callCount := make(map[string]int)
+				checkAccess := func(image string, _ authn.Keychain) (bool, error) {
+					callCount[image]++
+					if image == "pack-test/run" {
+						// Primary is NOT accessible (401 error)
+						return false, fmt.Errorf("failed to get remote image: unauthorized")
+					}
+					if image == "localhost:5000/pack-test/run" {
+						// Mirror IS accessible
+						return true, nil
+					}
+					return false, fmt.Errorf("unknown image: %s", image)
+				}
+
+				// STEP 4: Call the function (simulates what restorer does)
+				result, err := platform.ResolveRunImageFromAnalyzed(runImageNameFromAnalyzed, runToml, checkAccess)
+
+				// EXPECTATIONS:
+				// 1. Should succeed
+				h.AssertNil(t, err)
+				h.AssertEq(t, result, "localhost:5000/pack-test/run")
+
+				// 2. CRITICAL: Should NOT have checked the primary image!
+				//    Since we already know the mirror was selected, we shouldn't retry primary
+				if callCount["pack-test/run"] > 0 {
+					t.Fatalf("FAIL: Should not check primary 'pack-test/run' when mirror was already selected. Call count: %v", callCount)
+				}
+
+				// 3. Should have checked the selected mirror
+				h.AssertEq(t, callCount["localhost:5000/pack-test/run"], 1)
+			})
+
+			it("returns the run image as-is when not in run.toml", func() {
+				// If the run image from analyzed.toml is not found in run.toml
+				// (e.g., extensions switched the run image), just return it
+				runImageNameFromAnalyzed := "some-extension-switched-image:latest"
+
+				runToml := files.Run{
+					Images: []files.RunImageForExport{
+						{
+							Image:   "pack-test/run",
+							Mirrors: []string{"localhost:5000/pack-test/run"},
+						},
+					},
+				}
+
+				checkAccess := func(_ string, _ authn.Keychain) (bool, error) {
+					return true, nil
+				}
+
+				result, err := platform.ResolveRunImageFromAnalyzed(runImageNameFromAnalyzed, runToml, checkAccess)
+
+				h.AssertNil(t, err)
+				h.AssertEq(t, result, "some-extension-switched-image:latest")
+			})
+
+			it("fails with helpful message when selected mirror is not accessible", func() {
+				// If the environment changed between analyzer and restorer phases,
+				// and the previously-selected mirror is no longer accessible,
+				// we should fail with a clear error message that includes the image name
+				runImageNameFromAnalyzed := "localhost:5000/pack-test/run"
+
+				runToml := files.Run{
+					Images: []files.RunImageForExport{
+						{
+							Image:   "pack-test/run",
+							Mirrors: []string{"localhost:5000/pack-test/run"},
+						},
+					},
+				}
+
+				checkAccess := func(_ string, _ authn.Keychain) (bool, error) {
+					// Mirror is no longer accessible
+					return false, fmt.Errorf("failed to get remote image: connection refused")
+				}
+
+				_, err := platform.ResolveRunImageFromAnalyzed(runImageNameFromAnalyzed, runToml, checkAccess)
+
+				// Should fail with clear message including the image name
+				h.AssertNotNil(t, err)
+				h.AssertStringContains(t, err.Error(), "selected run image")
+				h.AssertStringContains(t, err.Error(), "localhost:5000/pack-test/run")
+				h.AssertStringContains(t, err.Error(), "not accessible")
 			})
 		})
 	})
