@@ -1,0 +1,22 @@
+{
+  "buildpacks": [
+    {
+      "key": "example/java-buildpack",
+      "layers": {
+        "jre": {
+          "data": {
+            "artifact": {
+              "version": "17.0.2"
+            }
+          },
+          "launch": true,
+          "sha": "sha256:patched-jre-layer-sha"
+        }
+      }
+    }
+  ],
+  "runImage": {
+    "topLayer": "sha256:patch-run-image-top-layer",
+    "reference": "patch-run-image-digest"
+  }
+}

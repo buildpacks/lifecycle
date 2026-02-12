@@ -41,6 +41,7 @@ type LifecycleInputs struct {
 	LauncherSBOMDir       string
 	LayersDir             string
 	LayoutDir             string
+	LayerPatchesPath      string
 	LogLevel              string
 	OrderPath             string
 	OutputImageRef        string
@@ -157,7 +158,8 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		ProjectMetadataPath: envOrDefault(EnvProjectMetadataPath, filepath.Join(PlaceholderLayers, DefaultProjectMetadataFile)),
 
 		// Configuration options for rebasing
-		ForceRebase: boolEnv(EnvForceRebase),
+		ForceRebase:      boolEnv(EnvForceRebase),
+		LayerPatchesPath: os.Getenv(EnvLayerPatchesFile),
 	}
 
 	return inputs

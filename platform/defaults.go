@@ -237,6 +237,10 @@ const (
 const (
 	// EnvForceRebase is used to force the rebaser to rebase the app image even if the operation is unsafe.
 	EnvForceRebase = "CNB_FORCE_REBASE"
+
+	// EnvLayerPatchesFile is the location of the layer patches JSON file for selective layer patching during rebase.
+	// This is an experimental feature.
+	EnvLayerPatchesFile = "CNB_LAYER_PATCHES_FILE"
 )
 
 var (
