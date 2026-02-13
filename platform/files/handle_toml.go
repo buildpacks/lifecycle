@@ -41,7 +41,7 @@ func (h *TOMLHandler) ReadAnalyzed(path string, logger log.Logger) (Analyzed, er
 // WriteAnalyzed writes the provided analyzed metadata at the provided path.
 func (h *TOMLHandler) WriteAnalyzed(path string, analyzedMD *Analyzed, logger log.Logger) error {
 	logger.Debugf("Run image info in analyzed metadata is: ")
-	logger.Debugf(encoding.ToJSONMaybe(analyzedMD.RunImage))
+	logger.Debugf("%s",encoding.ToJSONMaybe(analyzedMD.RunImage))
 	if err := encoding.WriteTOML(path, analyzedMD); err != nil {
 		return fmt.Errorf("failed to write analyzed file: %w", err)
 	}
