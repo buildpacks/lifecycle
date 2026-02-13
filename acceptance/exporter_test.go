@@ -681,6 +681,8 @@ func calculateEmptyLayerSha(t *testing.T) string {
 	tmpDir, err := os.MkdirTemp("", "")
 	h.AssertNil(t, err)
 	testLayerEmptyPath := filepath.Join(tmpDir, "empty.tar")
-	h.AssertNil(t, os.WriteFile(testLayerEmptyPath, []byte{}, 0600))
+	// An empty tar archive is two 512-byte zero blocks (EOF markers).
+	// This must match the empty layer created by imgutil.
+	h.AssertNil(t, os.WriteFile(testLayerEmptyPath, make([]byte, 1024), 0600))
 	return "sha256:" + h.ComputeSHA256ForFile(t, testLayerEmptyPath)
 }
