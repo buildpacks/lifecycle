@@ -137,7 +137,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, len(md.Buildpacks), 1)
 				h.AssertEq(t, md.Buildpacks[0].ID, "buildpack.id")
-				h.AssertEq(t, md.App, []interface{}{map[string]interface{}{"sha": "123456"}})
+				h.AssertEq(t, md.App, []any{map[string]any{"sha": "123456"}})
 			})
 
 			when("updating run image metadata", func() {
@@ -347,7 +347,6 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					for _, test := range tests {
-						test := test
 						t.Run(test.label, func(t *testing.T) {
 							actual, err := fakeAppImage.Label(test.label)
 							h.AssertNil(t, err)
@@ -385,7 +384,6 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					for _, test := range tests {
-						test := test
 						t.Run(test.label, func(t *testing.T) {
 							actual, err := fakeAppImage.Label(test.label)
 							h.AssertNil(t, err)

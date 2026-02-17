@@ -133,7 +133,6 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 					args:        []string{"-version"},
 				},
 			} {
-				tc := tc
 				w := when
 				if tc.focus {
 					w = when.Focus

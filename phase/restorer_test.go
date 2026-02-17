@@ -263,7 +263,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 						var meta, layerSha string
 						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", meta, layerSha))
 
-						appMetaContents := []byte(fmt.Sprintf(`{
+						appMetaContents := fmt.Appendf(nil, `{
    "buildpacks": [
        {
            "key": "buildpack.id",
@@ -280,7 +280,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
        }
    ]
 }
-`, otherSHA))
+`, otherSHA)
 
 						h.AssertNil(t, json.Unmarshal(appMetaContents, &restorer.LayersMetadata))
 
@@ -411,7 +411,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 						cacheLaunchMeta = typesMeta + "[metadata]\n  cache-launch-key = \"cache-launch-val\"\n"
 						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", cacheLaunchMeta, cacheLaunchSha))
 
-						appMetaContents := []byte(fmt.Sprintf(`{
+						appMetaContents := fmt.Appendf(nil, `{
    "buildpacks": [
        {
            "key": "buildpack.id",
@@ -428,7 +428,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
        }
    ]
 }
-`, cacheLaunchLayerSHA))
+`, cacheLaunchLayerSHA)
 
 						h.AssertNil(t, json.Unmarshal(appMetaContents, &restorer.LayersMetadata))
 

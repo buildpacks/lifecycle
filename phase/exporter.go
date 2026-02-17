@@ -375,7 +375,6 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *files.LayersMeta
 			Store:   bpDir.Store,
 		}
 		for _, fsLayer := range bpDir.FindLayers(buildpack.MadeLaunch) {
-			fsLayer := fsLayer
 			e.Logger.Debugf("Processing launch layer: %s", fsLayer.Path())
 			lmd, err := fsLayer.Read()
 			if err != nil {

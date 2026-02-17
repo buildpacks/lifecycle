@@ -73,7 +73,7 @@ func doPackage() error {
 		els = append(els, fmt.Sprintf("%q", el))
 	}
 
-	descriptorContents, err := fillTemplate(templateContents, map[string]interface{}{
+	descriptorContents, err := fillTemplate(templateContents, map[string]any{
 		"lifecycle_version":         version,
 		"apis_buildpack_supported":  api.Buildpack.Supported.String(),
 		"apis_buildpack_deprecated": api.Buildpack.Deprecated.String(),
@@ -161,7 +161,7 @@ func doPackage() error {
 	return nil
 }
 
-func fillTemplate(templateContents []byte, data map[string]interface{}) ([]byte, error) {
+func fillTemplate(templateContents []byte, data map[string]any) ([]byte, error) {
 	tpl, err := template.New("").Parse(string(templateContents))
 	if err != nil {
 		return []byte{}, err

@@ -233,7 +233,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 					inputs.Plan = buildpack.Plan{
 						Entries: []buildpack.Require{
 							{
-								Metadata: map[string]interface{}{"a": map[int64]int64{1: 2}}, // map with non-string key type
+								Metadata: map[string]any{"a": map[int64]int64{1: 2}}, // map with non-string key type
 							},
 						},
 					}

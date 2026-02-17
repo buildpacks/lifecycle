@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -87,12 +88,7 @@ func (a APIs) IsSupported(target *Version) bool {
 
 // IsDeprecated returns true or false depending on whether the target API is deprecated
 func (a APIs) IsDeprecated(target *Version) bool {
-	for _, dAPI := range a.Deprecated {
-		if target.IsSupersetOf(dAPI) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(a.Deprecated, target.IsSupersetOf)
 }
 
 // Latest returns the latest API that is supported

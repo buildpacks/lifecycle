@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
@@ -105,10 +106,8 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertNil(t, subject.Save())
 
-				for _, reusedSHA := range fakeImage.ReusedLayers() {
-					if reusedSHA == layerSHA {
-						return
-					}
+				if slices.Contains(fakeImage.ReusedLayers(), layerSHA) {
+					return
 				}
 				t.Fatalf("expected image to have reused layer '%s'", layerSHA)
 			})

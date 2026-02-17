@@ -111,9 +111,9 @@ type BOMEntry struct {
 }
 
 type Require struct {
-	Name     string                 `toml:"name" json:"name"`
-	Version  string                 `toml:"version,omitempty" json:"version,omitempty"`
-	Metadata map[string]interface{} `toml:"metadata" json:"metadata"`
+	Name     string         `toml:"name" json:"name"`
+	Version  string         `toml:"version,omitempty" json:"version,omitempty"`
+	Metadata map[string]any `toml:"metadata" json:"metadata"`
 }
 
 func (r *Require) hasDoublySpecifiedVersions() bool {
@@ -153,7 +153,7 @@ type Unmet struct {
 // store.toml
 
 type StoreTOML struct {
-	Data map[string]interface{} `json:"metadata" toml:"metadata"`
+	Data map[string]any `json:"metadata" toml:"metadata"`
 }
 
 // build plan

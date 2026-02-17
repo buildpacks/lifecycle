@@ -107,4 +107,4 @@ type MockLogger struct {
 	Calls int
 }
 
-func (l *MockLogger) Warnf(string, ...interface{}) { l.Calls++ }
+func (l *MockLogger) Warnf(string, ...any) { l.Calls++ }

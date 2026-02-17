@@ -64,7 +64,6 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			var g errgroup.Group
 			tars := []*archive.NormalizingTarReader{tr, tr2, tr3}
 			for _, tarReader := range tars {
-				tarReader := tarReader
 				g.Go(func() error {
 					return archive.Extract(tarReader)
 				})

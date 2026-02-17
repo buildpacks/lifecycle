@@ -60,7 +60,6 @@ func testWrite(t *testing.T, when spec.G, it spec.S) {
 			filepath.Join("testdata", "dir-to-tar") + string(filepath.Separator),
 			filepath.Join("testdata", "dir-to-tar") + string(filepath.Separator) + ".",
 		} {
-			src := src
 			it(fmt.Sprintf("writes a tar with the src filesystem contents (%s)", src), func() {
 				h.AssertNil(t, archive.AddDirToArchive(tw, src))
 				h.AssertNil(t, file.Close())

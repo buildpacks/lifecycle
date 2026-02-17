@@ -47,7 +47,7 @@ func AssertMatch(t *testing.T, actual string, expected string) {
 }
 
 // Assert the simplistic pointer (or literal value) equality
-func AssertSameInstance(t *testing.T, actual, expected interface{}) {
+func AssertSameInstance(t *testing.T, actual, expected any) {
 	t.Helper()
 	if actual != expected {
 		t.Fatalf("Expected %s and %s to be pointers to the variable", actual, expected)
@@ -55,7 +55,7 @@ func AssertSameInstance(t *testing.T, actual, expected interface{}) {
 }
 
 // Assert deep equality (and provide useful difference as a test failure)
-func AssertEq(t *testing.T, actual, expected interface{}, opts ...cmp.Option) {
+func AssertEq(t *testing.T, actual, expected any, opts ...cmp.Option) {
 	t.Helper()
 	if diff := cmp.Diff(actual, expected, opts...); diff != "" {
 		t.Fatal(diff)
@@ -110,14 +110,16 @@ func AssertError(t *testing.T, actual error, expected string) {
 	}
 }
 
-func AssertNil(t *testing.T, actual interface{}) {
+// AssertNil asserts that the provided value is nil.
+func AssertNil(t *testing.T, actual any) {
 	t.Helper()
 	if !isNil(actual) {
 		t.Fatalf("Expected nil: %s", actual)
 	}
 }
 
-func AssertNotNil(t *testing.T, actual interface{}) {
+// AssertNotNil asserts that the provided value is not nil.
+func AssertNotNil(t *testing.T, actual any) {
 	t.Helper()
 	if isNil(actual) {
 		t.Fatal("Expected not nil")
@@ -127,7 +129,7 @@ func AssertNotNil(t *testing.T, actual interface{}) {
 func AssertJSONEq(t *testing.T, expected, actual string) {
 	t.Helper()
 
-	var expectedJSONAsInterface, actualJSONAsInterface interface{}
+	var expectedJSONAsInterface, actualJSONAsInterface any
 
 	if err := json.Unmarshal([]byte(expected), &expectedJSONAsInterface); err != nil {
 		t.Fatalf("Expected value ('%s') is not valid json.\nJSON parsing error: '%s'", expected, err.Error())
@@ -160,8 +162,8 @@ func AssertPathDoesNotExist(t *testing.T, path string) {
 	}
 }
 
-func isNil(value interface{}) bool {
-	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
+func isNil(value any) bool {
+	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Pointer && reflect.ValueOf(value).IsNil())
 }
 
 func Eventually(t *testing.T, test func() bool, every time.Duration, timeout time.Duration) {
