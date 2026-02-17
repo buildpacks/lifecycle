@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -219,12 +220,7 @@ func appendOnce(list []string, els ...string) []string {
 }
 
 func notIn(list []string, str string) bool {
-	for _, el := range list {
-		if el == str {
-			return false
-		}
-	}
-	return true
+	return !slices.Contains(list, str)
 }
 
 // shared helpers

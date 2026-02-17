@@ -378,13 +378,13 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, meta.Buildpacks[1].Layers["new-launch-layer"].SHA, "new-launch-layer-digest")
 
 				t.Log("adds buildpack layer metadata to label")
-				h.AssertEq(t, meta.Buildpacks[0].Layers["launch-layer-no-local-dir"].Data, map[string]interface{}{
+				h.AssertEq(t, meta.Buildpacks[0].Layers["launch-layer-no-local-dir"].Data, map[string]any{
 					"mykey": "updated launch-layer-no-local-dir val",
 				})
-				h.AssertEq(t, meta.Buildpacks[0].Layers["new-launch-layer"].Data, map[string]interface{}{
+				h.AssertEq(t, meta.Buildpacks[0].Layers["new-launch-layer"].Data, map[string]any{
 					"somekey": "someval",
 				})
-				h.AssertEq(t, meta.Buildpacks[1].Layers["local-reusable-layer"].Data, map[string]interface{}{
+				h.AssertEq(t, meta.Buildpacks[1].Layers["local-reusable-layer"].Data, map[string]any{
 					"mykey": "updated locally reusable layer metadata val",
 				})
 			})
@@ -636,10 +636,10 @@ version = "4.5.6"
 					opts.Project = files.ProjectMetadata{
 						Source: &files.ProjectSource{
 							Type: "git",
-							Version: map[string]interface{}{
+							Version: map[string]any{
 								"commit": "abcd1234",
 							},
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"repository": "github.com/buildpack/lifecycle",
 								"branch":     "master",
 							},
@@ -1021,7 +1021,7 @@ version = "4.5.6"
 				h.AssertEq(t, meta.Buildpacks[0].Layers["layer2"].SHA, "layer2-digest")
 
 				t.Log("adds buildpack layer metadata to label")
-				h.AssertEq(t, meta.Buildpacks[0].Layers["layer1"].Data, map[string]interface{}{
+				h.AssertEq(t, meta.Buildpacks[0].Layers["layer1"].Data, map[string]any{
 					"mykey": "new val",
 				})
 
@@ -1047,7 +1047,7 @@ version = "4.5.6"
 						t.Fatalf("badly formatted metadata: %s", err)
 					}
 
-					h.AssertEq(t, meta.Buildpacks[0].Store, &buildpack.StoreTOML{Data: map[string]interface{}{
+					h.AssertEq(t, meta.Buildpacks[0].Store, &buildpack.StoreTOML{Data: map[string]any{
 						"key": "val",
 					}})
 				})
@@ -1058,10 +1058,10 @@ version = "4.5.6"
 					opts.Project = files.ProjectMetadata{
 						Source: &files.ProjectSource{
 							Type: "git",
-							Version: map[string]interface{}{
+							Version: map[string]any{
 								"commit": "abcd1234",
 							},
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"repository": "github.com/buildpack/lifecycle",
 								"branch":     "master",
 							},
@@ -1325,14 +1325,14 @@ version = "4.5.6"
 								{
 									Require: buildpack.Require{
 										Name:     "dep1",
-										Metadata: map[string]interface{}{"version": string("v1")},
+										Metadata: map[string]any{"version": string("v1")},
 									},
 									Buildpack: buildpack.GroupElement{ID: "buildpack.id", Version: "1.2.3"},
 								},
 								{
 									Require: buildpack.Require{
 										Name:     "dep2",
-										Metadata: map[string]interface{}{"version": string("v1")},
+										Metadata: map[string]any{"version": string("v1")},
 									},
 									Buildpack: buildpack.GroupElement{ID: "other.buildpack.id", Version: "4.5.6"},
 								},

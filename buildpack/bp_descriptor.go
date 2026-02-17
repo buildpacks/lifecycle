@@ -86,7 +86,7 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 			if err != nil {
 				return &BpDescriptor{}, err
 			}
-			for i := 0; i < len(binFiles); i++ {
+			for i := range binFiles {
 				bf := binFiles[len(binFiles)-i-1]
 				fname := bf.Name()
 				if fname == "build" {

@@ -110,7 +110,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
 					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
 					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
-					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]interface{}{
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]any{
 						"cache-true-key": "cache-true-val",
 					})
 				})
@@ -198,7 +198,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]interface{}{
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]any{
 							"cache-true-key": "cache-true-val",
 						})
 
@@ -207,7 +207,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Launch, false)
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Build, false)
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Cache, true)
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Data, map[string]interface{}{
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Data, map[string]any{
 							"cache-true-no-sha-key": "cache-true-no-sha-val",
 						})
 
@@ -216,7 +216,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Launch, true)
 						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Build, false)
 						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Cache, true)
-						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Data, map[string]interface{}{
+						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Data, map[string]any{
 							"other-buildpack-key": "other-buildpack-val",
 						})
 					})
@@ -226,7 +226,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						err := os.WriteFile(
 							filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
-							[]byte(fmt.Sprintf(metadataTemplate, "different-sha", "not-the-sha-you-want")),
+							fmt.Appendf(nil, metadataTemplate, "different-sha", "not-the-sha-you-want"),
 							0600,
 						)
 						h.AssertNil(t, err)
@@ -314,7 +314,7 @@ func initializeCache(t *testing.T, exporter *phase.Exporter, testCache *phase.Ca
 
 	h.AssertNil(t, os.WriteFile(
 		filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
-		[]byte(fmt.Sprintf(metadataTemplate, "cache-true-layer-digest", "cache-true-no-sha-layer")),
+		fmt.Appendf(nil, metadataTemplate, "cache-true-layer-digest", "cache-true-no-sha-layer"),
 		0600,
 	))
 }

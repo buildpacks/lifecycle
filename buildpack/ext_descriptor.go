@@ -44,7 +44,7 @@ func (d *ExtDescriptor) inferTargets() error {
 				return err
 			}
 			var linuxDetected bool
-			for i := 0; i < len(binFiles); i++ { // detect and generate files are optional
+			for i := range binFiles { // detect and generate files are optional
 				bf := binFiles[len(binFiles)-i-1]
 				fname := bf.Name()
 				if !linuxDetected && (fname == "detect" || fname == "generate") {

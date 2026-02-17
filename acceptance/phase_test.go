@@ -359,11 +359,11 @@ func buildRegistryImage(t *testing.T, repoName, context string, registry *ih.Doc
 	return regRepoName
 }
 
-func cleanupDaemonFixtures(t *testing.T, fixtures interface{}) {
+func cleanupDaemonFixtures(t *testing.T, fixtures any) {
 	v := reflect.ValueOf(fixtures)
 
-	for i := 0; i < v.NumField(); i++ {
-		imageName := fmt.Sprintf("%v", v.Field(i).Interface())
+	for _, field := range v.Fields() {
+		imageName := fmt.Sprintf("%v", field.Interface())
 		if imageName == "" {
 			continue
 		}
@@ -374,7 +374,7 @@ func cleanupDaemonFixtures(t *testing.T, fixtures interface{}) {
 	}
 }
 
-func minifyMetadata(t *testing.T, path string, metadataStruct interface{}) string {
+func minifyMetadata(t *testing.T, path string, metadataStruct any) string {
 	metadata, err := os.ReadFile(path)
 	h.AssertNil(t, err)
 

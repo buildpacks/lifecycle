@@ -436,7 +436,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{
 								Require: buildpack.Require{
 									Name:     "build-dep1",
-									Metadata: map[string]interface{}{"version": "v1"},
+									Metadata: map[string]any{"version": "v1"},
 								},
 								Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 							},
@@ -445,7 +445,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{
 								Require: buildpack.Require{
 									Name:     "launch-dep1",
-									Metadata: map[string]interface{}{"version": "v1"},
+									Metadata: map[string]any{"version": "v1"},
 								},
 								Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 							},
@@ -458,7 +458,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{
 								Require: buildpack.Require{
 									Name:     "build-dep2",
-									Metadata: map[string]interface{}{"version": "v1"},
+									Metadata: map[string]any{"version": "v1"},
 								},
 								Buildpack: buildpack.GroupElement{ID: "B", Version: "v2"},
 							},
@@ -467,7 +467,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{
 								Require: buildpack.Require{
 									Name:     "launch-dep2",
-									Metadata: map[string]interface{}{"version": "v1"},
+									Metadata: map[string]any{"version": "v1"},
 								},
 								Buildpack: buildpack.GroupElement{ID: "B", Version: "v2"},
 							},
@@ -490,7 +490,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Require: buildpack.Require{
 								Name:     "launch-dep1",
 								Version:  "",
-								Metadata: map[string]interface{}{"version": string("v1")},
+								Metadata: map[string]any{"version": string("v1")},
 							},
 							Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 						},
@@ -498,7 +498,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Require: buildpack.Require{
 								Name:     "launch-dep2",
 								Version:  "",
-								Metadata: map[string]interface{}{"version": string("v1")},
+								Metadata: map[string]any{"version": string("v1")},
 							},
 							Buildpack: buildpack.GroupElement{ID: "B", Version: "v2"},
 						},
@@ -515,7 +515,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Require: buildpack.Require{
 								Name:     "build-dep1",
 								Version:  "",
-								Metadata: map[string]interface{}{"version": string("v1")},
+								Metadata: map[string]any{"version": string("v1")},
 							},
 							Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 						},
@@ -523,7 +523,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Require: buildpack.Require{
 								Name:     "build-dep2",
 								Version:  "",
-								Metadata: map[string]interface{}{"version": string("v1")},
+								Metadata: map[string]any{"version": string("v1")},
 							},
 							Buildpack: buildpack.GroupElement{ID: "B", Version: "v2"},
 						},
@@ -1008,7 +1008,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{
 									Require: buildpack.Require{
 										Name:     "dep1",
-										Metadata: map[string]interface{}{"version": "v1"},
+										Metadata: map[string]any{"version": "v1"},
 									},
 									Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 								},
@@ -1021,7 +1021,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{
 									Require: buildpack.Require{
 										Name:     "dep2",
-										Metadata: map[string]interface{}{"version": "v1"},
+										Metadata: map[string]any{"version": "v1"},
 									},
 									Buildpack: buildpack.GroupElement{ID: "B", Version: "v2"},
 								},
@@ -1036,7 +1036,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Require: buildpack.Require{
 									Name:     "dep1",
 									Version:  "",
-									Metadata: map[string]interface{}{"version": string("v1")},
+									Metadata: map[string]any{"version": string("v1")},
 								},
 								Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 							},
@@ -1044,7 +1044,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Require: buildpack.Require{
 									Name:     "dep2",
 									Version:  "",
-									Metadata: map[string]interface{}{"version": string("v1")},
+									Metadata: map[string]any{"version": string("v1")},
 								},
 								Buildpack: buildpack.GroupElement{ID: "B", Version: "v2"},
 							},

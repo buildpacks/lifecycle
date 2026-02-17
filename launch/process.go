@@ -2,6 +2,7 @@ package launch
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/pkg/errors"
 
@@ -127,20 +128,12 @@ func (l *Launcher) isProcessEligibleForExecEnv(p Process) bool {
 	}
 
 	// Check if process supports all execution environments
-	for _, env := range p.ExecEnv {
-		if env == "*" {
-			return true
-		}
+	if slices.Contains(p.ExecEnv, "*") {
+		return true
 	}
 
 	// Check if process supports the current execution environment
-	for _, env := range p.ExecEnv {
-		if env == l.ExecEnv {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(p.ExecEnv, l.ExecEnv)
 }
 
 func (l *Launcher) userProvidedProcess(cmd []string) (Process, error) {

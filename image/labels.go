@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
+func DecodeLabel(image imgutil.Image, label string, v any) error {
 	if !image.Found() {
 		return nil
 	}

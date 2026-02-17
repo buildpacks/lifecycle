@@ -174,7 +174,7 @@ func checkResponse(responseBody io.Reader) error {
 	}
 
 	messages := strings.Builder{}
-	for _, line := range bytes.Split(body, []byte("\n")) {
+	for line := range bytes.SplitSeq(body, []byte("\n")) {
 		if len(line) == 0 {
 			continue
 		}

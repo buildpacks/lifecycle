@@ -327,7 +327,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					inputs.Plan = buildpack.Plan{
 						Entries: []buildpack.Require{
 							{
-								Metadata: map[string]interface{}{"a": map[int64]int64{1: 2}}, // map with non-string key type
+								Metadata: map[string]any{"a": map[int64]int64{1: 2}}, // map with non-string key type
 							},
 						},
 					}
@@ -475,7 +475,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									{
 										Require: buildpack.Require{
 											Name:     "some-dep",
-											Metadata: map[string]interface{}{"version": "some-version"},
+											Metadata: map[string]any{"version": "some-version"},
 										},
 										Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 									},
@@ -509,7 +509,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									{
 										Require: buildpack.Require{
 											Name:     "some-dep",
-											Metadata: map[string]interface{}{"version": "some-version"},
+											Metadata: map[string]any{"version": "some-version"},
 										},
 										Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 									},
@@ -545,7 +545,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									{
 										Require: buildpack.Require{
 											Name:     "some-dep",
-											Metadata: map[string]interface{}{"version": "some-version"},
+											Metadata: map[string]any{"version": "some-version"},
 										},
 										Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 									},
@@ -579,7 +579,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									{
 										Require: buildpack.Require{
 											Name:     "some-dep",
-											Metadata: map[string]interface{}{"version": "some-version"},
+											Metadata: map[string]any{"version": "some-version"},
 										},
 										Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 									},

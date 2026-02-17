@@ -209,8 +209,8 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 		it("updates all placeholder paths", func() {
 			h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
 			v := reflect.ValueOf(inputs).Elem()
-			for i := 0; i < v.NumField(); i++ {
-				field := v.Field(i)
+			for _, field := range v.Fields() {
+				field := field
 				if !(field.Kind() == reflect.String) {
 					continue
 				}
