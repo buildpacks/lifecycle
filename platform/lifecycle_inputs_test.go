@@ -210,7 +210,6 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
 			v := reflect.ValueOf(inputs).Elem()
 			for _, field := range v.Fields() {
-				field := field
 				if !(field.Kind() == reflect.String) {
 					continue
 				}

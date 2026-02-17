@@ -110,6 +110,7 @@ func AssertError(t *testing.T, actual error, expected string) {
 	}
 }
 
+// AssertNil asserts that the provided value is nil.
 func AssertNil(t *testing.T, actual any) {
 	t.Helper()
 	if !isNil(actual) {
@@ -117,6 +118,7 @@ func AssertNil(t *testing.T, actual any) {
 	}
 }
 
+// AssertNotNil asserts that the provided value is not nil.
 func AssertNotNil(t *testing.T, actual any) {
 	t.Helper()
 	if isNil(actual) {

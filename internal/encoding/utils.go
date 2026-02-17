@@ -26,6 +26,7 @@ func ToJSONMaybe(v any) string {
 	return string(b)
 }
 
+// WriteJSON writes data as JSON to the specified path, creating parent directories as needed.
 func WriteJSON(path string, data any) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
@@ -40,6 +41,7 @@ func WriteJSON(path string, data any) error {
 
 // toml
 
+// MarshalTOML encodes v as TOML and returns the resulting bytes.
 func MarshalTOML(v any) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := toml.NewEncoder(buf).Encode(v); err != nil {
@@ -48,6 +50,7 @@ func MarshalTOML(v any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// WriteTOML writes data as TOML to the specified path, creating parent directories as needed.
 func WriteTOML(path string, data any) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
