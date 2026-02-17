@@ -24,7 +24,7 @@ jobs:
             exit 1
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
-      - name: Determine download urls for linux-x86-64, linux-arm64, linux-ppc64le, linux-s390x
+      - name: Determine download urls for linux-x86-64, linux-arm64, linux-ppc64le, linux-s390x, freebsd-amd64, freebsd-arm64
         id: artifact-urls
         # FIXME: this script should be updated to work with actions/github-script@v6
         uses: actions/github-script@v3
@@ -82,11 +82,11 @@ jobs:
                 if (urlList.length === 0) {
                   throw "no artifacts found"
                 }
-                if (urlList.length != 10) {
+                if (urlList.length != 14) {
                   // found too many artifacts
                   // list them and throw
                   console.log(urlList);
-                  throw "there should be exactly 10 artifacts, found " + urlList.length + " artifacts"
+                  throw "there should be exactly 14 artifacts, found " + urlList.length + " artifacts"
                 }
                 return urlList.join(",")
               })
