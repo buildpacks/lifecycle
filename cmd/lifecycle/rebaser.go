@@ -34,6 +34,7 @@ type rebaseCmd struct {
 func (r *rebaseCmd) DefineFlags() {
 	if r.PlatformAPI.AtLeast("0.13") {
 		cli.FlagInsecureRegistries(&r.InsecureRegistries)
+		cli.FlagLayerPatches(&r.LayerPatchesPath)
 	}
 	if r.PlatformAPI.AtLeast("0.12") {
 		cli.FlagForceRebase(&r.ForceRebase)
@@ -61,6 +62,14 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if err := platform.ResolveInputs(platform.Rebase, r.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
+
+	// Layer patches is an experimental feature
+	if r.LayerPatchesPath != "" {
+		if err := platform.GuardExperimental(platform.FeatureLayerPatches, cmd.DefaultLogger); err != nil {
+			return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "experimental feature")
+		}
+	}
+
 	var err error
 	if !r.UseDaemon {
 		// We may need to read the application image in order to know the run image, so
@@ -126,12 +135,30 @@ func (r *rebaseCmd) Exec() error {
 		return cmd.FailErr(err, "access run image")
 	}
 
+	// Load layer patches if specified
+	var layerPatches files.LayerPatchesFile
+	if r.LayerPatchesPath != "" {
+		layerPatches, err = files.Handler.ReadLayerPatches(r.LayerPatchesPath)
+		if err != nil {
+			return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "read layer patches")
+		}
+	}
+
 	rebaser := &phase.Rebaser{
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: r.PlatformAPI,
 		Force:       r.ForceRebase,
 	}
-	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.OutputImageRef, r.AdditionalTags)
+
+	opts := phase.RebaseOpts{
+		LayerPatches:       layerPatches,
+		Keychain:           r.keychain,
+		InsecureRegistries: r.InsecureRegistries,
+		UseDaemon:          r.UseDaemon,
+		DockerClient:       r.docker,
+	}
+
+	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.OutputImageRef, r.AdditionalTags, opts)
 	if err != nil {
 		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "rebase")
 	}

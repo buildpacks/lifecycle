@@ -54,5 +54,60 @@ func testRebaser(platformAPI string) func(t *testing.T, when spec.G, it spec.S) 
 				h.AssertStringContains(t, err.Error(), "http://host.docker.internal")
 			})
 		})
+
+		when("called with layer-patches flag", func() {
+			it.Before(func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.13"), "layer-patches requires platform API >= 0.13")
+			})
+
+			when("experimental mode is not enabled", func() {
+				it("errors with experimental feature message", func() {
+					rebaserOutputImageName := "some-image:tag"
+					_, _, err := h.DockerRunWithError(t,
+						rebaserImage,
+						h.WithFlags(
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+						),
+						h.WithArgs(
+							ctrPath(rebaserPath),
+							"-layer-patches", "/patches.json",
+							rebaserOutputImageName,
+						),
+					)
+
+					h.AssertNotNil(t, err)
+					h.AssertStringContains(t, err.Error(), "Layer Patches")
+					h.AssertStringContains(t, err.Error(), "experimental")
+				})
+			})
+
+			when("experimental mode is warn", func() {
+				it("accepts the flag and warns about experimental feature", func() {
+					rebaserOutputImageName := "some-image:tag"
+					// This will fail because the image doesn't exist, but we're testing
+					// that the experimental flag is accepted
+					_, _, err := h.DockerRunWithError(t,
+						rebaserImage,
+						h.WithFlags(
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_EXPERIMENTAL_MODE=warn",
+						),
+						h.WithArgs(
+							ctrPath(rebaserPath),
+							"-layer-patches", "/patches.json",
+							rebaserOutputImageName,
+						),
+					)
+					// we don't actually rebase here - this is expected to fail but we are testing that the experimental behavior is working
+
+					// Should not error on the experimental feature itself
+					// Error should be about something else (like image not found),
+					// not about experimental mode being disabled
+					h.AssertStringDoesNotContain(t, err.Error(), "experimental features are disabled")
+					// Should warn about experimental feature in the error message
+					h.AssertStringContains(t, err.Error(), "Layer Patches")
+				})
+			})
+		})
 	}
 }
