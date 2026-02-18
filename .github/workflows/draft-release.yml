@@ -131,7 +131,7 @@ jobs:
                 return result.data.tag_name
             })
       - name: Setup go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           check-latest: true
           go-version-file: 'go.mod'
