@@ -40,7 +40,7 @@ all: test build package
 
 GOOS_ARCHS = linux/amd64 linux/arm64 linux/ppc64le linux/s390x darwin/amd64 darwin/arm64 freebsd/amd64 freebsd/arm64
 
-build: build-linux-amd64 build-linux-arm64 build-linux-ppc64le build-linux-s390x
+build: build-linux-amd64 build-linux-arm64 build-linux-ppc64le build-linux-s390x build-freebsd-amd64 build-freebsd-arm64
 
 build-image-linux-amd64: build-linux-amd64 package-linux-amd64
 build-image-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64.tgz
@@ -105,7 +105,7 @@ endef
 
 $(foreach ga,$(GOOS_ARCHS),$(eval $(call build_targets,$(word 1, $(subst /, ,$(ga))),$(word 2, $(subst /, ,$(ga))))))
 
-generate-sbom: run-syft-linux-amd64 run-syft-linux-arm64 run-syft-linux-ppc64le run-syft-linux-s390x
+generate-sbom: run-syft-linux-amd64 run-syft-linux-arm64 run-syft-linux-ppc64le run-syft-linux-s390x run-syft-freebsd-amd64 run-syft-freebsd-amd64 run-syft-freebsd-arm64
 
 run-syft-linux-amd64: install-syft
 run-syft-linux-amd64: export GOOS:=linux
@@ -135,6 +135,22 @@ run-syft-linux-s390x: install-syft
 run-syft-linux-s390x: export GOOS:=linux
 run-syft-linux-s390x: export GOARCH:=s390x
 run-syft-linux-s390x:
+	@echo "> Running syft..."
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
+
+run-syft-freebsd-amd64: install-syft
+run-syft-freebsd-amd64: export GOOS:=freebsd
+run-syft-freebsd-amd64: export GOARCH:=amd64
+run-syft-freebsd-amd64:
+	@echo "> Running syft..."
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
+
+run-syft-freebsd-arm64: install-syft
+run-syft-freebsd-arm64: export GOOS:=freebsd
+run-syft-freebsd-arm64: export GOARCH:=arm64
+run-syft-freebsd-arm64:
 	@echo "> Running syft..."
 	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
 	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
@@ -205,7 +221,7 @@ clean:
 	@echo "> Cleaning workspace..."
 	rm -rf $(BUILD_DIR)
 
-package:  generate-sbom package-linux-amd64 package-linux-arm64 package-linux-ppc64le package-linux-s390x
+package:  generate-sbom package-linux-amd64 package-linux-arm64 package-linux-ppc64le package-linux-s390x package-freebsd-amd64 package-freebsd-arm64
 
 package-linux-amd64: GOOS:=linux
 package-linux-amd64: GOARCH:=amd64
