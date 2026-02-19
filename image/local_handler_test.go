@@ -43,7 +43,6 @@ func testLocalImageHandler(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-
 			when("image reference is not well formed", func() {
 				it("err is return", func() {
 					_, err := imageHandler.InitImage("my-bad-image-reference::latest")
