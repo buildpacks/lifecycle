@@ -141,7 +141,7 @@ func (e *exportCmd) Exec() error {
 	if err = verifyBuildpackApis(group); err != nil {
 		return err
 	}
-	cacheStore, err := initCache(e.CacheImageRef, e.CacheDir, e.keychain, e.PlatformAPI.LessThan("0.13"))
+	cacheStore, err := initCache(e.CacheImageRef, e.CacheDir, e.keychain, e.PlatformAPI.LessThan("0.13"), e.InsecureRegistries...)
 	if err != nil {
 		return err
 	}
