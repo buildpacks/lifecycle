@@ -165,7 +165,7 @@ func (r *restoreCmd) Exec() error {
 		cmd.DefaultLogger.Warnf("Not using analyzed data, usable file not found: %s", err)
 	}
 
-	cacheStore, err := initCache(r.CacheImageRef, r.CacheDir, r.keychain, r.PlatformAPI.LessThan("0.13"))
+	cacheStore, err := initCache(r.CacheImageRef, r.CacheDir, r.keychain, r.PlatformAPI.LessThan("0.13"), r.InsecureRegistries...)
 	if err != nil {
 		return err
 	}

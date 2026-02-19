@@ -102,7 +102,7 @@ func (a *analyzeCmd) Exec() error {
 	factory := phase.NewConnectedFactory(
 		a.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
-		NewCacheHandler(a.keychain),
+		NewCacheHandler(a.keychain, a.InsecureRegistries),
 		files.Handler,
 		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout, a.InsecureRegistries),
 		image.NewRegistryHandler(a.keychain, a.InsecureRegistries),

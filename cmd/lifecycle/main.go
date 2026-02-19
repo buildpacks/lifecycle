@@ -81,12 +81,14 @@ func subcommand(platformAPI string) {
 // handlers
 
 type DefaultCacheHandler struct {
-	keychain authn.Keychain
+	keychain           authn.Keychain
+	insecureRegistries []string
 }
 
-func NewCacheHandler(keychain authn.Keychain) *DefaultCacheHandler {
+func NewCacheHandler(keychain authn.Keychain, insecureRegistries []string) *DefaultCacheHandler {
 	return &DefaultCacheHandler{
-		keychain: keychain,
+		keychain:           keychain,
+		insecureRegistries: insecureRegistries,
 	}
 }
 
@@ -98,7 +100,7 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, 
 	)
 	logger := cmd.DefaultLogger
 	if cacheImageRef != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain, logger, cache.NewImageDeleter(cache.NewImageComparer(), logger, deletionEnabled))
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain, logger, cache.NewImageDeleter(cache.NewImageComparer(), logger, deletionEnabled), ch.insecureRegistries...)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating image cache")
 		}
@@ -113,14 +115,14 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string, 
 
 // helpers
 
-func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain, deletionEnabled bool) (phase.Cache, error) {
+func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain, deletionEnabled bool, insecureRegistries ...string) (phase.Cache, error) {
 	var (
 		cacheStore phase.Cache
 		err        error
 	)
 	logger := cmd.DefaultLogger
 	if cacheImageTag != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain, logger, cache.NewImageDeleter(cache.NewImageComparer(), logger, deletionEnabled))
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain, logger, cache.NewImageDeleter(cache.NewImageComparer(), logger, deletionEnabled), insecureRegistries...)
 		if err != nil {
 			return nil, cmd.FailErr(err, "create image cache")
 		}

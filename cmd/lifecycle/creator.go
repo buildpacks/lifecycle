@@ -111,7 +111,7 @@ func (c *createCmd) Privileges() error {
 }
 
 func (c *createCmd) Exec() error {
-	cacheStore, err := initCache(c.CacheImageRef, c.CacheDir, c.keychain, c.PlatformAPI.LessThan("0.13"))
+	cacheStore, err := initCache(c.CacheImageRef, c.CacheDir, c.keychain, c.PlatformAPI.LessThan("0.13"), c.InsecureRegistries...)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (c *createCmd) Exec() error {
 	analyzerFactory := phase.NewConnectedFactory(
 		c.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
-		NewCacheHandler(c.keychain),
+		NewCacheHandler(c.keychain, c.InsecureRegistries),
 		files.NewHandler(),
 		image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout, c.InsecureRegistries),
 		image.NewRegistryHandler(c.keychain, c.InsecureRegistries),
