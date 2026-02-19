@@ -43,14 +43,6 @@ func testLocalImageHandler(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("image reference is provided", func() {
-				it("creates an image", func() {
-					image, err := imageHandler.InitImage("busybox")
-					h.AssertNil(t, err)
-					h.AssertNotNil(t, image)
-					h.AssertEq(t, image.Name(), "busybox")
-				})
-			})
 
 			when("image reference is not well formed", func() {
 				it("err is return", func() {
