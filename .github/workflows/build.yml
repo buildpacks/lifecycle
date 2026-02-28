@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Setup go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           check-latest: true
           go-version-file: 'go.mod'
@@ -47,7 +47,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Setup go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           check-latest: true
           go-version-file: 'go.mod'
@@ -67,7 +67,7 @@ jobs:
         with:
           fetch-depth: 0 # fetch all history for all branches and tags
       - name: Setup go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           check-latest: true
           go-version-file: 'go.mod'
@@ -219,7 +219,7 @@ jobs:
           ref: 'main'
           fetch-depth: 0 # fetch all history for all branches and tags
       - name: Setup go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'pack/go.mod'
       - uses: actions/download-artifact@v5
