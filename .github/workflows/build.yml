@@ -204,7 +204,7 @@ jobs:
             buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
       - name: Scan image
         if: github.event_name == 'push'
-        uses: anchore/scan-action@v6
+        uses: anchore/scan-action@v7
         with:
           image: buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}
   pack-acceptance-linux:
