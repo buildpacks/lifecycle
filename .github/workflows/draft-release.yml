@@ -177,9 +177,7 @@ jobs:
 
           ## Contributors
 
-          We'd like to acknowledge that this release wouldn't be as good without the help of the following amazing contributors:
-
-          TODO
+          We'd like to acknowledge that this release wouldn't be as good without the help of the amazing contributors!          
 
           EOF
       - name: Create pre-release
