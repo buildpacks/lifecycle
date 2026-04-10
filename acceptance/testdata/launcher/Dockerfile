@@ -1,4 +1,4 @@
-FROM golang:1.26.1 as builder
+FROM golang:1.26.2 as builder
 
 COPY exec.d/ /go/src/exec.d
 RUN GO111MODULE=off go build -o helper ./src/exec.d
