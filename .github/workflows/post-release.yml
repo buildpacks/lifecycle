@@ -5,6 +5,9 @@ on:
     types:
       - published # trigger for releases and pre-releases
 
+permissions:
+  contents: read
+
 jobs:
   retag-lifecycle-images:
     runs-on: ubuntu-latest

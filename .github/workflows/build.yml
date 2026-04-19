@@ -10,6 +10,9 @@ on:
       - main
       - 'release/**'
 
+permissions:
+  contents: read
+
 jobs:
   test-linux-amd64:
     runs-on: ubuntu-latest
