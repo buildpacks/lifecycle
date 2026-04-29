@@ -5,6 +5,9 @@ on:
     - cron: 0 2 * * 1,4
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+
 jobs:
   check-release:
     runs-on:

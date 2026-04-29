@@ -9,6 +9,9 @@ on:
       - main
       - 'release/**'
 
+permissions:
+  contents: read
+
 jobs:
   test-linux-s390x:
     if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release*')
