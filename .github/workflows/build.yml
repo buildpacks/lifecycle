@@ -216,9 +216,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-      - uses: actions/checkout@v5
-        with:
           repository: 'buildpacks/pack'
           path: 'pack'
           ref: 'main'
@@ -226,38 +223,22 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v5
         with:
-          check-latest: true
-          go-version-file: 'go.mod'
+          go-version-file: 'pack/go.mod'
       - uses: actions/download-artifact@v5
         with:
           name: version
-      - uses: actions/download-artifact@v5
-        with:
-          name: tag
       - name: Set env
         run: |
           cat version.txt >> "$GITHUB_ENV"
-          cat tag.txt >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v5
         with:
           name: lifecycle-linux-x86-64
           path: pack
-      - name: Build local lifecycle image
-        env:
-          LIFECYCLE_VERSION: ${{ env.LIFECYCLE_VERSION }}
-          LIFECYCLE_IMAGE_TAG: ${{ env.LIFECYCLE_IMAGE_TAG }}
-        run: |
-          go run ./tools/image/main.go -daemon \
-            -lifecyclePath "pack/lifecycle-v${LIFECYCLE_VERSION}+linux.x86-64.tgz" \
-            -os linux -arch amd64 \
-            -tag "lifecycle:${LIFECYCLE_IMAGE_TAG}"
       - name: Run pack acceptance
         env:
           LIFECYCLE_VERSION: ${{ env.LIFECYCLE_VERSION }}
-          LIFECYCLE_IMAGE_TAG: ${{ env.LIFECYCLE_IMAGE_TAG }}
         run: |
           cd pack
           git checkout "$(git describe --abbrev=0 --tags)"
           LIFECYCLE_PATH="../lifecycle-v${LIFECYCLE_VERSION}+linux.x86-64.tgz" \
-          LIFECYCLE_IMAGE="lifecycle:${LIFECYCLE_IMAGE_TAG}" \
           make acceptance
