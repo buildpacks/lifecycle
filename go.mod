@@ -6,7 +6,7 @@ require (
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.12.0
 	github.com/buildpacks/imgutil v0.0.0-20260415151438-73856e68b72b
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
-	github.com/containerd/containerd v1.7.31
+	github.com/containerd/containerd v1.7.32
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.7.0
