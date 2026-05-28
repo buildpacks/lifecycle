@@ -14,6 +14,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/fake"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/google/uuid"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -349,8 +350,8 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						expectedImageSHA          string
 					}
 					var (
-						rebasableSHA    = "sha256:2407b98f3bcee33d24f47fc3d7beaf0928b3fa799a8a84aa9f9f239fcded6e62"
-						notRebasableSHA = "sha256:cc3b90b798b76e7d41de01d4f02f2917694ef0b09d0d923314c8d6c31c4ae8e9"
+						rebasableSHA    = "sha256:dcdbce936116f100aba6bc32c95350066e2f4005516542b930d7166b7be4016e"
+						notRebasableSHA = "sha256:08e697ba5f1b6c6dc9056904ff914758734051bcde5ffe7dc8dc704f59d4575a"
 					)
 					for _, tc := range []testCase{
 						{
@@ -387,7 +388,10 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 								expectedDockerfileB := prepareDockerfile("B", "run", "app")
 
 								fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
-								someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
+								someFakeImage.ManifestReturns(&v1.Manifest{
+									Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+									Layers: []v1.Descriptor{},
+								}, nil)
 								someFakeImage.ConfigFileReturnsOnCall(0, &v1.ConfigFile{Config: v1.Config{
 									User: "1234:5678",
 								}}, nil)
@@ -487,7 +491,10 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 							User: "0:5678",
 						}}
 						someFakeImage.ConfigFileReturns(firstConfig, nil)
-						someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{
+							Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+							Layers: []v1.Descriptor{},
+						}, nil)
 
 						fakeDockerfileApplier.EXPECT().Apply(
 							gomock.Any(),
