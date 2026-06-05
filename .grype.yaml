@@ -4,7 +4,9 @@ ignore:
   - vulnerability: CVE-2024-41110 # non-impactful as we only use docker as a client
   - vulnerability: GHSA-v23v-6jw2-98fq # non-impactful as we only use docker as a client
   - vulnerability: GHSA-x744-4wpc-v9h2 # AuthZ plugin bypass; not exploitable as lifecycle only uses docker as a client. Fixed in moby/moby/v2 but not backported to docker/docker module.
+  - vulnerability: GO-2026-4887 # same as GHSA-x744-4wpc-v9h2 (CVE-2026-34040); grype's Go DB reports it under this primary ID, which does not match the GHSA ignore rule above.
   - vulnerability: GHSA-pxq6-2prw-chj9 # plugin privilege validation off-by-one; not exploitable as lifecycle only uses docker as a client. Fixed in moby/moby/v2 but not backported to docker/docker module.
+  - vulnerability: GO-2026-4883 # same as GHSA-pxq6-2prw-chj9 (CVE-2026-33997); grype's Go DB reports it under this primary ID, which does not match the GHSA ignore rule above.
   - vulnerability: GHSA-vp62-88p7-qqf5 # docker cp symlink race; not exploitable as lifecycle does not use docker cp in production code.
   - vulnerability: GHSA-rg2x-37c3-w2rh # docker cp bind mount redirection race; not exploitable as lifecycle does not use docker cp in production code. No upstream fix available.
   - vulnerability: GHSA-x86f-5xw2-fm2r # daemon-side PUT /containers/{id}/archive RCE; not exploitable as lifecycle only uses docker as a client. No upstream fix available.
