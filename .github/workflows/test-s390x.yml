@@ -83,8 +83,8 @@
 #          script: |
 #            apt-get update -y
 #            apt-get install -y wget curl git make gcc jq docker.io
-#            wget https://go.dev/dl/go1.26.3.linux-s390x.tar.gz
-#            rm -rf /usr/local/go && tar -C /usr/local -xzf go1.26.3.linux-s390x.tar.gz
+#            wget https://go.dev/dl/go1.26.4.linux-s390x.tar.gz
+#            rm -rf /usr/local/go && tar -C /usr/local -xzf go1.26.4.linux-s390x.tar.gz
 #            export PATH=$PATH:/usr/local/go/bin
 #            git clone ${GH_REPOSITORY} lifecycle
 #            cd lifecycle && git checkout ${GH_REF}
