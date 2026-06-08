@@ -10,6 +10,13 @@ updates:
       update-types:
         - "minor"
         - "patch"
+  ignore:
+    # Pinned to v0.21.5: v0.21.6 introduced an isImageConfig guard in
+    # mutate.Image.compute() that omits RootFS.DiffIDs from the image config
+    # when the config media type is unrecognized, producing images that fail
+    # to pull with "wrong diff id". See buildpacks/lifecycle#1662.
+    # Do not bump until the upstream regression is resolved.
+    - dependency-name: "github.com/google/go-containerregistry"
 - package-ecosystem: "github-actions"
   directory: "/"
   schedule:
