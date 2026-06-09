@@ -94,12 +94,18 @@ build-$(1)-$(2)-launcher: $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher
 
 $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: export GOOS:=$(1)
 $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: export GOARCH:=$(2)
-$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: OUT_DIR?=$$(BUILD_DIR)/$$(GOOS)-$$(GOARCH)/lifecycle
-$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: $$(GOFILES)
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: OUT_DIR?=$$(BUILD_DIR)/$(1)-$(2)/lifecycle
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: RUST_LAUNCHER_SRC:=rust-launcher/$(1)-$(2)/launcher
 $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher:
-	@echo "> Building lifecycle/launcher for $$(GOOS)/$$(GOARCH)..."
 	mkdir -p $$(OUT_DIR)
-	$$(GOENV) $$(GOBUILD) -o $$(OUT_DIR)/launcher -a ./cmd/launcher
+	@if [ -f $$(RUST_LAUNCHER_SRC) ]; then \
+		echo "> Installing Rust launcher for $(1)/$(2)..."; \
+		cp $$(RUST_LAUNCHER_SRC) $$(OUT_DIR)/launcher; \
+		chmod +x $$(OUT_DIR)/launcher; \
+	else \
+		echo "> Building Go launcher for $(1)/$(2) (no Rust binary at $$(RUST_LAUNCHER_SRC))..."; \
+		$$(GOENV) $$(GOBUILD) -o $$(OUT_DIR)/launcher -a ./cmd/launcher; \
+	fi
 	test $$$$(du -m $$(OUT_DIR)/launcher|cut -f 1) -le 4
 endef
 

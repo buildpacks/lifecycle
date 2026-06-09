@@ -160,7 +160,6 @@ jobs:
           name: lifecycle-bom-cdx-sha256
           path: lifecycle-v*-bom.cdx.json.sha256
       - uses: azure/docker-login@v2
-        if: github.event_name == 'push'
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
@@ -171,7 +170,6 @@ jobs:
         run: |
           cat tag.txt >> $GITHUB_ENV
       - name: Publish images
-        if: github.event_name == 'push'
         run: |
           DOCKER_CLI_EXPERIMENTAL=enabled
           LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)
@@ -196,7 +194,12 @@ jobs:
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
-
+      - name: Sign and verify images
+        if: github.event_name == 'push'
+        env:
+          LIFECYCLE_IMAGE_TAG: ${{ env.LIFECYCLE_IMAGE_TAG }}
+        run: |
+          MANIFEST_SHA=$(docker buildx imagetools inspect "buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}" --format '{{.Manifest.Digest}}')
           cosign sign -r -y \
             -a tag=${LIFECYCLE_IMAGE_TAG} \
             buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}@${MANIFEST_SHA}
@@ -211,7 +214,6 @@ jobs:
         with:
           image: buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}
   pack-acceptance-linux:
-    if: github.event_name == 'push'
     needs: build-and-publish
     runs-on: ubuntu-latest
     steps:
@@ -220,7 +222,7 @@ jobs:
           repository: 'buildpacks/pack'
           path: 'pack'
           ref: 'main'
-          fetch-depth: 0 # fetch all history for all branches and tags
+          fetch-depth: 0
       - name: Setup go
         uses: actions/setup-go@v5
         with:
@@ -233,16 +235,19 @@ jobs:
           name: tag
       - name: Set env
         run: |
-          cat version.txt >> $GITHUB_ENV
-          cat tag.txt >> $GITHUB_ENV
+          cat version.txt >> "$GITHUB_ENV"
+          cat tag.txt >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v5
         with:
           name: lifecycle-linux-x86-64
           path: pack
       - name: Run pack acceptance
+        env:
+          LIFECYCLE_VERSION: ${{ env.LIFECYCLE_VERSION }}
+          LIFECYCLE_IMAGE_TAG: ${{ env.LIFECYCLE_IMAGE_TAG }}
         run: |
           cd pack
-          git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
-          LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
-          LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
+          git checkout "$(git describe --abbrev=0 --tags)"
+          LIFECYCLE_PATH="../lifecycle-v${LIFECYCLE_VERSION}+linux.x86-64.tgz" \
+          LIFECYCLE_IMAGE="buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}" \
           make acceptance
