@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -111,10 +112,11 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	}
 
 	meta := files.LayersMetadata{}
-	meta.RunImage.TopLayer, err = opts.WorkingImage.TopLayer()
+	topLayer, err := TopLayerWithRetry(opts.WorkingImage, e.Logger)
 	if err != nil {
 		return files.Report{}, errors.Wrap(err, "get run image top layer SHA")
 	}
+	meta.RunImage.TopLayer = topLayer
 	meta.RunImage.Reference = opts.RunImageRef
 
 	if e.PlatformAPI.AtLeast("0.12") {
@@ -671,4 +673,40 @@ func (e *Exporter) addSBOMLaunchLayer(opts ExportOptions, meta *files.LayersMeta
 	}
 
 	return nil
+}
+
+const topLayerMaxRetries = 5
+
+var topLayerDelays = []time.Duration{
+	100 * time.Millisecond,
+	200 * time.Millisecond,
+	500 * time.Millisecond,
+	1 * time.Second,
+	2 * time.Second,
+}
+
+// TopLayerWithRetry calls TopLayer() on an imgutil.Image with retry logic.
+// This handles transient registry errors when using registry mirrors.
+// The backoff delays are chosen to be conservative - registry mirrors may need time to sync.
+func TopLayerWithRetry(img imgutil.Image, logger log.Logger) (string, error) {
+	var lastErr error
+	for attempt := range topLayerMaxRetries {
+		topLayer, err := img.TopLayer()
+		if err == nil {
+			if attempt > 0 {
+				logger.Debugf("Successfully retrieved top layer SHA after %d retries", attempt)
+			}
+			return topLayer, nil
+		}
+		lastErr = err
+
+		// Log the error and wait before retrying
+		if attempt < topLayerMaxRetries-1 {
+			duration := topLayerDelays[attempt]
+			logger.Debugf("Attempt %d/%d: Failed to get top layer SHA: %v. Retrying in %v...", attempt+1, topLayerMaxRetries, err, duration)
+			time.Sleep(duration)
+		}
+	}
+
+	return "", lastErr
 }
