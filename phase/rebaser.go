@@ -74,6 +74,9 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 	} else {
 		topLayer, err = TopLayerWithRetry(func() (imgutil.Image, error) { return newBaseImage, nil }, r.Logger)
 	}
+	if err != nil {
+		return files.RebaseReport{}, errors.Wrap(err, "get rebase run image top layer SHA")
+	}
 	origMetadata.RunImage.TopLayer = topLayer
 	identifier, err := newBaseImage.Identifier()
 	if err != nil {
