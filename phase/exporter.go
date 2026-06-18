@@ -2,9 +2,11 @@ package phase
 
 import (
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -89,6 +92,10 @@ type ExportOptions struct {
 	RunImageForExport files.RunImageForExport
 	// Project is project metadata for the project metadata label.
 	Project files.ProjectMetadata
+	// WorkingImageFactory creates a new WorkingImage for retry attempts.
+	// This is needed because go-containerregistry caches manifests, so retrying
+	// with the same image object won't work for transient registry mirror errors.
+	WorkingImageFactory func() (imgutil.Image, error)
 }
 
 func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
@@ -112,7 +119,12 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	}
 
 	meta := files.LayersMetadata{}
-	topLayer, err := TopLayerWithRetry(opts.WorkingImage, e.Logger)
+	var topLayer string
+	if opts.WorkingImageFactory != nil {
+		topLayer, err = TopLayerWithRetry(opts.WorkingImageFactory, e.Logger)
+	} else {
+		topLayer, err = TopLayerWithRetry(func() (imgutil.Image, error) { return opts.WorkingImage, nil }, e.Logger)
+	}
 	if err != nil {
 		return files.Report{}, errors.Wrap(err, "get run image top layer SHA")
 	}
@@ -675,8 +687,7 @@ func (e *Exporter) addSBOMLaunchLayer(opts ExportOptions, meta *files.LayersMeta
 	return nil
 }
 
-const topLayerMaxRetries = 5
-
+// topLayerDelays is hardcoded array of delays
 var topLayerDelays = []time.Duration{
 	100 * time.Millisecond,
 	200 * time.Millisecond,
@@ -685,28 +696,58 @@ var topLayerDelays = []time.Duration{
 	2 * time.Second,
 }
 
-// TopLayerWithRetry calls TopLayer() on an imgutil.Image with retry logic.
-// This handles transient registry errors when using registry mirrors.
+// topLayerSleep is the function used for sleeping between retries.
+// It can be replaced for testing.
+var topLayerSleep = time.Sleep
+
+// isRetryable returns true if the error is likely transient and should be retried.
+// 401 Unauthorized and 403 Forbidden are not retryable as they indicate auth/config issues.
+func isRetryable(err error) bool {
+	if tErr, ok := stderrors.AsType[*transport.Error](err); ok {
+		return tErr.StatusCode != http.StatusUnauthorized && tErr.StatusCode != http.StatusForbidden
+	}
+	return true
+}
+
+// TopLayerWithRetry calls TopLayer() on an imgutil.Image with retry logic, creating a fresh image
+// for each retry attempt. This is necessary because go-containerregistry caches the manifest,
+// so retrying with the same image object would not work for transient registry mirror errors.
 // The backoff delays are chosen to be conservative - registry mirrors may need time to sync.
-func TopLayerWithRetry(img imgutil.Image, logger log.Logger) (string, error) {
+func TopLayerWithRetry(imgFactory func() (imgutil.Image, error), logger log.Logger) (string, error) {
 	var lastErr error
-	for attempt := range topLayerMaxRetries {
+	for attempt, delay := range topLayerDelays {
+		img, err := imgFactory()
+		if err != nil {
+			lastErr = err
+			logger.Warnf("Attempt %d/%d: Failed to create new image for top layer retrieval: %v", attempt+1, len(topLayerDelays)+1, err)
+			topLayerSleep(delay)
+			continue
+		}
 		topLayer, err := img.TopLayer()
 		if err == nil {
 			if attempt > 0 {
-				logger.Debugf("Successfully retrieved top layer SHA after %d retries", attempt)
+				logger.Warnf("Successfully retrieved top layer SHA after %d retries", attempt)
 			}
 			return topLayer, nil
 		}
 		lastErr = err
-
-		// Log the error and wait before retrying
-		if attempt < topLayerMaxRetries-1 {
-			duration := topLayerDelays[attempt]
-			logger.Debugf("Attempt %d/%d: Failed to get top layer SHA: %v. Retrying in %v...", attempt+1, topLayerMaxRetries, err, duration)
-			time.Sleep(duration)
+		if !isRetryable(err) {
+			return "", err
 		}
+		logger.Warnf("Attempt %d/%d: Failed to get top layer SHA: %v. Retrying in %v...", attempt+1, len(topLayerDelays)+1, err, delay)
+		topLayerSleep(delay)
 	}
-
+	// Final attempt after exhausting all delays
+	img, err := imgFactory()
+	if err != nil {
+		return "", err
+	}
+	topLayer, err := img.TopLayer()
+	if err == nil {
+		return topLayer, nil
+	}
+	if !isRetryable(err) {
+		return "", err
+	}
 	return "", lastErr
 }

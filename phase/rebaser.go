@@ -29,6 +29,10 @@ type Rebaser struct {
 	Logger      log.Logger
 	PlatformAPI *api.Version
 	Force       bool
+	// NewBaseImageFactory creates a new base image for retry attempts.
+	// This is needed because go-containerregistry caches manifests, so retrying
+	// with the same image object won't work for transient registry mirror errors.
+	NewBaseImageFactory func() (imgutil.Image, error)
 }
 
 // Rebase changes the underlying base image for an application image.
@@ -64,9 +68,11 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 	}
 
 	// update metadata label
-	topLayer, err := TopLayerWithRetry(newBaseImage, r.Logger)
-	if err != nil {
-		return files.RebaseReport{}, errors.Wrap(err, "get rebase run image top layer SHA")
+	var topLayer string
+	if r.NewBaseImageFactory != nil {
+		topLayer, err = TopLayerWithRetry(r.NewBaseImageFactory, r.Logger)
+	} else {
+		topLayer, err = TopLayerWithRetry(func() (imgutil.Image, error) { return newBaseImage, nil }, r.Logger)
 	}
 	origMetadata.RunImage.TopLayer = topLayer
 	identifier, err := newBaseImage.Identifier()

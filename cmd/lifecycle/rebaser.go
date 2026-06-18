@@ -106,6 +106,7 @@ func (r *rebaseCmd) Exec() error {
 		}
 	}
 	var newBaseImage imgutil.Image
+	var newBaseImageFactory func() (imgutil.Image, error)
 	if r.UseDaemon {
 		newBaseImage, err = local.NewImage(
 			r.RunImageRef,
@@ -113,23 +114,25 @@ func (r *rebaseCmd) Exec() error {
 			local.FromBaseImage(r.RunImageRef),
 		)
 	} else {
-		var opts []imgutil.ImageOption
-		opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(r.RunImageRef))...)
-
-		newBaseImage, err = remote.NewImage(
-			r.RunImageRef,
-			r.keychain,
-			opts...,
-		)
+		newBaseImageFactory = func() (imgutil.Image, error) {
+			opts := append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(r.RunImageRef))
+			return remote.NewImage(
+				r.RunImageRef,
+				r.keychain,
+				opts...,
+			)
+		}
+		newBaseImage, err = newBaseImageFactory()
 	}
 	if err != nil || !newBaseImage.Found() {
 		return cmd.FailErr(err, "access run image")
 	}
 
 	rebaser := &phase.Rebaser{
-		Logger:      cmd.DefaultLogger,
-		PlatformAPI: r.PlatformAPI,
-		Force:       r.ForceRebase,
+		Logger:              cmd.DefaultLogger,
+		PlatformAPI:         r.PlatformAPI,
+		Force:               r.ForceRebase,
+		NewBaseImageFactory: newBaseImageFactory,
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.OutputImageRef, r.AdditionalTags)
 	if err != nil {
