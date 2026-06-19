@@ -113,14 +113,14 @@ func (r *rebaseCmd) Exec() error {
 			local.FromBaseImage(r.RunImageRef),
 		)
 	} else {
-		var opts []imgutil.ImageOption
-		opts = append(opts, append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(r.RunImageRef))...)
-
-		newBaseImage, err = remote.NewImage(
-			r.RunImageRef,
-			r.keychain,
-			opts...,
-		)
+		newBaseImage, err = phase.OpenRemoteImage(cmd.DefaultLogger, func() (imgutil.Image, error) {
+			opts := append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(r.RunImageRef))
+			return remote.NewImage(
+				r.RunImageRef,
+				r.keychain,
+				opts...,
+			)
+		})
 	}
 	if err != nil || !newBaseImage.Found() {
 		return cmd.FailErr(err, "access run image")

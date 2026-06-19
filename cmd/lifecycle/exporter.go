@@ -344,11 +344,13 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		appOpts = append(appOpts, remote.WithCreatedAt(e.customSourceDateEpoch()))
 	}
 
-	appImage, err := remote.NewImage(
-		e.OutputImageRef,
-		e.keychain,
-		appOpts...,
-	)
+	appImage, err := phase.OpenRemoteImage(cmd.DefaultLogger, func() (imgutil.Image, error) {
+		return remote.NewImage(
+			e.OutputImageRef,
+			e.keychain,
+			appOpts...,
+		)
+	})
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "create new app image")
 	}
