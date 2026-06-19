@@ -93,10 +93,6 @@ type ExportOptions struct {
 	RunImageForExport files.RunImageForExport
 	// Project is project metadata for the project metadata label.
 	Project files.ProjectMetadata
-	// WorkingImageFactory creates a new WorkingImage for retry attempts.
-	// This is needed because go-containerregistry caches manifests, so retrying
-	// with the same image object won't work for transient registry mirror errors.
-	WorkingImageFactory func() (imgutil.Image, error)
 }
 
 func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
@@ -120,12 +116,7 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	}
 
 	meta := files.LayersMetadata{}
-	var topLayer string
-	if opts.WorkingImageFactory != nil {
-		topLayer, err = TopLayerWithRetry(opts.WorkingImageFactory, e.Logger)
-	} else {
-		topLayer, err = TopLayerWithRetry(func() (imgutil.Image, error) { return opts.WorkingImage, nil }, e.Logger)
-	}
+	topLayer, err := opts.WorkingImage.TopLayer()
 	if err != nil {
 		return files.Report{}, errors.Wrap(err, "get run image top layer SHA")
 	}
@@ -710,45 +701,29 @@ func isRetryable(err error) bool {
 	return true
 }
 
-// TopLayerWithRetry calls TopLayer() on an imgutil.Image with retry logic, creating a fresh image
-// for each retry attempt. This is necessary because go-containerregistry caches the manifest,
-// so retrying with the same image object would not work for transient registry mirror errors.
-// The backoff delays are chosen to be conservative - registry mirrors may need time to sync.
-func TopLayerWithRetry(imgFactory func() (imgutil.Image, error), logger log.Logger) (string, error) {
+// OpenRemoteImage opens a remote image with retry logic for registry mirror transient errors.
+// go-containerregistry caches manifests, so each retry attempt creates a fresh image.
+// Non-retryable errors (401, 403) are returned immediately without retry.
+func OpenRemoteImage(logger log.Logger, newImage func() (imgutil.Image, error)) (imgutil.Image, error) {
 	var lastErr error
-	for attempt, delay := range topLayerDelays {
-		img, err := imgFactory()
-		if err != nil {
-			lastErr = err
-			logger.Warnf("Attempt %d/%d: Failed to create new image for top layer retrieval: %v", attempt+1, len(topLayerDelays)+1, err)
-			topLayerSleep(delay)
-			continue
-		}
-		topLayer, err := img.TopLayer()
+	for attempt := 0; attempt <= len(topLayerDelays); attempt++ {
+		img, err := newImage()
 		if err == nil {
-			if attempt > 0 {
-				logger.Warnf("Successfully retrieved top layer SHA after %d retries", attempt)
+			if _, err = img.TopLayer(); err == nil {
+				if attempt > 0 {
+					logger.Warnf("Successfully opened remote image after %d retries", attempt)
+				}
+				return img, nil
 			}
-			return topLayer, nil
 		}
 		lastErr = err
 		if !isRetryable(err) {
-			return "", err
+			return nil, err
 		}
-		logger.Warnf("Attempt %d/%d: Failed to get top layer SHA: %v. Retrying in %v...", attempt+1, len(topLayerDelays)+1, err, delay)
-		topLayerSleep(delay)
+		if attempt < len(topLayerDelays) {
+			logger.Warnf("Failed to open remote image (attempt %d/%d): %v, retrying in %v", attempt+1, len(topLayerDelays)+1, err, topLayerDelays[attempt])
+			topLayerSleep(topLayerDelays[attempt])
+		}
 	}
-	// Final attempt after exhausting all delays
-	img, err := imgFactory()
-	if err != nil {
-		return "", err
-	}
-	topLayer, err := img.TopLayer()
-	if err == nil {
-		return topLayer, nil
-	}
-	if !isRetryable(err) {
-		return "", err
-	}
-	return "", lastErr
+	return nil, lastErr
 }

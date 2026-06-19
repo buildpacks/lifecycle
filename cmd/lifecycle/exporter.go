@@ -195,9 +195,8 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 	}
 
 	var (
-		appImage            imgutil.Image
-		runImageID          string
-		workingImageFactory func() (imgutil.Image, error)
+		appImage   imgutil.Image
+		runImageID string
 	)
 	switch {
 	case e.UseLayout:
@@ -205,7 +204,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 	case e.UseDaemon:
 		appImage, runImageID, err = e.initDaemonAppImage(analyzedMD, cmd.DefaultLogger)
 	default:
-		appImage, workingImageFactory, runImageID, err = e.initRemoteAppImage(analyzedMD)
+		appImage, runImageID, err = e.initRemoteAppImage(analyzedMD)
 	}
 	if err != nil {
 		return err
@@ -230,7 +229,6 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 			RunImageRef:         runImageID,
 			RunImageForExport:   runImageForExport,
 			WorkingImage:        appImage,
-			WorkingImageFactory: workingImageFactory,
 		})
 		if err != nil {
 			return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "export")
@@ -315,7 +313,7 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed, logger log.Log
 	return appImage, runImageID.String(), nil
 }
 
-func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image, func() (imgutil.Image, error), string, error) {
+func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
 	var appOpts = []imgutil.ImageOption{
 		remote.FromBaseImage(e.RunImageRef),
 	}
@@ -323,7 +321,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	if e.supportsRunImageExtension() {
 		extendedConfig, err := e.getExtendedConfig(analyzedMD.RunImage)
 		if err != nil {
-			return nil, nil, "", cmd.FailErr(err, "get extended image config")
+			return nil, "", cmd.FailErr(err, "get extended image config")
 		}
 		if extendedConfig != nil {
 			cmd.DefaultLogger.Debugf("Using config from extensions...")
@@ -346,16 +344,11 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		appOpts = append(appOpts, remote.WithCreatedAt(e.customSourceDateEpoch()))
 	}
 
-	workingImageFactory := func() (imgutil.Image, error) {
-		return remote.NewImage(
-			e.OutputImageRef,
-			e.keychain,
-			appOpts...,
-		)
-	}
-	appImage, err := workingImageFactory()
+	appImage, err := phase.OpenRemoteImage(cmd.DefaultLogger, func() (imgutil.Image, error) {
+		return remote.NewImage(e.OutputImageRef, e.keychain, appOpts...)
+	})
 	if err != nil {
-		return nil, nil, "", cmd.FailErr(err, "create new app image")
+		return nil, "", cmd.FailErr(err, "create new app image")
 	}
 
 	runImageID, err := func() (string, error) {
@@ -377,10 +370,9 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		return runImageID.String(), nil
 	}()
 	if err != nil {
-		return nil, nil, "", cmd.FailErr(err, "get run image ID")
+		return nil, "", cmd.FailErr(err, "get run image ID")
 	}
-
-	return appImage, workingImageFactory, runImageID, nil
+	return appImage, runImageID, nil
 }
 
 func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
