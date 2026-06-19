@@ -302,7 +302,7 @@ func TestIsRetryable(t *testing.T) {
 	spec.Run(t, "isRetryable", testIsRetryable, spec.Report(report.Terminal{}))
 }
 
-func testIsRetryable(t *testing.T, when spec.G, it spec.S) {
+func testIsRetryable(t *testing.T, _ spec.G, it spec.S) {
 	it("returns true for non-transport errors", func() {
 		h.AssertEq(t, isRetryable(errors.New("generic error")), true)
 	})
