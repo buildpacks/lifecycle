@@ -1,0 +1,12 @@
+{
+  "patches": [
+    {
+      "buildpack": "example/java-buildpack",
+      "layer": "jre",
+      "data": {
+        "artifact.version": "17.0.*"
+      },
+      "patch-image": "PATCH_IMAGE_PLACEHOLDER"
+    }
+  ]
+}
