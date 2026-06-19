@@ -217,18 +217,18 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore phase.Cache, analyz
 
 	g.Go(func() error {
 		report, err := exporter.Export(phase.ExportOptions{
-			AdditionalNames:     e.AdditionalTags,
-			AppDir:              e.AppDir,
-			DefaultProcessType:  e.DefaultProcessType,
-			ExecEnv:             e.ExecEnv,
-			ExtendedDir:         e.ExtendedDir,
-			LauncherConfig:      launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
-			LayersDir:           e.LayersDir,
-			OrigMetadata:        analyzedMD.LayersMetadata,
-			Project:             projectMD,
-			RunImageRef:         runImageID,
-			RunImageForExport:   runImageForExport,
-			WorkingImage:        appImage,
+			AdditionalNames:    e.AdditionalTags,
+			AppDir:             e.AppDir,
+			DefaultProcessType: e.DefaultProcessType,
+			ExecEnv:            e.ExecEnv,
+			ExtendedDir:        e.ExtendedDir,
+			LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
+			LayersDir:          e.LayersDir,
+			OrigMetadata:       analyzedMD.LayersMetadata,
+			Project:            projectMD,
+			RunImageRef:        runImageID,
+			RunImageForExport:  runImageForExport,
+			WorkingImage:       appImage,
 		})
 		if err != nil {
 			return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "export")
@@ -345,7 +345,11 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	}
 
 	appImage, err := phase.OpenRemoteImage(cmd.DefaultLogger, func() (imgutil.Image, error) {
-		return remote.NewImage(e.OutputImageRef, e.keychain, appOpts...)
+		return remote.NewImage(
+			e.OutputImageRef,
+			e.keychain,
+			appOpts...,
+		)
 	})
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "create new app image")
@@ -372,6 +376,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "get run image ID")
 	}
+
 	return appImage, runImageID, nil
 }
 

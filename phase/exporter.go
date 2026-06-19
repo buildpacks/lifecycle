@@ -116,11 +116,10 @@ func (e *Exporter) Export(opts ExportOptions) (files.Report, error) {
 	}
 
 	meta := files.LayersMetadata{}
-	topLayer, err := opts.WorkingImage.TopLayer()
+	meta.RunImage.TopLayer, err = opts.WorkingImage.TopLayer()
 	if err != nil {
 		return files.Report{}, errors.Wrap(err, "get run image top layer SHA")
 	}
-	meta.RunImage.TopLayer = topLayer
 	meta.RunImage.Reference = opts.RunImageRef
 
 	if e.PlatformAPI.AtLeast("0.12") {

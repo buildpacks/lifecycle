@@ -115,7 +115,11 @@ func (r *rebaseCmd) Exec() error {
 	} else {
 		newBaseImage, err = phase.OpenRemoteImage(cmd.DefaultLogger, func() (imgutil.Image, error) {
 			opts := append(image.GetInsecureOptions(r.InsecureRegistries), remote.FromBaseImage(r.RunImageRef))
-			return remote.NewImage(r.RunImageRef, r.keychain, opts...)
+			return remote.NewImage(
+				r.RunImageRef,
+				r.keychain,
+				opts...,
+			)
 		})
 	}
 	if err != nil || !newBaseImage.Found() {
@@ -123,9 +127,9 @@ func (r *rebaseCmd) Exec() error {
 	}
 
 	rebaser := &phase.Rebaser{
-		Logger:              cmd.DefaultLogger,
-		PlatformAPI:         r.PlatformAPI,
-		Force:               r.ForceRebase,
+		Logger:      cmd.DefaultLogger,
+		PlatformAPI: r.PlatformAPI,
+		Force:       r.ForceRebase,
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.OutputImageRef, r.AdditionalTags)
 	if err != nil {

@@ -65,11 +65,10 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 	}
 
 	// update metadata label
-	topLayer, err := newBaseImage.TopLayer()
+	origMetadata.RunImage.TopLayer, err = newBaseImage.TopLayer()
 	if err != nil {
 		return files.RebaseReport{}, errors.Wrap(err, "get rebase run image top layer SHA")
 	}
-	origMetadata.RunImage.TopLayer = topLayer
 	identifier, err := newBaseImage.Identifier()
 	if err != nil {
 		return files.RebaseReport{}, fmt.Errorf("get run image id or digest: %w", err)
