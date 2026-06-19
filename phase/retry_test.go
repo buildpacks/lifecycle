@@ -197,4 +197,138 @@ func testOpenRemoteImage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, sha, "sha-1")
 		})
 	})
+
+	when("non-retryable transport errors", func() {
+		it("does not retry on 400 BadRequest", func() {
+			sleeps := swapRetryTiming(t, 4)
+			var calls int
+
+			_, err := OpenRemoteImage(logger, func() (imgutil.Image, error) {
+				calls++
+				return &stubImage{result: topLayerResult{err: &transport.Error{StatusCode: http.StatusBadRequest}}}, nil
+			})
+
+			h.AssertNotNil(t, err)
+			var tErr *transport.Error
+			h.AssertEq(t, errors.As(err, &tErr), true)
+			h.AssertEq(t, tErr.StatusCode, http.StatusBadRequest)
+			h.AssertEq(t, calls, 1)
+			h.AssertEq(t, len(*sleeps), 0)
+		})
+
+		it("does not retry on 405 MethodNotAllowed", func() {
+			sleeps := swapRetryTiming(t, 4)
+			var calls int
+
+			_, err := OpenRemoteImage(logger, func() (imgutil.Image, error) {
+				calls++
+				return &stubImage{result: topLayerResult{err: &transport.Error{StatusCode: http.StatusMethodNotAllowed}}}, nil
+			})
+
+			h.AssertNotNil(t, err)
+			var tErr *transport.Error
+			h.AssertEq(t, errors.As(err, &tErr), true)
+			h.AssertEq(t, tErr.StatusCode, http.StatusMethodNotAllowed)
+			h.AssertEq(t, calls, 1)
+			h.AssertEq(t, len(*sleeps), 0)
+		})
+
+		it("does not retry on 429 TooManyRequests", func() {
+			sleeps := swapRetryTiming(t, 4)
+			var calls int
+
+			_, err := OpenRemoteImage(logger, func() (imgutil.Image, error) {
+				calls++
+				return &stubImage{result: topLayerResult{err: &transport.Error{StatusCode: http.StatusTooManyRequests}}}, nil
+			})
+
+			h.AssertNotNil(t, err)
+			var tErr *transport.Error
+			h.AssertEq(t, errors.As(err, &tErr), true)
+			h.AssertEq(t, tErr.StatusCode, http.StatusTooManyRequests)
+			h.AssertEq(t, calls, 1)
+			h.AssertEq(t, len(*sleeps), 0)
+		})
+	})
+
+	when("retry logging", func() {
+		it("logs warning for failed attempts and info on success", func() {
+			_ = swapRetryTiming(t, 4)
+			var calls int
+			results := []topLayerResult{
+				{err: &transport.Error{StatusCode: http.StatusInternalServerError}},
+				{err: &transport.Error{StatusCode: http.StatusInternalServerError}},
+				{sha: "sha-1"},
+			}
+
+			_, err := OpenRemoteImage(logger, func() (imgutil.Image, error) {
+				idx := calls
+				calls++
+				return &stubImage{result: results[idx]}, nil
+			})
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, calls, 3)
+
+			var infoCount, warnCount int
+			for _, entry := range logHandler.Entries {
+				if entry.Level == log.InfoLevel {
+					infoCount++
+				}
+				if entry.Level == log.WarnLevel {
+					warnCount++
+				}
+			}
+			h.AssertEq(t, infoCount, 1)
+			h.AssertEq(t, warnCount, 2)
+		})
+	})
+
+	when("zero retry delays configured", func() {
+		it("makes a single attempt and returns the error", func() {
+			sleeps := swapRetryTiming(t, 0)
+
+			_, err := OpenRemoteImage(logger, func() (imgutil.Image, error) {
+				return &stubImage{result: topLayerResult{err: errors.New("top layer error")}}, nil
+			})
+
+			h.AssertNotNil(t, err)
+			h.AssertEq(t, len(*sleeps), 0)
+		})
+	})
+}
+
+func TestIsRetryable(t *testing.T) {
+	spec.Run(t, "isRetryable", testIsRetryable, spec.Report(report.Terminal{}))
+}
+
+func testIsRetryable(t *testing.T, when spec.G, it spec.S) {
+	it("returns true for non-transport errors", func() {
+		h.AssertEq(t, isRetryable(errors.New("generic error")), true)
+	})
+
+	it("returns true for retryable transport errors", func() {
+		h.AssertEq(t, isRetryable(&transport.Error{StatusCode: http.StatusInternalServerError}), true)
+		h.AssertEq(t, isRetryable(&transport.Error{StatusCode: http.StatusBadGateway}), true)
+	})
+
+	it("returns false for 400 BadRequest", func() {
+		h.AssertEq(t, isRetryable(&transport.Error{StatusCode: http.StatusBadRequest}), false)
+	})
+
+	it("returns false for 401 Unauthorized", func() {
+		h.AssertEq(t, isRetryable(&transport.Error{StatusCode: http.StatusUnauthorized}), false)
+	})
+
+	it("returns false for 403 Forbidden", func() {
+		h.AssertEq(t, isRetryable(&transport.Error{StatusCode: http.StatusForbidden}), false)
+	})
+
+	it("returns false for 405 MethodNotAllowed", func() {
+		h.AssertEq(t, isRetryable(&transport.Error{StatusCode: http.StatusMethodNotAllowed}), false)
+	})
+
+	it("returns false for 429 TooManyRequests", func() {
+		h.AssertEq(t, isRetryable(&transport.Error{StatusCode: http.StatusTooManyRequests}), false)
+	})
 }
