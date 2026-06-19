@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/lifecycle/log"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
+
+	"github.com/buildpacks/lifecycle/log"
 )
 
 // topLayerDelays is hardcoded array of delays
