@@ -4,6 +4,7 @@
 [![GoDoc](https://godoc.org/github.com/buildpacks/lifecycle?status.svg)](https://godoc.org/github.com/buildpacks/lifecycle)
 [![codecov](https://codecov.io/gh/buildpacks/lifecycle/branch/main/graph/badge.svg)](https://codecov.io/gh/buildpacks/lifecycle/tree/main)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4748/badge)](https://bestpractices.coreinfrastructure.org/projects/4748)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbuildpacks%2Flifecycle.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbuildpacks%2Flifecycle?ref=badge_shield)
  [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/buildpacks/lifecycle)
 
 A reference implementation of the [Cloud Native Buildpacks specification](https://github.com/buildpacks/spec).
@@ -75,3 +76,7 @@ Or:
 - [CONTRIBUTING](CONTRIBUTING.md) - Information on how to contribute and grow your understanding of the lifecycle.
 - [DEVELOPMENT](DEVELOPMENT.md) - Further detail to help you during the development process.
 - [RELEASE](RELEASE.md) - Further details about our release process.
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbuildpacks%2Flifecycle.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbuildpacks%2Flifecycle?ref=badge_large)
