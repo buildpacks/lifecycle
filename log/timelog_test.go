@@ -4,9 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-
 	"github.com/buildpacks/lifecycle/log"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -50,12 +47,9 @@ func (m mockLog) Errorf(_ string, _ ...any) {
 }
 
 func TestTimeLog(t *testing.T) {
-	spec.Run(t, "Exporter", testTimeLog, spec.Parallel(), spec.Report(report.Terminal{}))
-}
-
-func testTimeLog(t *testing.T, when spec.G, it spec.S) {
-	when("we use the time log", func() {
-		it("the granular api works step by step", func() {
+	t.Parallel()
+	t.Run("we use the time log", func(t *testing.T) {
+		t.Run("the granular api works step by step", func(t *testing.T) {
 			logger := mockLog{callCount: map[string]int{}}
 			c1 := log.Chronit{}
 			nullTime := time.Time{}
@@ -72,7 +66,7 @@ func testTimeLog(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, logger.callCount["Debug"], 2)
 			h.AssertEq(t, c1.EndTime.Equal(nullTime), false)
 		})
-		it("the convenience functions call the logger", func() {
+		t.Run("the convenience functions call the logger", func(t *testing.T) {
 			logger := mockLog{callCount: map[string]int{}}
 			endfunc := log.NewMeasurement("value", logger)
 			h.AssertEq(t, logger.callCount["Debug"], 1)

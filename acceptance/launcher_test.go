@@ -7,9 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -32,13 +29,9 @@ func TestLauncher(t *testing.T) {
 
 	launchImage = launchTest.testImageRef
 	launcherPath = launchTest.containerBinaryPath
-
-	spec.Run(t, "acceptance", testLauncher, spec.Parallel(), spec.Report(report.Terminal{}))
-}
-
-func testLauncher(t *testing.T, when spec.G, it spec.S) {
-	when("exec.d", func() {
-		it("executes the binaries and modifies env before running profiles", func() {
+	t.Parallel()
+	t.Run("exec.d", func(t *testing.T) {
+		t.Run("executes the binaries and modifies env before running profiles", func(t *testing.T) {
 			cmd := exec.Command("docker", "run", "--rm", //nolint
 				"--env=CNB_PLATFORM_API=0.7",
 				"--entrypoint=exec.d-checker"+exe,
@@ -61,18 +54,16 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			assertOutput(t, cmd, expected)
 		})
 	})
-
-	when("entrypoint is a process", func() {
-		it("launches that process", func() {
+	t.Run("entrypoint is a process", func(t *testing.T) {
+		t.Run("launches that process", func(t *testing.T) {
 			cmd := exec.Command("docker", "run", "--rm", //nolint
 				"--entrypoint=web",
 				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 				launchImage)
 			assertOutput(t, cmd, "Executing web process-type")
 		})
-
-		when("process contains a period", func() {
-			it("launches that process", func() {
+		t.Run("process contains a period", func(t *testing.T) {
+			t.Run("launches that process", func(t *testing.T) {
 				cmd := exec.Command("docker", "run", "--rm",
 					"--entrypoint=process.with.period"+exe,
 					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
@@ -80,8 +71,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				assertOutput(t, cmd, "Executing process.with.period process-type")
 			})
 		})
-
-		it("appends any args to the process args", func() {
+		t.Run("appends any args to the process args", func(t *testing.T) {
 			cmd := exec.Command( //nolint
 				"docker", "run", "--rm",
 				"--entrypoint=web",
@@ -91,9 +81,8 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			assertOutput(t, cmd, "Executing web process-type with user provided args")
 		})
 	})
-
-	when("entrypoint is a not a process", func() {
-		it("builds a process from the arguments", func() {
+	t.Run("entrypoint is a not a process", func(t *testing.T) {
+		t.Run("builds a process from the arguments", func(t *testing.T) {
 			cmd := exec.Command( //nolint
 				"docker", "run", "--rm",
 				"--entrypoint=launcher",
@@ -108,9 +97,8 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			)
 		})
 	})
-
-	when("CNB_PROCESS_TYPE is set", func() {
-		it("should warn", func() {
+	t.Run("CNB_PROCESS_TYPE is set", func(t *testing.T) {
+		t.Run("should warn", func(t *testing.T) {
 			cmd := exec.Command("docker", "run", "--rm",
 				"--env=CNB_PROCESS_TYPE=direct-process",
 				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
@@ -124,9 +112,8 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, string(out), "ERROR: failed to launch: determine start command: when there is no default process a command is required")
 		})
 	})
-
-	when("provided CMD is not a process-type", func() {
-		it("sources profiles and executes the command in a shell", func() {
+	t.Run("provided CMD is not a process-type", func(t *testing.T) {
+		t.Run("sources profiles and executes the command in a shell", func(t *testing.T) {
 			cmd := exec.Command( //nolint
 				"docker", "run", "--rm",
 				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
@@ -135,8 +122,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			)
 			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsomething")
 		})
-
-		it("sets env vars from layers", func() {
+		t.Run("sets env vars from layers", func(t *testing.T) {
 			cmd := exec.Command( //nolint
 				"docker", "run", "--rm",
 				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
@@ -145,8 +131,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			)
 			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-bp-val other-bp-val worker-no-process-val")
 		})
-
-		it("passes through env vars from user, excluding excluded vars", func() {
+		t.Run("passes through env vars from user, excluding excluded vars", func(t *testing.T) {
 			args := []string{"echo", "$SOME_USER_VAR, $CNB_APP_DIR, $OTHER_VAR"}
 			cmd := exec.Command("docker",
 				append(
@@ -163,8 +148,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-user-val, , other-user-val**other-bp-val")
 		})
-
-		it("adds buildpack bin dirs to the path", func() {
+		t.Run("adds buildpack bin dirs to the path", func(t *testing.T) {
 			cmd := exec.Command( //nolint
 				"docker", "run", "--rm",
 				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
@@ -174,9 +158,8 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			assertOutput(t, cmd, "bp executable")
 		})
 	})
-
-	when("CMD provided starts with --", func() {
-		it("launches command directly", func() {
+	t.Run("CMD provided starts with --", func(t *testing.T) {
+		t.Run("launches command directly", func(t *testing.T) {
 			cmd := exec.Command( //nolint
 				"docker", "run", "--rm",
 				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
@@ -185,8 +168,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			)
 			assertOutput(t, cmd, "something")
 		})
-
-		it("sets env vars from layers", func() {
+		t.Run("sets env vars from layers", func(t *testing.T) {
 			cmd := exec.Command( //nolint
 				"docker", "run", "--rm",
 				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
@@ -199,8 +181,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				"OTHER_VAR=other-bp-val",
 			)
 		})
-
-		it("passes through env vars from user, excluding excluded vars", func() {
+		t.Run("passes through env vars from user, excluding excluded vars", func(t *testing.T) {
 			cmd := exec.Command( //nolint
 				"docker", "run", "--rm",
 				"--env", "CNB_APP_DIR=/workspace",
@@ -223,8 +204,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("env contained white listed env far CNB_APP_DIR:\n\t got: %s\n", output)
 			}
 		})
-
-		it("adds buildpack bin dirs to the path before looking up command", func() {
+		t.Run("adds buildpack bin dirs to the path before looking up command", func(t *testing.T) {
 			cmd := exec.Command( //nolint
 				"docker", "run", "--rm",
 				"--env=CNB_PLATFORM_API="+latestPlatformAPI,
