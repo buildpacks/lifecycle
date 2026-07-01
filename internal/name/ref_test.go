@@ -3,19 +3,13 @@ package name_test
 import (
 	"testing"
 
-	"github.com/sclevine/spec"
-
 	"github.com/buildpacks/lifecycle/internal/name"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestRef(t *testing.T) {
-	spec.Run(t, "Ref", testRef)
-}
-
-func testRef(t *testing.T, when spec.G, it spec.S) {
-	when(".ParseMaybe", func() {
-		when("provided reference", func() {
+	t.Run(".ParseMaybe", func(t *testing.T) {
+		t.Run("provided reference", func(t *testing.T) {
 			type testCase struct {
 				condition string
 				provided  string
@@ -73,9 +67,8 @@ func testRef(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 			for _, tc := range testCases {
-				w := when
-				w(tc.condition, func() {
-					it(tc.does, func() {
+				t.Run(tc.condition, func(t *testing.T) {
+					t.Run(tc.does, func(t *testing.T) {
 						actual := name.ParseMaybe(tc.provided)
 						h.AssertEq(t, actual, tc.expected)
 					})

@@ -7,21 +7,14 @@ import (
 
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 )
 
 func TestDetectorUnix(t *testing.T) {
-	spec.Run(t, "DetectorUnix", testDetectorUnix, spec.Report(report.Terminal{}))
-}
-
-func testDetectorUnix(t *testing.T, when spec.G, it spec.S) {
-	when("we should have a file", func() {
-		it("returns true correctly", func() {
+	t.Run("we should have a file", func(t *testing.T) {
+		t.Run("returns true correctly", func(t *testing.T) {
 			h.AssertEq(t, (&fsutil.DefaultDetector{}).HasSystemdFile(), true)
 		})
-		it("returns the file contents", func() {
+		t.Run("returns the file contents", func(t *testing.T) {
 			s, err := (&fsutil.DefaultDetector{}).ReadSystemdFile()
 			h.AssertNil(t, err)
 			h.AssertStringContains(t, s, "NAME")

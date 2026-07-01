@@ -3,32 +3,27 @@ package launch_test
 import (
 	"testing"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-
 	"github.com/buildpacks/lifecycle/api"
 	platform "github.com/buildpacks/lifecycle/platform/launch"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestPlatform(t *testing.T) {
-	for _, api := range api.Platform.Supported {
-		spec.Run(t, "unit-platform/"+api.String(), testPlatform(api), spec.Parallel(), spec.Report(report.Terminal{}))
-	}
-}
+	t.Parallel()
+	for _, platformAPI := range api.Platform.Supported {
+		t.Run("unit-platform/"+platformAPI.String(), func(t *testing.T) {
+			t.Parallel()
+			t.Run("#NewPlatform", func(t *testing.T) {
+				t.Run("configures the platform", func(t *testing.T) {
+					foundPlatform := platform.NewPlatform(platformAPI.String())
 
-func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it spec.S) {
-	return func(t *testing.T, when spec.G, it spec.S) {
-		when("#NewPlatform", func() {
-			it("configures the platform", func() {
-				foundPlatform := platform.NewPlatform(platformAPI.String())
+					t.Log("with a default exiter")
+					_, ok := foundPlatform.Exiter.(*platform.DefaultExiter)
+					h.AssertEq(t, ok, true)
 
-				t.Log("with a default exiter")
-				_, ok := foundPlatform.Exiter.(*platform.DefaultExiter)
-				h.AssertEq(t, ok, true)
-
-				t.Log("with an api")
-				h.AssertEq(t, foundPlatform.API(), platformAPI)
+					t.Log("with an api")
+					h.AssertEq(t, foundPlatform.API(), platformAPI)
+				})
 			})
 		})
 	}
