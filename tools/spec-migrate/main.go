@@ -124,7 +124,7 @@ func (o *options) processPath(root string) error {
 }
 
 func (o *options) processFile(path string) error {
-	src, err := os.ReadFile(path)
+	src, err := os.ReadFile(path) // #nosec G304 -- tool intentionally reads paths from CLI args
 	if err != nil {
 		return err
 	}
@@ -160,17 +160,16 @@ func (o *options) processFile(path string) error {
 	}
 	out := buf.Bytes()
 
-	if o.write {
-		if err := os.WriteFile(path, out, 0o644); err != nil {
+	switch {
+	case o.write:
+		if err := os.WriteFile(path, out, 0o600); err != nil {
 			return err
 		}
-		o.writtenFiles = append(o.writtenFiles, path)
-	} else if o.dryRun {
-		o.writtenFiles = append(o.writtenFiles, path)
-	} else {
+	case o.dryRun:
+	default:
 		fmt.Printf("=== %s ===\n%s\n", path, out)
-		o.writtenFiles = append(o.writtenFiles, path)
 	}
+	o.writtenFiles = append(o.writtenFiles, path)
 	return nil
 }
 

@@ -120,7 +120,6 @@ func TestVersion(t *testing.T) {
 					args:        []string{"-version"},
 				},
 			} {
-				tc := tc
 				t.Run(tc.description, func(t *testing.T) {
 					t.Run("only prints the version", func(t *testing.T) {
 						cmd := lifecycleCmd(tc.command, tc.args...)

@@ -11,7 +11,6 @@ import (
 func TestPlatform(t *testing.T) {
 	t.Parallel()
 	for _, platformAPI := range api.Platform.Supported {
-		platformAPI := platformAPI
 		t.Run("unit-platform/"+platformAPI.String(), func(t *testing.T) {
 			t.Parallel()
 			t.Run("#NewPlatform", func(t *testing.T) {
