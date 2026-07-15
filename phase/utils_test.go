@@ -4,34 +4,26 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/phase"
 )
 
 func TestUtils(t *testing.T) {
-	spec.Run(t, "Utils", testUtils, spec.Report(report.Terminal{}))
-}
-
-func testUtils(t *testing.T, when spec.G, it spec.S) {
-	when(".TruncateSha", func() {
-		it("should truncate the sha", func() {
+	t.Run(".TruncateSha", func(t *testing.T) {
+		t.Run("should truncate the sha", func(t *testing.T) {
 			actual := phase.TruncateSha("ed649d0a36b218c476b64d61f85027477ef5742045799f45c8c353562279065a")
 			if s := cmp.Diff(actual, "ed649d0a36b2"); s != "" {
 				t.Fatalf("Unexpected sha:\n%s\n", s)
 			}
 		})
-
-		it("should not truncate the sha with it's short", func() {
+		t.Run("should not truncate the sha with it's short", func(t *testing.T) {
 			sha := "not-a-sha"
 			actual := phase.TruncateSha(sha)
 			if s := cmp.Diff(actual, sha); s != "" {
 				t.Fatalf("Unexpected sha:\n%s\n", s)
 			}
 		})
-
-		it("should remove the prefix", func() {
+		t.Run("should remove the prefix", func(t *testing.T) {
 			sha := "sha256:ed649d0a36b218c476b64d61f85027477ef5742045799f45c8c353562279065a"
 			actual := phase.TruncateSha(sha)
 			if s := cmp.Diff(actual, "ed649d0a36b2"); s != "" {

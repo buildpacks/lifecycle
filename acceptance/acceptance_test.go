@@ -8,9 +8,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-
 	"github.com/buildpacks/lifecycle/api"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -43,19 +40,9 @@ func TestVersion(t *testing.T) {
 		"LIFECYCLE_VERSION=some-version",
 		"SCM_COMMIT="+expectedCommit,
 	)
-	spec.Run(t, "acceptance", testVersion, spec.Parallel(), spec.Report(report.Terminal{}))
-}
-
-type testCase struct {
-	description string
-	focus       bool
-	command     string
-	args        []string
-}
-
-func testVersion(t *testing.T, when spec.G, it spec.S) {
-	when("All", func() {
-		when("version flag is set", func() {
+	t.Parallel()
+	t.Run("All", func(t *testing.T) {
+		t.Run("version flag is set", func(t *testing.T) {
 			for _, tc := range []testCase{
 				{
 					description: "detector: only -version is present",
@@ -133,12 +120,8 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 					args:        []string{"-version"},
 				},
 			} {
-				w := when
-				if tc.focus {
-					w = when.Focus
-				}
-				w(tc.description, func() {
-					it("only prints the version", func() {
+				t.Run(tc.description, func(t *testing.T) {
+					t.Run("only prints the version", func(t *testing.T) {
 						cmd := lifecycleCmd(tc.command, tc.args...)
 						cmd.Env = []string{fmt.Sprintf("CNB_PLATFORM_API=%s", api.Platform.Latest().String())}
 						output, err := cmd.CombinedOutput()
@@ -151,6 +134,12 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 	})
+}
+
+type testCase struct {
+	description string
+	command     string
+	args        []string
 }
 
 func lifecycleCmd(phase string, args ...string) *exec.Cmd {

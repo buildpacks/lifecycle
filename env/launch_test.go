@@ -6,19 +6,13 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/env"
 )
 
 func TestLaunchEnv(t *testing.T) {
-	spec.Run(t, "LaunchEnv", testLaunchEnv, spec.Report(report.Terminal{}))
-}
-
-func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
-	when("#NewLaunchEnv", func() {
-		it("excludes vars", func() {
+	t.Run("#NewLaunchEnv", func(t *testing.T) {
+		t.Run("excludes vars", func(t *testing.T) {
 			lenv := env.NewLaunchEnv([]string{
 				"CNB_APP_DIR=excluded",
 				"CNB_LAYERS_DIR=excluded",
@@ -33,9 +27,8 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}
 		})
-
-		when("path contains process and lifecycle dirs", func() {
-			it("strips them", func() {
+		t.Run("path contains process and lifecycle dirs", func(t *testing.T) {
+			t.Run("strips them", func(t *testing.T) {
 				lenv := env.NewLaunchEnv([]string{
 					"PATH=" + strings.Join(
 						[]string{"some-process-dir", "some-path", "some-lifecycle-dir"},
@@ -49,8 +42,7 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 		})
-
-		it("allows keys with '='", func() {
+		t.Run("allows keys with '='", func(t *testing.T) {
 			lenv := env.NewLaunchEnv([]string{
 				"CNB_FOO=some=key",
 			}, "", "")
@@ -60,8 +52,7 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}
 		})
-
-		it("assign the Launch time root dir map", func() {
+		t.Run("assign the Launch time root dir map", func(t *testing.T) {
 			lenv := env.NewLaunchEnv([]string{}, "", "")
 			if s := cmp.Diff(lenv.RootDirMap, env.POSIXLaunchEnv); s != "" {
 				t.Fatalf("Unexpected root dir map\n%s\n", s)

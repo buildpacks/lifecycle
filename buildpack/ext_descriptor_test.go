@@ -4,20 +4,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-
 	"github.com/buildpacks/lifecycle/buildpack"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestExtDescriptor(t *testing.T) {
-	spec.Run(t, "ExtDescriptor", testExtDescriptor, spec.Report(report.Terminal{}))
-}
-
-func testExtDescriptor(t *testing.T, when spec.G, it spec.S) {
-	when("#ReadExtDescriptor", func() {
-		it("returns an extension descriptor", func() {
+	t.Run("#ReadExtDescriptor", func(t *testing.T) {
+		t.Run("returns an extension descriptor", func(t *testing.T) {
 			path := filepath.Join("testdata", "extension", "by-id", "A", "v1", "extension.toml")
 			descriptor, err := buildpack.ReadExtDescriptor(path)
 			h.AssertNil(t, err)
@@ -31,7 +24,7 @@ func testExtDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
 			h.AssertEq(t, descriptor.Targets[0].Arch, "")
 		})
-		it("infers */* if there's no files to infer from", func() {
+		t.Run("infers */* if there's no files to infer from", func(t *testing.T) {
 			path := filepath.Join("testdata", "extension", "by-id", "B", "v1", "extension.toml")
 			descriptor, err := buildpack.ReadExtDescriptor(path)
 			h.AssertNil(t, err)

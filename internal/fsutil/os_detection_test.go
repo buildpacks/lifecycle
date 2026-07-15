@@ -5,22 +5,16 @@ import (
 
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 )
 
 func TestDetector(t *testing.T) {
-	spec.Run(t, "Detector", testDetector, spec.Report(report.Terminal{}))
-}
+	t.Run(
 
-// there's no state on this object so we can just use the same one forever
-var detect fsutil.DefaultDetector
+		// there's no state on this object so we can just use the same one forever
 
-func testDetector(t *testing.T, when spec.G, it spec.S) {
-	when("we have the contents of an os-release file", func() {
-		it("can parse a debian 10 file", func() {
-			contents := `PRETTY_NAME="Debian GNU/Linux 10 (buster)"
+		"we have the contents of an os-release file", func(t *testing.T) {
+			t.Run("can parse a debian 10 file", func(t *testing.T) {
+				contents := `PRETTY_NAME="Debian GNU/Linux 10 (buster)"
 NAME="Debian GNU/Linux"
 VERSION_ID="10"
 VERSION="10 (buster)"
@@ -30,12 +24,12 @@ HOME_URL="https://www.debian.org/"
 SUPPORT_URL="https://www.debian.org/support"
 BUG_REPORT_URL="https://bugs.debian.org/"
 `
-			data := detect.GetInfo(contents)
-			h.AssertEq(t, data.Name, "debian")
-			h.AssertEq(t, data.Version, "10")
-		})
-		it("can parse a Fedora 37 file", func() {
-			contents := `
+				data := detect.GetInfo(contents)
+				h.AssertEq(t, data.Name, "debian")
+				h.AssertEq(t, data.Version, "10")
+			})
+			t.Run("can parse a Fedora 37 file", func(t *testing.T) {
+				contents := `
 NAME="Fedora Linux"
 VERSION="37 (Cloud Edition)"
 ID=fedora
@@ -55,12 +49,12 @@ REDHAT_BUGZILLA_PRODUCT_VERSION=37
 REDHAT_SUPPORT_PRODUCT="Fedora"
 REDHAT_SUPPORT_PRODUCT_VERSION=37
 `
-			data := detect.GetInfo(contents)
-			h.AssertEq(t, data.Name, "fedora")
-			h.AssertEq(t, data.Version, "37")
-		})
-		it("can parse an Ubuntu 18.04 file", func() {
-			contents := `NAME="Ubuntu"
+				data := detect.GetInfo(contents)
+				h.AssertEq(t, data.Name, "fedora")
+				h.AssertEq(t, data.Version, "37")
+			})
+			t.Run("can parse an Ubuntu 18.04 file", func(t *testing.T) {
+				contents := `NAME="Ubuntu"
 VERSION="18.04.3 LTS (Bionic Beaver)"
 ID=ubuntu
 ID_LIKE=debian
@@ -73,9 +67,11 @@ PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-poli
 VERSION_CODENAME=bionic
 UBUNTU_CODENAME=bionic
 `
-			data := detect.GetInfo(contents)
-			h.AssertEq(t, data.Name, "ubuntu")
-			h.AssertEq(t, data.Version, "18.04")
+				data := detect.GetInfo(contents)
+				h.AssertEq(t, data.Name, "ubuntu")
+				h.AssertEq(t, data.Version, "18.04")
+			})
 		})
-	})
 }
+
+var detect fsutil.DefaultDetector

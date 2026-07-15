@@ -4,22 +4,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-
 	"github.com/buildpacks/lifecycle/buildpack"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestBpDescriptor(t *testing.T) {
-	spec.Run(t, "BpDescriptor", testBpDescriptor, spec.Report(report.Terminal{}))
-}
-
-func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
-	when("TargetMetadata", func() {
-		when("#String()", func() {
-			when("there is a distribution", func() {
-				it("prints the target", func() {
+	t.Run("TargetMetadata", func(t *testing.T) {
+		t.Run("#String()", func(t *testing.T) {
+			t.Run("there is a distribution", func(t *testing.T) {
+				t.Run("prints the target", func(t *testing.T) {
 					tm := &buildpack.TargetMetadata{
 						OS:          "some-os",
 						Arch:        "some-arch",
@@ -34,9 +27,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, tm.String(), `{"os":"some-os","arch":"some-arch","arch-variant":"some-arch-variant","distros":[{"name":"some-os-dist","version":"some-os-dist-version"}]}`)
 				})
 			})
-
-			when("there is no distribution", func() {
-				it("prints the target", func() {
+			t.Run("there is no distribution", func(t *testing.T) {
+				t.Run("prints the target", func(t *testing.T) {
 					tm := &buildpack.TargetMetadata{
 						OS:          "some-os",
 						Arch:        "some-arch",
@@ -47,9 +39,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-
-	when("#ReadBpDescriptor", func() {
-		it("returns a buildpack descriptor", func() {
+	t.Run("#ReadBpDescriptor", func(t *testing.T) {
+		t.Run("returns a buildpack descriptor", func(t *testing.T) {
 			path := filepath.Join("testdata", "buildpack", "by-id", "A", "v1", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
 			h.AssertNil(t, err)
@@ -61,8 +52,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack A Homepage")
 			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
 		})
-
-		it("reads new target fields", func() {
+		t.Run("reads new target fields", func(t *testing.T) {
 			path := filepath.Join("testdata", "buildpack", "by-id", "D", "v1", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
 			h.AssertNil(t, err)
@@ -80,11 +70,10 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Targets[0].Distros[0].Name, "VSI OpenVMS")
 			h.AssertEq(t, descriptor.Targets[0].Distros[0].Version, "V8.4-2L3")
 		})
-
-		when("translating stacks to targets", func() {
-			when("older buildpacks", func() {
-				when("there is only bionic", func() {
-					it("creates a target", func() {
+		t.Run("translating stacks to targets", func(t *testing.T) {
+			t.Run("older buildpacks", func(t *testing.T) {
+				t.Run("there is only bionic", func(t *testing.T) {
+					t.Run("creates a target", func(t *testing.T) {
 						path := filepath.Join("testdata", "buildpack", "by-id", "B", "v1", "buildpack.toml")
 						descriptor, err := buildpack.ReadBpDescriptor(path)
 						h.AssertNil(t, err)
@@ -104,9 +93,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, descriptor.Targets[0].Distros[0].Version, "18.04")
 					})
 				})
-
-				when("there are multiple stacks", func() {
-					it("does NOT create a target", func() {
+				t.Run("there are multiple stacks", func(t *testing.T) {
+					t.Run("does NOT create a target", func(t *testing.T) {
 						path := filepath.Join("testdata", "buildpack", "by-id", "B", "v1.2", "buildpack.toml")
 						descriptor, err := buildpack.ReadBpDescriptor(path)
 						h.AssertNil(t, err)
@@ -122,9 +110,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, len(descriptor.Targets), 0)
 					})
 				})
-
-				when("there is a wildcard stack", func() {
-					it("creates a wildcard target", func() {
+				t.Run("there is a wildcard stack", func(t *testing.T) {
+					t.Run("creates a wildcard target", func(t *testing.T) {
 						path := filepath.Join("testdata", "buildpack", "by-id", "B", "v1.star", "buildpack.toml")
 						descriptor, err := buildpack.ReadBpDescriptor(path)
 						h.AssertNil(t, err)
@@ -146,10 +133,9 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
-
-			when("newer buildpacks", func() {
-				when("there is only bionic", func() {
-					it("creates a target", func() {
+			t.Run("newer buildpacks", func(t *testing.T) {
+				t.Run("there is only bionic", func(t *testing.T) {
+					t.Run("creates a target", func(t *testing.T) {
 						path := filepath.Join("testdata", "buildpack", "by-id", "B", "v2", "buildpack.toml")
 						descriptor, err := buildpack.ReadBpDescriptor(path)
 						h.AssertNil(t, err)
@@ -169,9 +155,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, descriptor.Targets[0].Distros[0].Version, "18.04")
 					})
 				})
-
-				when("there are multiple stacks", func() {
-					it("creates a target", func() {
+				t.Run("there are multiple stacks", func(t *testing.T) {
+					t.Run("creates a target", func(t *testing.T) {
 						path := filepath.Join("testdata", "buildpack", "by-id", "B", "v2.2", "buildpack.toml")
 						descriptor, err := buildpack.ReadBpDescriptor(path)
 						h.AssertNil(t, err)
@@ -191,9 +176,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, descriptor.Targets[0].Distros[0].Version, "18.04")
 					})
 				})
-
-				when("there is a wildcard stack", func() {
-					it("creates a wildcard target", func() {
+				t.Run("there is a wildcard stack", func(t *testing.T) {
+					t.Run("creates a wildcard target", func(t *testing.T) {
 						path := filepath.Join("testdata", "buildpack", "by-id", "B", "v2.star", "buildpack.toml")
 						descriptor, err := buildpack.ReadBpDescriptor(path)
 						h.AssertNil(t, err)
@@ -216,8 +200,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
-
-		it("does not translate non-special stack values", func() {
+		t.Run("does not translate non-special stack values", func(t *testing.T) {
 			path := filepath.Join("testdata", "buildpack", "by-id", "C", "v1", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
 			h.AssertNil(t, err)
@@ -232,8 +215,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Stacks[0].ID, "some.non-magic.value")
 			h.AssertEq(t, len(descriptor.Targets), 0)
 		})
-
-		it("does autodetect linux buildpacks from the bin dir contents", func() {
+		t.Run("does autodetect linux buildpacks from the bin dir contents", func(t *testing.T) {
 			path := filepath.Join("testdata", "buildpack", "by-id", "C", "v2", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
 			h.AssertNil(t, err)

@@ -4,21 +4,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sclevine/spec"
-
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestAnalyzed(t *testing.T) {
-	spec.Run(t, "Analyzed", testAnalyzed)
-}
-
-func testAnalyzed(t *testing.T, when spec.G, it spec.S) {
-	when("analyzed.toml", func() {
-		when("it is old it stays old", func() {
-			it("serializes and deserializes", func() {
+	t.Run("analyzed.toml", func(t *testing.T) {
+		t.Run("it is old it stays old", func(t *testing.T) {
+			t.Run("serializes and deserializes", func(t *testing.T) {
 				amd := files.Analyzed{
 					PreviousImage: &files.ImageIdentifier{Reference: "previous-img"},
 					LayersMetadata: files.LayersMetadata{
@@ -36,8 +30,7 @@ func testAnalyzed(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, amd.LayersMetadata, amd2.LayersMetadata)
 				h.AssertEq(t, amd.BuildImage, amd2.BuildImage)
 			})
-
-			it("serializes to the old format", func() {
+			t.Run("serializes to the old format", func(t *testing.T) {
 				amd := files.Analyzed{
 					PreviousImage: &files.ImageIdentifier{Reference: "previous-img"},
 					LayersMetadata: files.LayersMetadata{
@@ -74,9 +67,8 @@ func testAnalyzed(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, string(contents), expectedContents)
 			})
 		})
-
-		when("it is new it stays new", func() {
-			it("serializes and deserializes", func() {
+		t.Run("it is new it stays new", func(t *testing.T) {
+			t.Run("serializes and deserializes", func(t *testing.T) {
 				amd := files.Analyzed{
 					PreviousImage: &files.ImageIdentifier{Reference: "the image formerly known as prince"},
 					RunImage: &files.RunImage{

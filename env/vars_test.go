@@ -3,21 +3,14 @@ package env_test
 import (
 	"testing"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-
 	"github.com/buildpacks/lifecycle/env"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestVars(t *testing.T) {
-	spec.Run(t, "Vars", testVars, spec.Report(report.Terminal{}))
-}
-
-func testVars(t *testing.T, when spec.G, it spec.S) {
-	when("#NewVars", func() {
-		when("case sensitive", func() {
-			it("should load values as is", func() {
+	t.Run("#NewVars", func(t *testing.T) {
+		t.Run("case sensitive", func(t *testing.T) {
+			t.Run("should load values as is", func(t *testing.T) {
 				m := env.NewVars(
 					map[string]string{
 						"foo": "bar",
@@ -29,9 +22,8 @@ func testVars(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, m.Get("Foo"), "")
 			})
 		})
-
-		when("case insensitive", func() {
-			it("should load values normalized", func() {
+		t.Run("case insensitive", func(t *testing.T) {
+			t.Run("should load values normalized", func(t *testing.T) {
 				m := env.NewVars(
 					map[string]string{
 						"foo": "bar",
@@ -44,10 +36,9 @@ func testVars(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-
-	when("#Set", func() {
-		when("case sensitive", func() {
-			it("should set value as is", func() {
+	t.Run("#Set", func(t *testing.T) {
+		t.Run("case sensitive", func(t *testing.T) {
+			t.Run("should set value as is", func(t *testing.T) {
 				m := env.NewVars(nil, false)
 				m.Set("foo", "bar")
 
@@ -55,9 +46,8 @@ func testVars(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, m.Get("Foo"), "")
 			})
 		})
-
-		when("case insensitive", func() {
-			it("should set value normalized", func() {
+		t.Run("case insensitive", func(t *testing.T) {
+			t.Run("should set value normalized", func(t *testing.T) {
 				m := env.NewVars(nil, true)
 				m.Set("foo", "bar")
 
@@ -66,10 +56,9 @@ func testVars(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-
-	when("#Values", func() {
-		when("case sensitive", func() {
-			it("should load values as is", func() {
+	t.Run("#Values", func(t *testing.T) {
+		t.Run("case sensitive", func(t *testing.T) {
+			t.Run("should load values as is", func(t *testing.T) {
 				m := env.NewVars(
 					map[string]string{
 						"foo": "bar",
@@ -81,9 +70,8 @@ func testVars(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, m.List(), "foo=bar", "baz=taz")
 			})
 		})
-
-		when("case insensitive", func() {
-			it("should load values normalized", func() {
+		t.Run("case insensitive", func(t *testing.T) {
+			t.Run("should load values normalized", func(t *testing.T) {
 				m := env.NewVars(
 					map[string]string{
 						"foo": "bar",

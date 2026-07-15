@@ -7,21 +7,14 @@ import (
 
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 )
 
 func TestDetectorNonUnix(t *testing.T) {
-	spec.Run(t, "DetectorNonUnix", testDetectorNonUnix, spec.Report(report.Terminal{}))
-}
-
-func testDetectorNonUnix(t *testing.T, when spec.G, it spec.S) {
-	when("we don't have a file", func() {
-		it("returns false correctly", func() {
+	t.Run("we don't have a file", func(t *testing.T) {
+		t.Run("returns false correctly", func(t *testing.T) {
 			h.AssertEq(t, (&fsutil.DefaultDetector{}).HasSystemdFile(), false)
 		})
-		it("returns an error correctly", func() {
+		t.Run("returns an error correctly", func(t *testing.T) {
 			_, err := (&fsutil.DefaultDetector{}).ReadSystemdFile()
 			h.AssertNotNil(t, err)
 		})

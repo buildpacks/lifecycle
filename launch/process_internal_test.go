@@ -3,30 +3,23 @@ package launch
 import (
 	"testing"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestPrepareWorkingDirectory(t *testing.T) {
-	spec.Run(t, "Process", testProcessInternal, spec.Report(report.Terminal{}))
-}
-
-func testProcessInternal(t *testing.T, when spec.G, it spec.S) {
-	when("getProcessWorkingDirectory", func() {
+	t.Run("getProcessWorkingDirectory", func(t *testing.T) {
 		const (
 			appDir           = "/app"
 			workingDirectory = "/working-directory"
 		)
 
-		it("defaults the working directory to the app dir", func() {
+		t.Run("defaults the working directory to the app dir", func(t *testing.T) {
 			process := Process{}
 			actualWorkingDirectory := getProcessWorkingDirectory(process, appDir)
 			h.AssertEq(t, actualWorkingDirectory, appDir)
 		})
 
-		it("respects a configured working directory", func() {
+		t.Run("respects a configured working directory", func(t *testing.T) {
 			process := Process{WorkingDirectory: workingDirectory}
 			actualWorkingDirectory := getProcessWorkingDirectory(process, appDir)
 			h.AssertEq(t, actualWorkingDirectory, workingDirectory)
