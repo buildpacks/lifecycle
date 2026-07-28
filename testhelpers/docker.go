@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/jsonstream"
 	dockercli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 )
@@ -179,7 +179,7 @@ func checkResponse(responseBody io.Reader) error {
 			continue
 		}
 
-		var msg jsonmessage.JSONMessage
+		var msg jsonstream.Message
 		err := json.Unmarshal(line, &msg)
 		if err != nil {
 			return errors.Wrapf(err, "expected JSON: %s", string(line))
