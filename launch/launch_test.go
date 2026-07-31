@@ -90,6 +90,20 @@ working-dir = "some-working-directory"
 					h.AssertEq(t, string(bytes), expected)
 				})
 
+				it("handles an empty command", func() {
+					// a buildpack can emit [[processes]] with command = [], and
+					// collapsing the entries used to slice an empty slice
+					process := launch.Process{
+						Type:        "some-type",
+						Command:     launch.NewRawCommand([]string{}),
+						Args:        []string{"some-arg"},
+						BuildpackID: "some-buildpack-id",
+					}.WithPlatformAPI(api.MustParse("0.9"))
+
+					h.AssertEq(t, len(process.Command.Entries), 0)
+					h.AssertEq(t, process.Args, []string{"some-arg"})
+				})
+
 				it("handles special characters", func() {
 					process := launch.Process{
 						Type:        "some-type",
