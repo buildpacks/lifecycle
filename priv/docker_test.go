@@ -18,7 +18,7 @@ import (
 // breaking compatibility with all released versions of podman (which top out at v1.41).
 func TestDockerClient_SupportsOlderAPIVersions(t *testing.T) {
 	// podman (as of v5.7) reports API version 1.41 on ping.
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Api-Version", "1.41")
 		w.Header().Set("Docker-Experimental", "false")
 		w.Header().Set("Ostype", "linux")
