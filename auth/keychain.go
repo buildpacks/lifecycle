@@ -11,7 +11,6 @@ import (
 
 	ecr "github.com/awslabs/amazon-ecr-credential-helper/ecr-login"
 	"github.com/chrismellard/docker-credential-acr-env/pkg/credhelper"
-	"github.com/docker/docker/registry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -69,10 +68,23 @@ func NewEnvKeychain(envVar string) (authn.Keychain, error) {
 	}
 
 	for reg, header := range rawHeaders {
-		authHeaders[registry.ConvertToHostname(reg)] = header
+		authHeaders[convertToHostname(reg)] = header
 	}
 
 	return &EnvKeychain{AuthHeaders: authHeaders}, nil
+}
+
+// convertToHostname strips URL scheme and path from a registry URL.
+// Adapted from https://pkg.go.dev/github.com/moby/moby/registry#ConvertToHostname to avoid importing root daemon dependencies.
+func convertToHostname(url string) string {
+	stripped := url
+	if strings.HasPrefix(stripped, "http://") {
+		stripped = strings.TrimPrefix(stripped, "http://")
+	} else if strings.HasPrefix(stripped, "https://") {
+		stripped = strings.TrimPrefix(stripped, "https://")
+	}
+	stripped, _, _ = strings.Cut(stripped, "/")
+	return stripped
 }
 
 // EnvKeychain is an implementation of authn.Keychain that stores credentials as auth headers.
