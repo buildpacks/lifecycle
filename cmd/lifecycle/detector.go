@@ -118,11 +118,17 @@ func (d *detectCmd) Exec() error {
 }
 
 func unwrapErrorFailWithMessage(err error, msg string) error {
+	return unwrapErrorFailWithCode(err, cmd.CodeForFailed, msg)
+}
+
+// unwrapErrorFailWithCode returns err unchanged if it is already a *cmd.ErrorFail (preserving its exit code),
+// otherwise wraps it as a failure with the given fallback exit code.
+func unwrapErrorFailWithCode(err error, code int, msg string) error {
 	errorFail, ok := err.(*cmd.ErrorFail)
 	if ok {
 		return errorFail
 	}
-	return cmd.FailErr(err, msg)
+	return cmd.FailErrCode(err, code, msg)
 }
 
 func (d *detectCmd) unwrapGenerateFail(err error) error {

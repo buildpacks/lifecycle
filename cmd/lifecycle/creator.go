@@ -134,11 +134,11 @@ func (c *createCmd) Exec() error {
 	)
 	analyzer, err := analyzerFactory.NewAnalyzer(c.Inputs(), cmd.DefaultLogger)
 	if err != nil {
-		return unwrapErrorFailWithMessage(err, "initialize analyzer")
+		return unwrapErrorFailWithCode(err, c.CodeFor(platform.AnalyzeError), "initialize analyzer")
 	}
 	analyzedMD, err = analyzer.Analyze()
 	if err != nil {
-		return err
+		return cmd.FailErrCode(err, c.CodeFor(platform.AnalyzeError), "analyze")
 	}
 	if err := files.Handler.WriteAnalyzed(c.AnalyzedPath, &analyzedMD, cmd.DefaultLogger); err != nil {
 		return err

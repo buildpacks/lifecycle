@@ -109,7 +109,7 @@ func (a *analyzeCmd) Exec() error {
 	)
 	analyzer, err := factory.NewAnalyzer(a.Inputs(), cmd.DefaultLogger)
 	if err != nil {
-		return unwrapErrorFailWithMessage(err, "initialize analyzer")
+		return unwrapErrorFailWithCode(err, a.CodeFor(platform.AnalyzeError), "initialize analyzer")
 	}
 	analyzedMD, err := analyzer.Analyze()
 	if err != nil {
