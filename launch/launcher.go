@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/log"
 )
 
 var (
@@ -27,9 +28,11 @@ type Launcher struct {
 	ExecEnv            string
 	Shell              Shell
 	LayersDir          string
+	Logger             *log.DefaultLogger
 	PlatformAPI        *api.Version
 	Processes          []Process
 	Setenv             func(string, string) error
+	Setumask           func(Env) error
 }
 
 type ExecFunc func(argv0 string, argv []string, envv []string) error
@@ -69,6 +72,14 @@ func (l *Launcher) LaunchProcess(self string, proc Process) error {
 		return errors.Wrap(err, "exec.d")
 	}
 	proc.WorkingDirectory = getProcessWorkingDirectory(proc, l.AppDir)
+
+	if l.Setumask == nil {
+		l.Setumask = SetUmask
+	}
+	err := l.Setumask(l.Env)
+	if err != nil && l.Logger != nil {
+		l.Logger.Errorf("invalid umask: %s", err)
+	}
 
 	if proc.Direct {
 		return l.launchDirect(proc)
