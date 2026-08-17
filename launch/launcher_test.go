@@ -143,6 +143,19 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should report an empty command instead of panicking", func() {
+				// A buildpack can emit [[processes]] with command = [], which
+				// UnmarshalTOML accepts, so this reaches the launcher.
+				empty := process
+				empty.Command = launch.NewRawCommand([]string{})
+
+				err := launcher.LaunchProcess("", empty)
+
+				h.AssertNotNil(t, err)
+				h.AssertStringContains(t, err.Error(), "no command provided for process type")
+				h.AssertEq(t, len(syscallExecArgsColl), 0)
+			})
+
 			it("should set argv0 to absolute path of command", func() {
 				h.AssertNil(t, launcher.LaunchProcess("", process))
 				if len(syscallExecArgsColl) != 1 {
