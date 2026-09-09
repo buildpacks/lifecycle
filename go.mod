@@ -10,7 +10,6 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.21.9
-	github.com/google/uuid v1.6.0
 	github.com/heroku/color v0.0.6
 	github.com/moby/buildkit v0.32.2
 	github.com/moby/moby/api v1.55.0
@@ -310,4 +309,4 @@ tool github.com/golang/mock/mockgen
 
 tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
-go 1.26.6
+go 1.27.1
