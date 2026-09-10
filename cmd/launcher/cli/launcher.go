@@ -50,6 +50,7 @@ func RunLaunch() error {
 		ExecD:              launch.NewExecDRunner(),
 		Shell:              launch.DefaultShell,
 		Setenv:             os.Setenv,
+		Logger:             cmd.DefaultLogger,
 	}
 
 	if err := launcher.Launch(os.Args[0], os.Args[1:]); err != nil {
