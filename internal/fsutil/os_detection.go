@@ -23,8 +23,8 @@ type Detector interface {
 
 // DefaultDetector implements Detector
 type DefaultDetector struct {
-	once sync.Once
 	info *OSInfo
+	once sync.Once
 }
 
 // HasSystemdFile returns true if /etc/os-release exists with contents
