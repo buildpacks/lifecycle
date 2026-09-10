@@ -18,13 +18,13 @@ type ImageDeleter interface {
 // ImageDeleterImpl is a component to manage cache image deletion
 type ImageDeleterImpl struct {
 	logger          log.Logger
-	deletionEnabled bool
 	comparer        ImageComparer
+	deletionEnabled bool
 }
 
 // NewImageDeleter creates a new ImageDeleter implementation
 func NewImageDeleter(comparer ImageComparer, logger log.Logger, deletionEnabled bool) *ImageDeleterImpl {
-	return &ImageDeleterImpl{comparer: comparer, logger: logger, deletionEnabled: deletionEnabled}
+	return &ImageDeleterImpl{logger: logger, comparer: comparer, deletionEnabled: deletionEnabled}
 }
 
 // DeleteOrigImageIfDifferentFromNewImage compares the two images, and it tries to delete it if they are not the same

@@ -23,8 +23,8 @@ type stubImage struct {
 }
 
 type topLayerResult struct {
-	sha string
 	err error
+	sha string
 }
 
 func (s *stubImage) TopLayer() (string, error) {

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/BurntSushi/toml"
 	"github.com/apex/log"
@@ -15,7 +16,6 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/fake"
 	"github.com/google/go-containerregistry/pkg/v1/types"
-	"github.com/google/uuid"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -345,9 +345,9 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 				when("run base image", func() {
 					type testCase struct {
+						expectedImageSHA          string
 						firstDockerfileRebasable  bool
 						secondDockerfileRebasable bool
-						expectedImageSHA          string
 					}
 					var (
 						rebasableSHA    = "sha256:dcdbce936116f100aba6bc32c95350066e2f4005516542b930d7166b7be4016e"
