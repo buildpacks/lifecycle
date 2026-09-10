@@ -309,4 +309,6 @@ tool github.com/golang/mock/mockgen
 
 tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
-go 1.27.1
+toolchain go1.27.1
+
+go 1.27
