@@ -310,4 +310,4 @@ tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
 toolchain go1.27.1
 
-go 1.27
+go 1.27.0
