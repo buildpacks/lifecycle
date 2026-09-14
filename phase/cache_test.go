@@ -185,6 +185,20 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, previousLayers, reusedLayers)
 					})
 
+					it("does not also add a layer it just reused", func() {
+						// simulates an image cache, whose VerifyLayer is a no-op that always succeeds
+						wrappedCache := &verifyAlwaysCache{Cache: testCache}
+
+						err := exporter.Cache(layersDir, wrappedCache)
+						h.AssertNil(t, err)
+
+						for _, sha := range wrappedCache.addedLayerSHAs {
+							if sha == "cache-true-layer-digest" {
+								t.Fatal("expected reused layer 'cache-true-layer-digest' not to also be added")
+							}
+						}
+					})
+
 					it("sets cache metadata", func() {
 						err := exporter.Cache(layersDir, testCache)
 						h.AssertNil(t, err)
@@ -287,6 +301,23 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+}
+
+// verifyAlwaysCache wraps a phase.Cache and makes VerifyLayer always succeed,
+// mirroring cache.ImageCache#VerifyLayer, which trusts the registry to have
+// already verified digests. It also records every SHA passed to AddLayerFile.
+type verifyAlwaysCache struct {
+	phase.Cache
+	addedLayerSHAs []string
+}
+
+func (c *verifyAlwaysCache) VerifyLayer(_ string) error {
+	return nil
+}
+
+func (c *verifyAlwaysCache) AddLayerFile(tarPath, sha string) error {
+	c.addedLayerSHAs = append(c.addedLayerSHAs, sha)
+	return c.Cache.AddLayerFile(tarPath, sha)
 }
 
 func assertCacheHasLayer(t *testing.T, cache phase.Cache, id string) {
