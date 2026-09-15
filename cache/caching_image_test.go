@@ -96,6 +96,40 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("the cached layer contents do not match the diffID", func() {
+			it.Before(func() {
+				// A committed layer whose contents do not hash to its name; the launch
+				// cache directory is writable by the build user.
+				h.AssertNil(t, os.WriteFile(filepath.Join(tmpDir, "committed", layerSHA+".tar"), []byte("tampered"), 0600))
+				fakeImage.AddPreviousLayer(layerSHA, layerPath)
+			})
+
+			it("re-fetches the layer from the image instead of reusing the cache", func() {
+				h.AssertNil(t, subject.ReuseLayer(layerSHA))
+				h.AssertNil(t, subject.Save())
+
+				if !slices.Contains(fakeImage.ReusedLayers(), layerSHA) {
+					t.Fatalf("expected image to have reused layer '%s' from the image, not the cache", layerSHA)
+				}
+			})
+
+			it("does not fail the build", func() {
+				h.AssertNil(t, subject.ReuseLayer(layerSHA))
+			})
+
+			it("overwrites the tampered contents in the cache", func() {
+				h.AssertNil(t, subject.ReuseLayer(layerSHA))
+				h.AssertNil(t, subject.Save())
+
+				rc, err := volumeCache.RetrieveLayer(layerSHA)
+				h.AssertNil(t, err)
+				defer func() { _ = rc.Close() }()
+				contents, err := io.ReadAll(rc)
+				h.AssertNil(t, err)
+				h.AssertEq(t, contents, layerData)
+			})
+		})
+
 		when("the layer does not exist in the cache", func() {
 			it.Before(func() {
 				fakeImage.AddPreviousLayer(layerSHA, layerPath)
@@ -134,6 +168,24 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 				rc, err := subject.GetLayer(layerSHA)
 				h.AssertNil(t, err)
 				defer rc.Close()
+				contents, err := io.ReadAll(rc)
+				h.AssertNil(t, err)
+				h.AssertEq(t, contents, layerData)
+			})
+		})
+
+		when("the cached layer contents do not match the diffID", func() {
+			it.Before(func() {
+				h.AssertNil(t, fakeImage.AddLayer(layerPath))
+				h.AssertNil(t, subject.Save())
+				// Tamper after the cache is committed, so the entry is present but bad.
+				h.AssertNil(t, os.WriteFile(filepath.Join(tmpDir, "committed", layerSHA+".tar"), []byte("tampered"), 0600))
+			})
+
+			it("gets it from the image, not the cache", func() {
+				rc, err := subject.GetLayer(layerSHA)
+				h.AssertNil(t, err)
+				defer func() { _ = rc.Close() }()
 				contents, err := io.ReadAll(rc)
 				h.AssertNil(t, err)
 				h.AssertEq(t, contents, layerData)
