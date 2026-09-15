@@ -10,3 +10,5 @@ COPY ./container/ /
 
 RUN groupadd cnb --gid ${cnb_gid} && \
   useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb
+
+USER ${cnb_uid}:${cnb_gid}

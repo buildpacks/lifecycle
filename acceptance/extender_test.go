@@ -144,6 +144,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						"--env", "CNB_PLATFORM_API=" + platformAPI,
 						"--volume", fmt.Sprintf("%s:/layers/analyzed.toml", analyzedPath),
 						"--volume", fmt.Sprintf("%s:/kaniko", kanikoDir),
+						"--user", "root", // image USER is non-root; kaniko needs root
 					}
 
 					t.Log("first build extends the build image by running Dockerfile commands")
@@ -207,6 +208,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						"--volume", fmt.Sprintf("%s:/layers/analyzed.toml", analyzedPath),
 						"--volume", fmt.Sprintf("%s:/layers/extended", extendedDir),
 						"--volume", fmt.Sprintf("%s:/kaniko", kanikoDir),
+						"--user", "root", // image USER is non-root; kaniko needs root
 					}
 
 					t.Log("first build extends the run image by running Dockerfile commands")
