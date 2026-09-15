@@ -26,6 +26,7 @@ import (
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/phase/testmock"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -827,6 +828,51 @@ version = "4.5.6"
 				label, err = fakeAppImage.Label("other.label.key")
 				h.AssertNil(t, err)
 				h.AssertEq(t, label, "other-label-value")
+			})
+
+			when("buildpack provides reserved labels", func() {
+				for _, reservedLabel := range []string{
+					platform.LifecycleMetadataLabel,
+					platform.BuildMetadataLabel,
+					platform.ProjectMetadataLabel,
+					platform.ExecEnvLabel,
+					phase.RebasableLabel,
+					platform.StackIDLabel,
+					platform.MixinsLabel,
+					"io.buildpacks.stack.other",
+					platform.TargetLabel,
+					platform.OSDistroNameLabel,
+					platform.OSDistroVersionLabel,
+					"io.buildpacks.base.other",
+				} {
+					it(fmt.Sprintf("fails export when buildpack provides %s", reservedLabel), func() {
+						metadataPath := filepath.Join(opts.LayersDir, "config", "metadata.toml")
+						f, err := os.OpenFile(metadataPath, os.O_APPEND|os.O_WRONLY, 0600) //nolint:gosec
+						h.AssertNil(t, err)
+						_, err = fmt.Fprintf(f, "\n[[labels]]\n  key = %q\n  value = \"malicious-value\"\n", reservedLabel)
+						h.AssertNil(t, err)
+						h.AssertNil(t, f.Close())
+
+						_, err = exporter.Export(opts)
+						h.AssertError(t, err, fmt.Sprintf("buildpack-provided label '%s' is reserved", reservedLabel))
+					})
+				}
+
+				it("succeeds when buildpack provides non-reserved labels", func() {
+					metadataPath := filepath.Join(opts.LayersDir, "config", "metadata.toml")
+					f, err := os.OpenFile(metadataPath, os.O_APPEND|os.O_WRONLY, 0600) //nolint:gosec
+					h.AssertNil(t, err)
+					_, err = fmt.Fprintf(f, "\n[[labels]]\n  key = %q\n  value = \"custom-val\"\n", "custom.buildpack.label")
+					h.AssertNil(t, err)
+					h.AssertNil(t, f.Close())
+
+					_, err = exporter.Export(opts)
+					h.AssertNil(t, err)
+
+					label, err := fakeAppImage.Label("custom.buildpack.label")
+					h.AssertNil(t, err)
+					h.AssertEq(t, label, "custom-val")
+				})
 			})
 
 			when("execution environment label", func() {
