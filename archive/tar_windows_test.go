@@ -21,15 +21,17 @@ func TestTarWindows(t *testing.T) {
 
 func testTarWindows(t *testing.T, when spec.G, it spec.S) {
 	var (
-		tmpDir string
-		tr     *archive.NormalizingTarReader
-		ftr    *fakeTarReader
+		tmpDir   string
+		destRoot string
+		tr       *archive.NormalizingTarReader
+		ftr      *fakeTarReader
 	)
 
 	it.Before(func() {
 		var err error
 		tmpDir, err = os.MkdirTemp("", "archive-extract-test")
 		h.AssertNil(t, err)
+		destRoot = tmpDir
 		ftr = &fakeTarReader{}
 		tr = archive.NewNormalizingTarReader(ftr)
 		tr.PrependDir(tmpDir)
@@ -58,7 +60,7 @@ func testTarWindows(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("sets dir attribute on windows directory symlinks", func() {
-			h.AssertNil(t, archive.Extract(tr))
+			h.AssertNil(t, archive.Extract(tr, destRoot))
 
 			extractedFile := filepath.Join(tmpDir, "root", "symlinkdir")
 			t.Log("asserting on", extractedFile)

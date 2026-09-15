@@ -1,6 +1,8 @@
 package phase_test
 
 import (
+	"archive/tar"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -482,6 +484,72 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 					sbomRestorer.EXPECT().RestoreFromCache(testCache, "some-digest")
 					err := restorer.Restore(testCache)
 					h.AssertNil(t, err)
+				})
+			})
+
+			when("there is a cache with a layer that escapes the layers dir", func() {
+				var (
+					tmpDir      string
+					layerSHA    string
+					escapedPath string
+				)
+
+				it.Before(func() {
+					var err error
+					tmpDir, err = os.MkdirTemp("", "escaped-layer-test")
+					h.AssertNil(t, err)
+
+					tarPath := filepath.Join(tmpDir, "escaped.tar")
+					var buf bytes.Buffer
+					tw := tar.NewWriter(&buf)
+					h.AssertNil(t, tw.WriteHeader(&tar.Header{
+						Name:     "../../escaped/file",
+						Typeflag: tar.TypeReg,
+						Mode:     0644,
+						Size:     int64(len("escaped-content")),
+					}))
+					_, err = tw.Write([]byte("escaped-content"))
+					h.AssertNil(t, err)
+					h.AssertNil(t, tw.Close())
+					h.AssertNil(t, os.WriteFile(tarPath, buf.Bytes(), 0600))
+
+					layerSHA = "sha256:" + h.ComputeSHA256ForFile(t, tarPath)
+					escapedPath = filepath.Join(layersDir, "..", "..", "escaped", "file")
+
+					h.AssertNil(t, testCache.AddLayerFile(tarPath, layerSHA))
+					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{
+						Buildpacks: []buildpack.LayersMetadata{
+							{
+								ID: "buildpack.id",
+								Layers: map[string]buildpack.LayerMetadata{
+									"escaped-layer": {
+										SHA: layerSHA,
+										LayerMetadataFile: buildpack.LayerMetadataFile{
+											Cache: true,
+										},
+									},
+								},
+							},
+						},
+					}))
+					h.AssertNil(t, testCache.Commit())
+
+					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "escaped-layer", "[metadata]\n", layerSHA))
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(tmpDir))
+				})
+
+				it("warns and skips instead of failing", func() {
+					err := restorer.Restore(testCache)
+					h.AssertNil(t, err)
+
+					h.AssertPathDoesNotExist(t, escapedPath)
+
+					entryPath := filepath.FromSlash("/escaped/file")
+					expected := fmt.Sprintf("Skipping restore for layer buildpack.id:escaped-layer: refusing to extract file %q: path escapes destination root: %q is not under %q. The current layers directory is %q.", entryPath, entryPath, layersDir, layersDir)
+					assertLogEntry(t, logHandler, expected)
 				})
 			})
 

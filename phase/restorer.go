@@ -9,6 +9,7 @@ import (
 	c "github.com/buildpacks/lifecycle/cache"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/archive"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/layers"
@@ -107,6 +108,10 @@ func (r *Restorer) Restore(cache Cache) error {
 							r.Logger.Warnf("Skipping restore for layer %s: %s", bpLayer.Identifier(), readErr.Error())
 							return nil
 						}
+						if errors.Is(err, archive.ErrEscapesRoot) {
+							r.Logger.Warnf("Skipping restore for layer %s: %s. The current layers directory is %q.", bpLayer.Identifier(), err, r.LayersDir)
+							return nil
+						}
 						return errors.Wrapf(err, "restoring layer %s", bpLayer.Identifier())
 					}
 					return nil
@@ -149,7 +154,7 @@ func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {
 	}
 	defer rc.Close()
 
-	return layers.Extract(rc, "")
+	return layers.Extract(rc, r.LayersDir)
 }
 
 func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (platform.CacheMetadata, error) {
