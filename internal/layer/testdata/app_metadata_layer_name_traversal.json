@@ -1,0 +1,16 @@
+{
+  "buildpacks": [
+    {
+      "key": "metadata.buildpack",
+      "layers": {
+        "../../escaped-layer": {
+          "data": {
+            "escaped-layer-key": "escaped-layer-value"
+          },
+          "launch": true,
+          "sha": "escaped-layer-sha"
+        }
+      }
+    }
+  ]
+}
