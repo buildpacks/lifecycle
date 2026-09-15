@@ -1,6 +1,7 @@
 package phase_test
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -82,7 +83,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				layerFactory.EXPECT().
 					DirLayer(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(id string, dir string, createdBy string) (layers.Layer, error) {
-						return createTestLayer(id, tmpDir)
+						return createTestCacheLayer(id, tmpDir)
 					}).AnyTimes()
 
 				layersDir = filepath.Join("testdata", "cacher", "layers")
@@ -106,7 +107,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 					t.Log("adds layer shas to metadata")
 					h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
-					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, testLayerDigest("buildpack.id:cache-true-layer"))
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, testCacheLayerDigest("buildpack.id:cache-true-layer"))
 					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
 					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
 					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
@@ -135,7 +136,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						t.Log("adds bom sha to metadata")
-						h.AssertEq(t, metadata.BOM.SHA, testLayerDigest("cache.sbom"))
+						h.AssertEq(t, metadata.BOM.SHA, testCacheLayerDigest("cache.sbom"))
 						assertCacheHasLayer(t, testCache, "cache.sbom")
 					})
 				})
@@ -193,8 +194,8 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						for _, sha := range wrappedCache.addedLayerSHAs {
-							if sha == "cache-true-layer-digest" {
-								t.Fatal("expected reused layer 'cache-true-layer-digest' not to also be added")
+							if sha == testCacheLayerDigest("cache-true-layer") {
+								t.Fatalf("expected reused layer '%s' not to also be added", testCacheLayerDigest("cache-true-layer"))
 							}
 						}
 					})
@@ -208,7 +209,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 						t.Log("adds layer shas to metadata")
 						h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, "cache-true-layer-digest")
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, testCacheLayerDigest("cache-true-layer"))
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
@@ -217,7 +218,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].SHA, "cache-true-no-sha-layer-digest")
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].SHA, testCacheLayerDigest("cache-true-no-sha-layer"))
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Launch, false)
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Build, false)
 						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Cache, true)
@@ -226,7 +227,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						h.AssertEq(t, metadata.Buildpacks[1].ID, "other.buildpack.id")
-						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].SHA, "other-buildpack-layer-digest")
+						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].SHA, testCacheLayerDigest("other-buildpack-layer"))
 						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Launch, true)
 						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Build, false)
 						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Cache, true)
@@ -240,13 +241,13 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						err := os.WriteFile(
 							filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
-							fmt.Appendf(nil, metadataTemplate, "different-sha", "not-the-sha-you-want"),
+							fmt.Appendf(nil, metadataTemplate, testCacheLayerDigest("different-sha"), testCacheLayerDigest("not-the-sha-you-want")),
 							0600,
 						)
 						h.AssertNil(t, err)
 
 						err = os.WriteFile(
-							filepath.Join(cacheDir, "committed", "some-layer.tar"),
+							filepath.Join(cacheDir, "committed", testCacheLayerDigest("different-sha")+".tar"),
 							[]byte("some data"),
 							0600,
 						)
@@ -262,8 +263,8 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, len(matches), 4)
 
 						for _, m := range matches {
-							if strings.Contains(m, "some-layer.tar") {
-								t.Fatal("expected layer 'some-layer.tar' not to exist")
+							if strings.Contains(m, testCacheLayerDigest("different-sha")) {
+								t.Fatal("expected layer with different sha not to exist")
 							}
 						}
 					})
@@ -279,7 +280,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				layerFactory.EXPECT().
 					DirLayer("buildpack.id:layer-2", gomock.Any(), gomock.Any()).
 					DoAndReturn(func(id string, dir string, createdBy string) (layers.Layer, error) {
-						return createTestLayer(id, tmpDir)
+						return createTestCacheLayer(id, tmpDir)
 					}).
 					AnyTimes()
 				layersDir = filepath.Join("testdata", "cacher", "invalid-layers")
@@ -320,10 +321,37 @@ func (c *verifyAlwaysCache) AddLayerFile(tarPath, sha string) error {
 	return c.Cache.AddLayerFile(tarPath, sha)
 }
 
+func testCacheLayerDigest(id string) string {
+	parts := strings.Split(id, ":")
+	last := parts[len(parts)-1]
+	sum := sha256.Sum256([]byte(last))
+	return fmt.Sprintf("sha256:%x", sum)
+}
+
+func createTestCacheLayer(id string, tmpDir string) (layers.Layer, error) {
+	tarPath := filepath.Join(tmpDir, "artifacts", strings.ReplaceAll(id, "/", "_"))
+	f, err := os.Create(tarPath) //nolint:gosec
+	if err != nil {
+		return layers.Layer{}, err
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	_, err = f.Write([]byte(testLayerContents(id)))
+	if err != nil {
+		return layers.Layer{}, err
+	}
+	return layers.Layer{
+		ID:      id,
+		TarPath: tarPath,
+		Digest:  testCacheLayerDigest(id),
+	}, nil
+}
+
 func assertCacheHasLayer(t *testing.T, cache phase.Cache, id string) {
 	t.Helper()
 
-	rc, err := cache.RetrieveLayer(testLayerDigest(id))
+	rc, err := cache.RetrieveLayer(testCacheLayerDigest(id))
 	h.AssertNil(t, err)
 	defer rc.Close()
 	contents, err := io.ReadAll(rc)
@@ -345,7 +373,7 @@ func initializeCache(t *testing.T, exporter *phase.Exporter, testCache *phase.Ca
 
 	h.AssertNil(t, os.WriteFile(
 		filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
-		fmt.Appendf(nil, metadataTemplate, "cache-true-layer-digest", "cache-true-no-sha-layer"),
+		fmt.Appendf(nil, metadataTemplate, testCacheLayerDigest("cache-true-layer"), "cache-true-no-sha-layer"),
 		0600,
 	))
 }

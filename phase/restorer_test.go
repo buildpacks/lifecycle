@@ -463,6 +463,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 			when("there is a cache with BOM information", func() {
 				var (
 					tmpDir string
+					bomSHA = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 				)
 
 				it.Before(func() {
@@ -471,8 +472,8 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 					tmpDir, err := os.MkdirTemp("", "")
 					h.AssertNil(t, err)
 					h.Mkfile(t, "some-data", filepath.Join(tmpDir, "some.tar"))
-					h.AssertNil(t, testCache.AddLayerFile(filepath.Join(tmpDir, "some.tar"), "some-digest"))
-					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: files.LayerMetadata{SHA: "some-digest"}}))
+					h.AssertNil(t, testCache.AddLayerFile(filepath.Join(tmpDir, "some.tar"), bomSHA))
+					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: files.LayerMetadata{SHA: bomSHA}}))
 					h.AssertNil(t, testCache.Commit())
 				})
 
@@ -481,7 +482,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 				})
 
 				it("restores the SBOM layer from the cache", func() {
-					sbomRestorer.EXPECT().RestoreFromCache(testCache, "some-digest")
+					sbomRestorer.EXPECT().RestoreFromCache(testCache, bomSHA)
 					err := restorer.Restore(testCache)
 					h.AssertNil(t, err)
 				})
@@ -549,6 +550,28 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 
 					entryPath := filepath.FromSlash("/escaped/file")
 					expected := fmt.Sprintf("Skipping restore for layer buildpack.id:escaped-layer: refusing to extract file %q: path escapes destination root: %q is not under %q. The current layers directory is %q.", entryPath, entryPath, layersDir, layersDir)
+					assertLogEntry(t, logHandler, expected)
+				})
+			})
+
+			when("there is a cache with a malformed BOM SHA", func() {
+				const malformedBOMSHA = "malformed-bom-sha"
+
+				it.Before(func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore SBOM")
+
+					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: files.LayerMetadata{SHA: malformedBOMSHA}}))
+					h.AssertNil(t, testCache.Commit())
+				})
+
+				it("warns and skips instead of failing", func() {
+					readErr := cache.NewReadErr(fmt.Sprintf("invalid diffID %q: must be sha256:<64 lowercase hex>", malformedBOMSHA))
+					sbomRestorer.EXPECT().RestoreFromCache(testCache, malformedBOMSHA).Return(readErr)
+
+					err := restorer.Restore(testCache)
+					h.AssertNil(t, err)
+
+					expected := fmt.Sprintf("Skipping restore for SBOM: %s", readErr.Error())
 					assertLogEntry(t, logHandler, expected)
 				})
 			})
