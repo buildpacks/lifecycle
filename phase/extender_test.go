@@ -1,10 +1,13 @@
 package phase_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,7 +17,10 @@ import (
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/fake"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/google/uuid"
 	"github.com/sclevine/spec"
@@ -635,7 +641,35 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						).Return(someFakeImage, nil)
 
 						err := extender.Extend("run", logger)
-						h.AssertError(t, err, `extending run image: cannot determine whether user "blah" is root: user "blah" must be a numeric UID`)
+						h.AssertError(t, err, `extending run image: cannot determine whether user "blah" is root: user "blah" not found in /etc/passwd`)
+					})
+
+					it("succeeds when the run image user is a named user resolved to non-root via /etc/passwd", func() {
+						prepareDockerfile("A", "run", "app")
+
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						firstConfig := &v1.ConfigFile{Config: v1.Config{
+							User: "pack:5678",
+						}}
+						someFakeImage.ConfigFileReturns(firstConfig, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{
+							Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+							Layers: []v1.Descriptor{},
+						}, nil)
+
+						extendedImage := imageWithPasswd(t, "pack:x:1000:1000::/home/pack:/bin/sh\n")
+						extendedImage, err := mutate.ConfigFile(extendedImage, firstConfig)
+						h.AssertNil(t, err)
+
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							gomock.Any(),
+							gomock.Any(),
+							logger,
+						).Return(extendedImage, nil)
+						fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
+
+						h.AssertNil(t, extender.Extend("run", logger))
 					})
 
 					it("warns if an intermediate extension changes user to root", func() {
@@ -698,7 +732,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						assertLogEntry(t, logHandler, fmt.Sprintf("Extension from %s changed the user ID from 1234 to 00; this must not be the final user ID (a following extension must reset the user).", expectedDockerfileA.Path))
 					})
 
-					it("warns and continues if an intermediate extension sets user to an unparseable value", func() {
+					it("continues if an intermediate extension sets user to a named value", func() {
 						logHandler := memory.New()
 						customLogger := &log.Logger{Handler: logHandler}
 
@@ -754,7 +788,11 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
 
 						h.AssertNil(t, extender.Extend("run", customLogger))
-						assertLogEntry(t, logHandler, fmt.Sprintf(`Extension from %s: cannot determine whether user "user@host" is root: user "user@host" must be a numeric UID; a following extension may still reset the user.`, expectedDockerfileA.Path))
+						for _, entry := range logHandler.Entries {
+							if strings.Contains(entry.Message, expectedDockerfileA.Path) {
+								t.Fatalf("Unexpected warning for intermediate named user: %s", entry.Message)
+							}
+						}
 					})
 
 					it("errors if there are no extensions and the base image has an unparseable user", func() {
@@ -769,7 +807,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						}, nil)
 
 						err := extender.Extend("run", logger)
-						h.AssertError(t, err, `extending run image: cannot determine whether user "user@host" is root`)
+						h.AssertError(t, err, `extending run image: cannot determine whether user "user@host" is root: user "user@host" not found in /etc/passwd`)
 					})
 				})
 			})
@@ -800,20 +838,20 @@ func testIsRoot(t *testing.T, when spec.G, it spec.S) {
 			{userID: "\u0660", expected: false, errSubstr: "cannot determine whether user \"\u0660\" is root"},
 			{userID: "1000", expected: false},
 			{userID: " 1000 ", expected: false},
-			{userID: "nonroot", expected: false, errSubstr: `user "nonroot" must be a numeric UID`},
-			{userID: "appuser", expected: false, errSubstr: `user "appuser" must be a numeric UID`},
-			{userID: "_custom", expected: false, errSubstr: `user "_custom" must be a numeric UID`},
-			{userID: "app_user$", expected: false, errSubstr: `user "app_user$" must be a numeric UID`},
-			{userID: "AppUser", expected: false, errSubstr: `user "AppUser" must be a numeric UID`},
-			{userID: "first.last", expected: false, errSubstr: `user "first.last" must be a numeric UID`},
-			{userID: "1user", expected: false, errSubstr: `user "1user" must be a numeric UID`},
+			{userID: "nonroot", expected: false, errSubstr: `user "nonroot" not found in /etc/passwd`},
+			{userID: "appuser", expected: false, errSubstr: `user "appuser" not found in /etc/passwd`},
+			{userID: "_custom", expected: false, errSubstr: `user "_custom" not found in /etc/passwd`},
+			{userID: "app_user$", expected: false, errSubstr: `user "app_user$" not found in /etc/passwd`},
+			{userID: "AppUser", expected: false, errSubstr: `user "AppUser" not found in /etc/passwd`},
+			{userID: "first.last", expected: false, errSubstr: `user "first.last" not found in /etc/passwd`},
+			{userID: "1user", expected: false, errSubstr: `user "1user" not found in /etc/passwd`},
 			{userID: "user@host", expected: false, errSubstr: `cannot determine whether user "user@host" is root`},
 		}
 
 		for _, tc := range testCases {
 			name := fmt.Sprintf("evaluates %q", tc.userID)
 			it(name, func() {
-				actual, err := phase.IsRoot(tc.userID)
+				actual, err := phase.IsRoot(tc.userID, empty.Image)
 				if tc.errSubstr != "" {
 					h.AssertError(t, err, tc.errSubstr)
 				} else {
@@ -822,5 +860,129 @@ func testIsRoot(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 		}
+
+		it("resolves named non-root user via /etc/passwd", func() {
+			img := imageWithPasswd(t, "pack:x:1000:1000::/home/pack:/bin/sh\n")
+			actual, err := phase.IsRoot("pack", img)
+			h.AssertNil(t, err)
+			h.AssertEq(t, actual, false)
+		})
+
+		it("resolves named user aliased to root (UID 0) via /etc/passwd", func() {
+			img := imageWithPasswd(t, "toor:x:0:0:root:/root:/bin/sh\n")
+			actual, err := phase.IsRoot("toor", img)
+			h.AssertNil(t, err)
+			h.AssertEq(t, actual, true)
+		})
+
+		it("errors when name is missing from /etc/passwd", func() {
+			img := imageWithPasswd(t, "pack:x:1000:1000::/home/pack:/bin/sh\n")
+			_, err := phase.IsRoot("missinguser", img)
+			h.AssertError(t, err, `cannot determine whether user "missinguser" is root: user "missinguser" not found in /etc/passwd`)
+		})
+
+		it("errors when /etc/passwd does not exist in the image", func() {
+			_, err := phase.IsRoot("pack", empty.Image)
+			h.AssertError(t, err, `cannot determine whether user "pack" is root: user "pack" not found in /etc/passwd`)
+		})
+
+		it("resolves when a higher layer overwrites /etc/passwd", func() {
+			l1 := createLayer(t, "etc/passwd", "pack:x:1000:1000::/home/pack:/bin/sh\n")
+			l2 := createLayer(t, "etc/passwd", "pack:x:0:0::/home/pack:/bin/sh\n")
+			img, err := mutate.AppendLayers(empty.Image, l1, l2)
+			h.AssertNil(t, err)
+
+			actual, err := phase.IsRoot("pack", img)
+			h.AssertNil(t, err)
+			h.AssertEq(t, actual, true)
+		})
+
+		it("errors when a higher layer whiteouts /etc/passwd", func() {
+			l1 := createLayer(t, "etc/passwd", "pack:x:1000:1000::/home/pack:/bin/sh\n")
+			l2 := createLayer(t, "etc/.wh.passwd", "")
+			img, err := mutate.AppendLayers(empty.Image, l1, l2)
+			h.AssertNil(t, err)
+
+			_, err = phase.IsRoot("pack", img)
+			h.AssertError(t, err, `cannot determine whether user "pack" is root: user "pack" not found in /etc/passwd`)
+		})
+
+		it("handles numeric cases without reading image layers", func() {
+			for _, tc := range []struct {
+				user     string
+				expected bool
+			}{
+				{"0", true},
+				{"00", true},
+				{" 0 ", true},
+				{"1000", false},
+			} {
+				actual, err := phase.IsRoot(tc.user, nil)
+				h.AssertNil(t, err)
+				h.AssertEq(t, actual, tc.expected)
+			}
+		})
+
+		it("errors when UID field in /etc/passwd is malformed", func() {
+			img := imageWithPasswd(t, "pack:x:invalid_uid:1000::/home/pack:/bin/sh\n")
+			_, err := phase.IsRoot("pack", img)
+			h.AssertError(t, err, `cannot determine whether user "pack" is root: failed to parse UID "invalid_uid" in /etc/passwd`)
+		})
+
+		it("errors when /etc/passwd is a symlink", func() {
+			layer := layerWithHeader(t, &tar.Header{
+				Name:     "etc/passwd",
+				Mode:     0777,
+				Typeflag: tar.TypeSymlink,
+				Linkname: "/etc/passwd.real",
+			}, "")
+			img, err := mutate.AppendLayers(empty.Image, layer)
+			h.AssertNil(t, err)
+
+			_, err = phase.IsRoot("pack", img)
+			h.AssertError(t, err, `cannot determine whether user "pack" is root: /etc/passwd is not a regular file`)
+		})
+
+		it("handles comments, blank lines, and alternative header paths", func() {
+			layer := layerWithHeader(t, &tar.Header{Name: "./etc/passwd", Mode: 0644},
+				"# comment line\n\npack:x:1000:1000::/home/pack:/bin/sh\n")
+			img, err := mutate.AppendLayers(empty.Image, layer)
+			h.AssertNil(t, err)
+
+			actual, err := phase.IsRoot("pack", img)
+			h.AssertNil(t, err)
+			h.AssertEq(t, actual, false)
+		})
 	})
+}
+
+func createLayer(t *testing.T, name, content string) v1.Layer {
+	t.Helper()
+	return layerWithHeader(t, &tar.Header{Name: name, Mode: 0644}, content)
+}
+
+func layerWithHeader(t *testing.T, hdr *tar.Header, content string) v1.Layer {
+	t.Helper()
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	hdr.Size = int64(len(content))
+	h.AssertNil(t, tw.WriteHeader(hdr))
+	_, err := tw.Write([]byte(content))
+	h.AssertNil(t, err)
+	h.AssertNil(t, tw.Close())
+
+	b := buf.Bytes()
+	layer, err := tarball.LayerFromOpener(func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(b)), nil
+	})
+	h.AssertNil(t, err)
+	return layer
+}
+
+func imageWithPasswd(t *testing.T, passwd string) v1.Image {
+	t.Helper()
+	layer := createLayer(t, "etc/passwd", passwd)
+	img, err := mutate.AppendLayers(empty.Image, layer)
+	h.AssertNil(t, err)
+	return img
 }
