@@ -1,10 +1,12 @@
 package cache_test
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -24,6 +26,11 @@ func TestVolumeCache(t *testing.T) {
 }
 
 func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
+	const (
+		validDiffID       = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+		nonExistentDiffID = "sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+	)
+
 	var (
 		tmpDir       string
 		volumeDir    string
@@ -195,11 +202,11 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		when("#RetrieveLayer", func() {
 			when("layer exists", func() {
 				it.Before(func() {
-					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0600))
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, validDiffID+".tar"), []byte("dummy data"), 0600))
 				})
 
 				it("returns the layer's reader", func() {
-					rc, err := subject.RetrieveLayer("some_sha")
+					rc, err := subject.RetrieveLayer(validDiffID)
 					h.AssertNil(t, err)
 
 					bytes, err := io.ReadAll(rc)
@@ -210,8 +217,8 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 			when("layer does not exist", func() {
 				it("returns an error", func() {
-					_, err := subject.RetrieveLayer("some_nonexistent_sha")
-					h.AssertError(t, err, "failed to find cache layer with SHA 'some_nonexistent_sha'")
+					_, err := subject.RetrieveLayer(nonExistentDiffID)
+					h.AssertError(t, err, fmt.Sprintf("failed to find cache layer with SHA '%s'", nonExistentDiffID))
 				})
 			})
 		})
@@ -219,11 +226,11 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		when("#RetrieveLayerFile", func() {
 			when("layer exists", func() {
 				it.Before(func() {
-					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0600))
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, validDiffID+".tar"), []byte("dummy data"), 0600))
 				})
 
 				it("returns the layer's reader", func() {
-					layerPath, err := subject.RetrieveLayerFile("some_sha")
+					layerPath, err := subject.RetrieveLayerFile(validDiffID)
 					h.AssertNil(t, err)
 
 					bytes, err := os.ReadFile(layerPath)
@@ -234,8 +241,8 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 			when("layer does not exist", func() {
 				it("returns an error", func() {
-					_, err := subject.RetrieveLayerFile("some_nonexistent_sha")
-					h.AssertError(t, err, "failed to find cache layer with SHA 'some_nonexistent_sha'")
+					_, err := subject.RetrieveLayerFile(nonExistentDiffID)
+					h.AssertError(t, err, fmt.Sprintf("failed to find cache layer with SHA '%s'", nonExistentDiffID))
 				})
 			})
 		})
@@ -317,12 +324,12 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("add then commit", func() {
 					it("retrieve returns newly added layer", func() {
-						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
+						h.AssertNil(t, subject.AddLayerFile(tarPath, validDiffID))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						rc, err := subject.RetrieveLayer("some_sha")
+						rc, err := subject.RetrieveLayer(validDiffID)
 						h.AssertNil(t, err)
 
 						bytes, err := io.ReadAll(rc)
@@ -336,16 +343,16 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						h.AssertError(t, subject.AddLayerFile(tarPath, "some_sha"), "cache cannot be modified after commit")
+						h.AssertError(t, subject.AddLayerFile(tarPath, validDiffID), "cache cannot be modified after commit")
 					})
 				})
 
 				when("add without commit", func() {
 					it("retrieve returns not found error", func() {
-						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
+						h.AssertNil(t, subject.AddLayerFile(tarPath, validDiffID))
 
-						_, err := subject.RetrieveLayer("some_sha")
-						h.AssertError(t, err, "failed to find cache layer with SHA 'some_sha'")
+						_, err := subject.RetrieveLayer(validDiffID)
+						h.AssertError(t, err, fmt.Sprintf("failed to find cache layer with SHA '%s'", validDiffID))
 					})
 				})
 
@@ -354,16 +361,16 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						existingLayerTar, err := os.CreateTemp("", "*.tar")
 						h.AssertNil(t, err)
 						h.AssertNil(t, os.WriteFile(existingLayerTar.Name(), []byte("existing data"), 0600))
-						h.AssertNil(t, subject.AddLayerFile(existingLayerTar.Name(), "some_sha"))
+						h.AssertNil(t, subject.AddLayerFile(existingLayerTar.Name(), validDiffID))
 					})
 
 					it("does nothing", func() {
-						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
+						h.AssertNil(t, subject.AddLayerFile(tarPath, validDiffID))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						rc, err := subject.RetrieveLayer("some_sha")
+						rc, err := subject.RetrieveLayer(validDiffID)
 						h.AssertNil(t, err)
 
 						bytes, err := io.ReadAll(rc)
@@ -450,17 +457,17 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 			when("#ReuseLayer", func() {
 				it.Before(func() {
-					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0600))
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, validDiffID+".tar"), []byte("dummy data"), 0600))
 				})
 
 				when("reuse then commit", func() {
 					it("retrieve returns the reused layer", func() {
-						h.AssertNil(t, subject.ReuseLayer("some_sha"))
+						h.AssertNil(t, subject.ReuseLayer(validDiffID))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						rc, err := subject.RetrieveLayer("some_sha")
+						rc, err := subject.RetrieveLayer(validDiffID)
 						h.AssertNil(t, err)
 
 						bytes, err := io.ReadAll(rc)
@@ -474,15 +481,15 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						h.AssertError(t, subject.ReuseLayer("some_sha"), "cache cannot be modified after commit")
+						h.AssertError(t, subject.ReuseLayer(validDiffID), "cache cannot be modified after commit")
 					})
 				})
 
 				when("reuse without commit", func() {
 					it("retrieve returns the previous layer", func() {
-						h.AssertNil(t, subject.ReuseLayer("some_sha"))
+						h.AssertNil(t, subject.ReuseLayer(validDiffID))
 
-						rc, err := subject.RetrieveLayer("some_sha")
+						rc, err := subject.RetrieveLayer(validDiffID)
 						h.AssertNil(t, err)
 
 						bytes, err := io.ReadAll(rc)
@@ -495,16 +502,16 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						tarPath := filepath.Join(tmpDir, "some-layer.tar")
 						h.AssertNil(t, os.WriteFile(tarPath, []byte("existing data"), 0600))
-						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
+						h.AssertNil(t, subject.AddLayerFile(tarPath, validDiffID))
 					})
 
 					it("does nothing", func() {
-						h.AssertNil(t, subject.ReuseLayer("some_sha"))
+						h.AssertNil(t, subject.ReuseLayer(validDiffID))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						rc, err := subject.RetrieveLayer("some_sha")
+						rc, err := subject.RetrieveLayer(validDiffID)
 						h.AssertNil(t, err)
 
 						bytes, err := io.ReadAll(rc)
@@ -515,14 +522,14 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("the layer does not exist", func() {
 					it("fails with a read error", func() {
-						err := subject.ReuseLayer("some_nonexistent_sha")
+						err := subject.ReuseLayer(nonExistentDiffID)
 						isReadErr, _ := cache.IsReadErr(err)
 						h.AssertEq(t, isReadErr, true)
 
 						err = subject.Commit()
 						h.AssertNil(t, err)
 
-						_, err = subject.RetrieveLayer("some_sha")
+						_, err = subject.RetrieveLayer(nonExistentDiffID)
 						isReadErr, _ = cache.IsReadErr(err)
 						h.AssertEq(t, isReadErr, true)
 					})
@@ -536,6 +543,249 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 					err = subject.Commit()
 					h.AssertError(t, err, "cache cannot be modified after commit")
+				})
+			})
+		})
+
+		when("validateDiffID", func() {
+			testCases := []struct {
+				name        string
+				diffID      string
+				expectError bool
+			}{
+				{
+					name:        "valid canonical diffID",
+					diffID:      "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+					expectError: false,
+				},
+				{
+					name:        "valid real sha256 diffID",
+					diffID:      "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+					expectError: false,
+				},
+				{
+					name:        "empty string",
+					diffID:      "",
+					expectError: true,
+				},
+				{
+					name:        "00",
+					diffID:      "00",
+					expectError: true,
+				},
+				{
+					name:        "+0",
+					diffID:      "+0",
+					expectError: true,
+				},
+				{
+					name:        "0x0",
+					diffID:      "0x0",
+					expectError: true,
+				},
+				{
+					name:        " 0",
+					diffID:      " 0",
+					expectError: true,
+				},
+				{
+					name:        "0 ",
+					diffID:      "0 ",
+					expectError: true,
+				},
+				{
+					name:        "root ",
+					diffID:      "root ",
+					expectError: true,
+				},
+				{
+					name:        "unicode digits",
+					diffID:      "sha256:٠١٢٣٤٥٦٧٨٩abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+					expectError: true,
+				},
+				{
+					name:        "missing sha256 prefix",
+					diffID:      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+					expectError: true,
+				},
+				{
+					name:        "wrong algorithm prefix",
+					diffID:      "sha512:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+					expectError: true,
+				},
+				{
+					name:        "uppercase hex",
+					diffID:      "sha256:0123456789ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef",
+					expectError: true,
+				},
+				{
+					name:        "mixed case hex",
+					diffID:      "sha256:0123456789Abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+					expectError: true,
+				},
+				{
+					name:        "short hex",
+					diffID:      "sha256:abcd",
+					expectError: true,
+				},
+				{
+					name:        "long hex",
+					diffID:      "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+					expectError: true,
+				},
+				{
+					name:        "non-hex characters",
+					diffID:      "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg",
+					expectError: true,
+				},
+				{
+					name:        "path traversal without prefix",
+					diffID:      "../../etc/passwd",
+					expectError: true,
+				},
+				{
+					name:        "path traversal with prefix",
+					diffID:      "sha256:../../etc/passwd",
+					expectError: true,
+				},
+				{
+					name:        "path traversal parent directory",
+					diffID:      "sha256:../foo",
+					expectError: true,
+				},
+				{
+					name:        "path traversal slash",
+					diffID:      "sha256:foo/bar",
+					expectError: true,
+				},
+				{
+					name:        "leading whitespace",
+					diffID:      " sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+					expectError: true,
+				},
+				{
+					name:        "trailing whitespace",
+					diffID:      "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef ",
+					expectError: true,
+				},
+				{
+					name:        "trailing null byte",
+					diffID:      "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\x00",
+					expectError: true,
+				},
+			}
+
+			for _, tc := range testCases {
+				it(fmt.Sprintf("handles %s", tc.name), func() {
+					err := cache.ValidateDiffID(tc.diffID)
+					if tc.expectError {
+						h.AssertError(t, err, fmt.Sprintf("invalid diffID %q: must be sha256:<64 lowercase hex>", tc.diffID))
+					} else {
+						h.AssertNil(t, err)
+					}
+				})
+			}
+		})
+
+		when("methods handle malformed diffID per spec", func() {
+			const malformedDiffID = "sha256:invalid-or-traversal/../"
+
+			when("#AddLayerFile", func() {
+				it("returns a hard error on malformed diffID", func() {
+					tarPath := filepath.Join(tmpDir, "some-layer.tar")
+					h.AssertNil(t, os.WriteFile(tarPath, []byte("dummy data"), 0600))
+
+					err := subject.AddLayerFile(tarPath, malformedDiffID)
+					h.AssertError(t, err, fmt.Sprintf("invalid diffID %q: must be sha256:<64 lowercase hex>", malformedDiffID))
+					isReadErr, _ := cache.IsReadErr(err)
+					h.AssertEq(t, isReadErr, false)
+				})
+			})
+
+			when("#AddLayer", func() {
+				it("returns a hard error on malformed diffID", func() {
+					rc := io.NopCloser(strings.NewReader("dummy data"))
+					err := subject.AddLayer(rc, malformedDiffID)
+					h.AssertError(t, err, fmt.Sprintf("invalid diffID %q: must be sha256:<64 lowercase hex>", malformedDiffID))
+					isReadErr, _ := cache.IsReadErr(err)
+					h.AssertEq(t, isReadErr, false)
+				})
+			})
+
+			when("#ReuseLayer", func() {
+				it("returns a hard error on malformed diffID", func() {
+					err := subject.ReuseLayer(malformedDiffID)
+					h.AssertError(t, err, fmt.Sprintf("invalid diffID %q: must be sha256:<64 lowercase hex>", malformedDiffID))
+					isReadErr, _ := cache.IsReadErr(err)
+					h.AssertEq(t, isReadErr, false)
+				})
+			})
+
+			when("#HasLayer", func() {
+				it("returns (false, nil) pure miss on malformed diffID", func() {
+					hasLayer, err := subject.HasLayer(malformedDiffID)
+					h.AssertNil(t, err)
+					h.AssertEq(t, hasLayer, false)
+				})
+
+				it("returns true for existing valid layer and false for non-existent valid layer", func() {
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, validDiffID+".tar"), []byte("data"), 0600))
+					hasLayer, err := subject.HasLayer(validDiffID)
+					h.AssertNil(t, err)
+					h.AssertEq(t, hasLayer, true)
+
+					hasLayer, err = subject.HasLayer(nonExistentDiffID)
+					h.AssertNil(t, err)
+					h.AssertEq(t, hasLayer, false)
+				})
+			})
+
+			when("#RetrieveLayer", func() {
+				it("returns a ReadErr on malformed diffID", func() {
+					rc, err := subject.RetrieveLayer(malformedDiffID)
+					h.AssertNil(t, rc)
+					isReadErr, readErr := cache.IsReadErr(err)
+					h.AssertEq(t, isReadErr, true)
+					h.AssertEq(t, readErr.Error(), fmt.Sprintf("invalid diffID %q: must be sha256:<64 lowercase hex>", malformedDiffID))
+				})
+			})
+
+			when("#RetrieveLayerFile", func() {
+				it("returns a ReadErr on malformed diffID", func() {
+					path, err := subject.RetrieveLayerFile(malformedDiffID)
+					h.AssertEq(t, path, "")
+					isReadErr, readErr := cache.IsReadErr(err)
+					h.AssertEq(t, isReadErr, true)
+					h.AssertEq(t, readErr.Error(), fmt.Sprintf("invalid diffID %q: must be sha256:<64 lowercase hex>", malformedDiffID))
+				})
+			})
+
+			when("#VerifyLayer", func() {
+				it("returns a ReadErr on malformed diffID", func() {
+					err := subject.VerifyLayer(malformedDiffID)
+					isReadErr, readErr := cache.IsReadErr(err)
+					h.AssertEq(t, isReadErr, true)
+					h.AssertEq(t, readErr.Error(), fmt.Sprintf("invalid diffID %q: must be sha256:<64 lowercase hex>", malformedDiffID))
+				})
+
+				it("returns nil when layer hash matches diffID and ReadErr when it mismatches", func() {
+					tarPath := filepath.Join(tmpDir, "layer.tar")
+					data := []byte("some layer data")
+					h.AssertNil(t, os.WriteFile(tarPath, data, 0600))
+					hasher := sha256.New()
+					hasher.Write(data)
+					matchingSHA := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
+
+					h.AssertNil(t, subject.AddLayerFile(tarPath, matchingSHA))
+					h.AssertNil(t, subject.Commit())
+
+					h.AssertNil(t, subject.VerifyLayer(matchingSHA))
+
+					otherSHA := "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, otherSHA+".tar"), data, 0600))
+					err := subject.VerifyLayer(otherSHA)
+					isReadErr, _ := cache.IsReadErr(err)
+					h.AssertEq(t, isReadErr, true)
 				})
 			})
 		})

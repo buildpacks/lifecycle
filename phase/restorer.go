@@ -125,7 +125,12 @@ func (r *Restorer) Restore(cache Cache) error {
 			if cacheMeta.BOM.SHA != "" {
 				r.Logger.Infof("Restoring data for SBOM from cache")
 				if err := r.SBOMRestorer.RestoreFromCache(cache, cacheMeta.BOM.SHA); err != nil {
-					return err
+					isReadErr, readErr := c.IsReadErr(err)
+					if isReadErr {
+						r.Logger.Warnf("Skipping restore for SBOM: %s", readErr.Error())
+					} else {
+						return err
+					}
 				}
 			}
 			return r.SBOMRestorer.RestoreToBuildpackLayers(r.Buildpacks)
