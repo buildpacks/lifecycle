@@ -11,6 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
+	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/fake"
@@ -33,6 +34,7 @@ import (
 func TestExtender(t *testing.T) {
 	spec.Run(t, "unit-new-extender", testExtenderFactory, spec.Report(report.Terminal{}))
 	spec.Run(t, "unit-extender", testExtender, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "unit-is-root", testIsRoot, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
@@ -341,6 +343,25 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, os.Getenv("SOME_VAR"), "some-val")
 						h.AssertNil(t, os.Unsetenv("SOME_VAR"))
 					})
+
+					it("does not error if the last extension leaves the user unparseable", func() {
+						prepareDockerfile("A", "build", "app")
+
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						someFakeImage.ConfigFileReturns(&v1.ConfigFile{Config: v1.Config{
+							User: "user@host:5678",
+						}}, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							gomock.Any(),
+							gomock.Any(),
+							logger,
+						).Return(someFakeImage, nil)
+						fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
+
+						h.AssertNil(t, extender.Extend("build", logger))
+					})
 				})
 
 				when("run base image", func() {
@@ -520,7 +541,285 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						err := extender.Extend("run", logger)
 						h.AssertError(t, err, "extending run image: the final user ID is 0 (root); please add another extension that resets the user to non-root")
 					})
+
+					it("errors if the last extension leaves the user as empty (OCI root)", func() {
+						prepareDockerfile("A", "run", "app")
+
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						firstConfig := &v1.ConfigFile{Config: v1.Config{
+							User: ":5678",
+						}}
+						someFakeImage.ConfigFileReturns(firstConfig, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{
+							Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+							Layers: []v1.Descriptor{},
+						}, nil)
+
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							gomock.Any(),
+							gomock.Any(),
+							logger,
+						).Return(someFakeImage, nil)
+
+						err := extender.Extend("run", logger)
+						h.AssertError(t, err, "extending run image: the final user ID is 0 (root); please add another extension that resets the user to non-root")
+					})
+
+					it("errors if the last extension leaves the user as non-canonical root (e.g. 00)", func() {
+						prepareDockerfile("A", "run", "app")
+
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						firstConfig := &v1.ConfigFile{Config: v1.Config{
+							User: "00:5678",
+						}}
+						someFakeImage.ConfigFileReturns(firstConfig, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{
+							Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+							Layers: []v1.Descriptor{},
+						}, nil)
+
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							gomock.Any(),
+							gomock.Any(),
+							logger,
+						).Return(someFakeImage, nil)
+
+						err := extender.Extend("run", logger)
+						h.AssertError(t, err, "extending run image: the final user ID is 0 (root); please add another extension that resets the user to non-root")
+					})
+
+					it("errors if the last extension leaves the user unparseable", func() {
+						prepareDockerfile("A", "run", "app")
+
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						firstConfig := &v1.ConfigFile{Config: v1.Config{
+							User: "user@host:5678",
+						}}
+						someFakeImage.ConfigFileReturns(firstConfig, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{
+							Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+							Layers: []v1.Descriptor{},
+						}, nil)
+
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							gomock.Any(),
+							gomock.Any(),
+							logger,
+						).Return(someFakeImage, nil)
+
+						err := extender.Extend("run", logger)
+						h.AssertError(t, err, `extending run image: cannot determine whether user "user@host" is root`)
+					})
+
+					it("errors if the last extension leaves a named user", func() {
+						prepareDockerfile("A", "run", "app")
+
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						firstConfig := &v1.ConfigFile{Config: v1.Config{
+							User: "blah:5678",
+						}}
+						someFakeImage.ConfigFileReturns(firstConfig, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{
+							Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+							Layers: []v1.Descriptor{},
+						}, nil)
+
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							gomock.Any(),
+							gomock.Any(),
+							logger,
+						).Return(someFakeImage, nil)
+
+						err := extender.Extend("run", logger)
+						h.AssertError(t, err, `extending run image: cannot determine whether user "blah" is root: user "blah" must be a numeric UID`)
+					})
+
+					it("warns if an intermediate extension changes user to root", func() {
+						logHandler := memory.New()
+						customLogger := &log.Logger{Handler: logHandler}
+
+						expectedDockerfileA := prepareDockerfile("A", "run", "app")
+						prepareDockerfile("B", "run", "app")
+
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{
+							Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+							Layers: []v1.Descriptor{},
+						}, nil)
+						someFakeImage.ConfigFileReturnsOnCall(0, &v1.ConfigFile{Config: v1.Config{
+							User: "1234:5678",
+						}}, nil)
+
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							gomock.Any(),
+							extend.Options{
+								BuildContext: "some-app-dir",
+								IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
+								CacheTTL:     7 * (24 * time.Hour),
+							},
+							customLogger,
+						).Return(someFakeImage, nil)
+						intermediateConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "00:5678",
+							Labels: map[string]string{phase.RebasableLabel: "true"},
+						}}
+						someFakeImage.ConfigFileReturnsOnCall(1, intermediateConfig, nil)
+
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							someFakeImage,
+							extend.Options{
+								BuildContext: "some-app-dir",
+								IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
+								CacheTTL:     7 * (24 * time.Hour),
+							},
+							customLogger,
+						).Return(someFakeImage, nil)
+						finalConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "1234:5678",
+							Labels: map[string]string{phase.RebasableLabel: "true"},
+						}}
+						someFakeImage.ConfigFileReturnsOnCall(2, finalConfig, nil)
+						someFakeImage.ConfigFileReturnsOnCall(3, finalConfig, nil)
+						someFakeImage.ConfigFileReturnsOnCall(4, finalConfig, nil)
+
+						imageHash := v1.Hash{Algorithm: "sha256", Hex: "some-image-hex"}
+						someFakeImage.DigestReturns(imageHash, nil)
+						someFakeImage.ConfigNameReturns(v1.Hash{Algorithm: "sha256", Hex: "some-config-hex"}, nil)
+
+						fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
+
+						h.AssertNil(t, extender.Extend("run", customLogger))
+						assertLogEntry(t, logHandler, fmt.Sprintf("Extension from %s changed the user ID from 1234 to 00; this must not be the final user ID (a following extension must reset the user).", expectedDockerfileA.Path))
+					})
+
+					it("warns and continues if an intermediate extension sets user to an unparseable value", func() {
+						logHandler := memory.New()
+						customLogger := &log.Logger{Handler: logHandler}
+
+						expectedDockerfileA := prepareDockerfile("A", "run", "app")
+						prepareDockerfile("B", "run", "app")
+
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{
+							Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+							Layers: []v1.Descriptor{},
+						}, nil)
+						someFakeImage.ConfigFileReturnsOnCall(0, &v1.ConfigFile{Config: v1.Config{
+							User: "1234:5678",
+						}}, nil)
+
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							gomock.Any(),
+							extend.Options{
+								BuildContext: "some-app-dir",
+								IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
+								CacheTTL:     7 * (24 * time.Hour),
+							},
+							customLogger,
+						).Return(someFakeImage, nil)
+						intermediateConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "user@host:5678",
+							Labels: map[string]string{phase.RebasableLabel: "true"},
+						}}
+						someFakeImage.ConfigFileReturnsOnCall(1, intermediateConfig, nil)
+
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							someFakeImage,
+							extend.Options{
+								BuildContext: "some-app-dir",
+								IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
+								CacheTTL:     7 * (24 * time.Hour),
+							},
+							customLogger,
+						).Return(someFakeImage, nil)
+						finalConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "1234:5678",
+							Labels: map[string]string{phase.RebasableLabel: "true"},
+						}}
+						someFakeImage.ConfigFileReturnsOnCall(2, finalConfig, nil)
+						someFakeImage.ConfigFileReturnsOnCall(3, finalConfig, nil)
+						someFakeImage.ConfigFileReturnsOnCall(4, finalConfig, nil)
+
+						someFakeImage.DigestReturns(v1.Hash{Algorithm: "sha256", Hex: "some-image-hex"}, nil)
+						someFakeImage.ConfigNameReturns(v1.Hash{Algorithm: "sha256", Hex: "some-config-hex"}, nil)
+
+						fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
+
+						h.AssertNil(t, extender.Extend("run", customLogger))
+						assertLogEntry(t, logHandler, fmt.Sprintf(`Extension from %s: cannot determine whether user "user@host" is root: user "user@host" must be a numeric UID; a following extension may still reset the user.`, expectedDockerfileA.Path))
+					})
+
+					it("errors if there are no extensions and the base image has an unparseable user", func() {
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						firstConfig := &v1.ConfigFile{Config: v1.Config{
+							User: "user@host:5678",
+						}}
+						someFakeImage.ConfigFileReturns(firstConfig, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{
+							Config: v1.Descriptor{MediaType: types.DockerConfigJSON},
+							Layers: []v1.Descriptor{},
+						}, nil)
+
+						err := extender.Extend("run", logger)
+						h.AssertError(t, err, `extending run image: cannot determine whether user "user@host" is root`)
+					})
 				})
+			})
+		}
+	})
+}
+
+func testIsRoot(t *testing.T, when spec.G, it spec.S) {
+	when("#isRoot", func() {
+		testCases := []struct {
+			userID    string
+			errSubstr string
+			expected  bool
+		}{
+			{userID: "", expected: true},
+			{userID: "   ", expected: true},
+			{userID: "root", expected: true},
+			{userID: "root ", expected: true},
+			{userID: " root ", expected: true},
+			{userID: "0", expected: true},
+			{userID: "00", expected: true},
+			{userID: "000", expected: true},
+			{userID: " 0", expected: true},
+			{userID: "0 ", expected: true},
+			{userID: " 0 ", expected: true},
+			{userID: "+0", expected: false, errSubstr: `cannot determine whether user "+0" is root`},
+			{userID: "0x0", expected: false, errSubstr: `cannot determine whether user "0x0" is root`},
+			{userID: "\u0660", expected: false, errSubstr: "cannot determine whether user \"\u0660\" is root"},
+			{userID: "1000", expected: false},
+			{userID: " 1000 ", expected: false},
+			{userID: "nonroot", expected: false, errSubstr: `user "nonroot" must be a numeric UID`},
+			{userID: "appuser", expected: false, errSubstr: `user "appuser" must be a numeric UID`},
+			{userID: "_custom", expected: false, errSubstr: `user "_custom" must be a numeric UID`},
+			{userID: "app_user$", expected: false, errSubstr: `user "app_user$" must be a numeric UID`},
+			{userID: "AppUser", expected: false, errSubstr: `user "AppUser" must be a numeric UID`},
+			{userID: "first.last", expected: false, errSubstr: `user "first.last" must be a numeric UID`},
+			{userID: "1user", expected: false, errSubstr: `user "1user" must be a numeric UID`},
+			{userID: "user@host", expected: false, errSubstr: `cannot determine whether user "user@host" is root`},
+		}
+
+		for _, tc := range testCases {
+			name := fmt.Sprintf("evaluates %q", tc.userID)
+			it(name, func() {
+				actual, err := phase.IsRoot(tc.userID)
+				if tc.errSubstr != "" {
+					h.AssertError(t, err, tc.errSubstr)
+				} else {
+					h.AssertNil(t, err)
+					h.AssertEq(t, actual, tc.expected)
+				}
 			})
 		}
 	})
