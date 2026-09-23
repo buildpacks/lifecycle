@@ -83,6 +83,9 @@ func RunAs(uid, gid int) error {
 		return nil
 	}
 
+	if err := syscall.Setgroups([]int{gid}); err != nil {
+		return err
+	}
 	if err := syscall.Setresgid(gid, gid, gid); err != nil {
 		return err
 	}
