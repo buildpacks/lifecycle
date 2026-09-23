@@ -24,12 +24,14 @@ func TestArchiveExtract(t *testing.T) {
 func testExtract(t *testing.T, when spec.G, it spec.S) {
 	var (
 		tmpDir    string
+		destRoot  string
 		tr        *archive.NormalizingTarReader
 		pathModes []archive.PathMode
 	)
 
 	it.Before(func() {
 		tr, tmpDir = newFakeTarReader(t)
+		destRoot = tmpDir
 		pathModes = []archive.PathMode{
 			{"root", os.ModeDir + 0755},
 			{"root/readonly", os.ModeDir + 0500},
@@ -50,7 +52,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Extract", func() {
 		it("extracts a tar file", func() {
-			h.AssertNil(t, archive.Extract(tr))
+			h.AssertNil(t, archive.Extract(tr, destRoot))
 
 			for _, pathMode := range pathModes {
 				testPathPerms(t, tmpDir, pathMode.Path, pathMode.Mode)
@@ -62,12 +64,9 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			tr3, tmpDir3 := newFakeTarReader(t)
 
 			var g errgroup.Group
-			tars := []*archive.NormalizingTarReader{tr, tr2, tr3}
-			for _, tarReader := range tars {
-				g.Go(func() error {
-					return archive.Extract(tarReader)
-				})
-			}
+			g.Go(func() error { return archive.Extract(tr, destRoot) })
+			g.Go(func() error { return archive.Extract(tr2, tmpDir2) })
+			g.Go(func() error { return archive.Extract(tr3, tmpDir3) })
 
 			h.AssertNil(t, g.Wait())
 			h.AssertEq(t, h.GetUmask(t), originalUmask)
@@ -81,7 +80,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			h.AssertNil(t, file.Close())
 
-			h.AssertError(t, archive.Extract(tr), "failed to create directory")
+			h.AssertError(t, archive.Extract(tr, destRoot), "failed to create directory")
 		})
 
 		it("doesn't alter permissions of existing folders", func() {
@@ -89,11 +88,95 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			// Update permissions in case umask was applied.
 			h.AssertNil(t, os.Chmod(filepath.Join(tmpDir, "root"), 0744))
 
-			h.AssertNil(t, archive.Extract(tr))
+			h.AssertNil(t, archive.Extract(tr, destRoot))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
+		})
+
+		it("does not write tar entries outside of the destination directory", func() {
+			parentDir, err := os.MkdirTemp("", "escape-parent")
+			h.AssertNil(t, err)
+			defer func() {
+				_ = os.RemoveAll(parentDir)
+			}()
+
+			destDir := filepath.Join(parentDir, "dest")
+			h.AssertNil(t, os.MkdirAll(destDir, 0750))
+
+			ftr := &fakeTarReader{}
+			ftr.pushHeader(&tar.Header{
+				Name:     "../escaped-file",
+				Typeflag: tar.TypeReg,
+				Mode:     int64(0644),
+			})
+			evilTr := archive.NewNormalizingTarReader(ftr)
+			evilTr.PrependDir(destDir)
+
+			h.AssertError(t, archive.Extract(evilTr, destDir), "escapes destination root")
+
+			escapedPath := filepath.Join(parentDir, "escaped-file")
+			_, err = os.Lstat(escapedPath)
+			h.AssertError(t, err, "no such file or directory")
+		})
+
+		when("a tar entry writes through a symlink that leaves the destination", func() {
+			it("returns an error", func() {
+				parentDir, err := os.MkdirTemp("", "symlink-escape-parent")
+				h.AssertNil(t, err)
+				defer func() { _ = os.RemoveAll(parentDir) }()
+
+				destDir := filepath.Join(parentDir, "dest")
+				h.AssertNil(t, os.MkdirAll(destDir, 0750))
+
+				ftr2 := &fakeTarReader{}
+				tr2 := archive.NewNormalizingTarReader(ftr2)
+				tr2.PrependDir(destDir)
+				ftr2.pushHeader(&tar.Header{Name: "foo/bar/baz", Typeflag: tar.TypeReg, Mode: int64(0644)})
+				ftr2.pushHeader(&tar.Header{Name: "foo/bar", Typeflag: tar.TypeSymlink, Linkname: "../../escaped"})
+				ftr2.pushHeader(&tar.Header{Name: "foo", Typeflag: tar.TypeDir, Mode: int64(os.ModeDir | 0755)})
+
+				h.AssertError(t, archive.Extract(tr2, destDir), "failed to write file")
+				_, err = os.Lstat(filepath.Join(parentDir, "escaped"))
+				h.AssertError(t, err, "no such file or directory")
+			})
+		})
+
+		when("a symlink entry points outside the destination", func() {
+			it("creates it faithfully", func() {
+				ftr2 := &fakeTarReader{}
+				tr2 := archive.NewNormalizingTarReader(ftr2)
+				tr2.PrependDir(tmpDir)
+				ftr2.pushHeader(&tar.Header{Name: "outward", Typeflag: tar.TypeSymlink, Linkname: "../../elsewhere"})
+
+				h.AssertNil(t, archive.Extract(tr2, tmpDir))
+
+				target, err := os.Readlink(filepath.Join(tmpDir, "outward"))
+				h.AssertNil(t, err)
+				h.AssertEq(t, target, "../../elsewhere")
+			})
+		})
+
+		when("a regular-file entry targets a pre-existing symlink", func() {
+			it("does not follow it", func() {
+				outside, err := os.MkdirTemp("", "nofollow-outside")
+				h.AssertNil(t, err)
+				defer func() { _ = os.RemoveAll(outside) }()
+				victim := filepath.Join(outside, "victim")
+
+				// Pre-plant a symlink inside destRoot pointing outside.
+				h.AssertNil(t, os.Symlink(victim, filepath.Join(tmpDir, "planted")))
+
+				ftr := &fakeTarReader{}
+				tr2 := archive.NewNormalizingTarReader(ftr)
+				tr2.PrependDir(tmpDir)
+				ftr.pushHeader(&tar.Header{Name: "planted", Typeflag: tar.TypeReg, Mode: int64(0644)})
+
+				h.AssertError(t, archive.Extract(tr2, tmpDir), "planted")
+				_, err = os.Lstat(victim)
+				h.AssertError(t, err, "no such file or directory")
+			})
 		})
 	})
 }
