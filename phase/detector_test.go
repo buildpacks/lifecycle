@@ -1443,7 +1443,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"pass: B@v1\n"+
 					"pass: C@v1\n"+
 					"Resolving plan... (try #1)\n"+
-					"fail: B@v1 requires dep1\n",
+					"fail: B@v1 requires dep1\n"+
+					"check the provided order to ensure that buildpacks providing dependencies run before the buildpacks that require them\n",
 			) {
 				t.Fatalf("Unexpected log:\n%s\n", s)
 			}
@@ -1500,7 +1501,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"pass: B@v1\n"+
 					"skip: C@v1\n"+
 					"Resolving plan... (try #1)\n"+
-					"fail: B@v1 provides unused dep1\n",
+					"fail: B@v1 provides unused dep1\n"+
+					"check the provided order to ensure that buildpacks providing dependencies run before the buildpacks that require them\n",
 			) {
 				t.Fatalf("Unexpected log:\n%s\n", s)
 			}
