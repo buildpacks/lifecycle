@@ -12,9 +12,9 @@ require (
 	github.com/google/go-containerregistry v0.22.1
 	github.com/google/uuid v1.6.0
 	github.com/heroku/color v0.0.6
-	github.com/moby/buildkit v0.33.0
-	github.com/moby/moby/api v1.56.0
-	github.com/moby/moby/client v0.6.0
+	github.com/moby/buildkit v0.33.1
+	github.com/moby/moby/api v1.56.1
+	github.com/moby/moby/client v0.6.1
 	github.com/osscontainertools/kaniko v1.28.5
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
@@ -118,7 +118,7 @@ require (
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/docker/cli v29.8.1+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.9 // indirect
-	github.com/docker/go-connections v0.7.0 // indirect
+	github.com/docker/go-connections v0.8.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/ePirat/docker-credential-gitlabci v1.0.0 // indirect
 	github.com/ettle/strcase v0.2.0 // indirect
