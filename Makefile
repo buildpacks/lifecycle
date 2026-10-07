@@ -96,12 +96,18 @@ $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: export GOOS:=$(1)
 $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: export GOARCH:=$(2)
 $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: OUT_DIR?=$$(BUILD_DIR)/$$(GOOS)-$$(GOARCH)/lifecycle
 $$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: $$(GOFILES)
-$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher:
+$$(BUILD_DIR)/$(1)-$(2)/lifecycle/launcher: .FORCE
 	@echo "> Building lifecycle/launcher for $$(GOOS)/$$(GOARCH)..."
 	mkdir -p $$(OUT_DIR)
-	$$(GOENV) $$(GOBUILD) -o $$(OUT_DIR)/launcher -a ./cmd/launcher
+	if [ -n "$$(CUSTOM_LAUNCHER_PATH)" ]; then \
+		cp "$$(CUSTOM_LAUNCHER_PATH)" $$(OUT_DIR)/launcher; \
+	else \
+		$$(GOENV) $$(GOBUILD) -o $$(OUT_DIR)/launcher -a ./cmd/launcher; \
+	fi
 	test $$$$(du -m $$(OUT_DIR)/launcher|cut -f 1) -le 4
 endef
+
+.FORCE:
 
 $(foreach ga,$(GOOS_ARCHS),$(eval $(call build_targets,$(word 1, $(subst /, ,$(ga))),$(word 2, $(subst /, ,$(ga))))))
 
