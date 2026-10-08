@@ -405,6 +405,7 @@ func (r *DefaultDetectResolver) Resolve(done []buildpack.GroupElement, detectRun
 		return r.runTrial(i, trial)
 	})
 	if err != nil {
+		r.Logger.Debug("check the provided order to ensure that buildpacks providing dependencies run before the buildpacks that require them")
 		return nil, nil, err
 	}
 
