@@ -126,7 +126,7 @@ func setImageEnvVarsInCurrentContext(image v1.Image) error {
 		return fmt.Errorf("getting config for extended image: %w", err)
 	}
 	for _, env := range configFile.Config.Env {
-		parts := strings.Split(env, "=")
+		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
 			return fmt.Errorf("parsing env '%s': expected format 'key=value'", env)
 		}
