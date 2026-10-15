@@ -16,6 +16,12 @@ permissions:
 jobs:
   test-linux-amd64:
     runs-on: ubuntu-latest
+    env:
+      RUST_LAUNCHER_VERSION: "v0.1.1-alpha.1"
+    strategy:
+      fail-fast: false
+      matrix:
+        launcher: [go, rust]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -31,11 +37,24 @@ jobs:
           curl -s -L -o deps/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
           chmod +x deps/bin/jq
           echo "${PWD}/deps/bin" >> $GITHUB_PATH
+      - name: Download Rust Launcher
+        if: matrix.launcher == 'rust'
+        run: |
+          wget https://github.com/hone/launcher-rs/releases/download/${{ env.RUST_LAUNCHER_VERSION }}/launcher-x86_64-unknown-linux-musl.tgz
+          tar -xzf launcher-x86_64-unknown-linux-musl.tgz
       - name: Test
         env:
           TEST_COVERAGE: 1
-        run: make test
+          CUSTOM_LAUNCHER_PATH: ${{ matrix.launcher == 'rust' && format('{0}/launcher', github.workspace) || '' }}
+        run: |
+          if [ "${{ matrix.launcher }}" == "rust" ]; then
+            make format tidy
+            go test -v -count=1 -tags=acceptance -timeout=2400s -run=TestLauncher ./acceptance/...
+          else
+            make test
+          fi
       - name: Upload coverage to Codecov
+        if: matrix.launcher == 'go'
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -45,6 +64,12 @@ jobs:
           verbose: true
   test-linux-arm64:
     runs-on: ubuntu-24.04-arm
+    env:
+      RUST_LAUNCHER_VERSION: "v0.1.1-alpha.1"
+    strategy:
+      fail-fast: false
+      matrix:
+        launcher: [go, rust]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -54,10 +79,22 @@ jobs:
         with:
           check-latest: true
           go-version-file: 'go.mod'
-      - name: Test
+      - name: Download Rust Launcher
+        if: matrix.launcher == 'rust'
         run: |
-          make format || true
-          make test
+          wget https://github.com/hone/launcher-rs/releases/download/${{ env.RUST_LAUNCHER_VERSION }}/launcher-aarch64-unknown-linux-musl.tgz
+          tar -xzf launcher-aarch64-unknown-linux-musl.tgz
+      - name: Test
+        env:
+          CUSTOM_LAUNCHER_PATH: ${{ matrix.launcher == 'rust' && format('{0}/launcher', github.workspace) || '' }}
+        run: |
+          if [ "${{ matrix.launcher }}" == "rust" ]; then
+            make format tidy || true
+            go test -v -count=1 -tags=acceptance -timeout=2400s -run=TestLauncher ./acceptance/...
+          else
+            make format || true
+            make test
+          fi
   build-and-publish:
     needs:
       - test-linux-amd64
