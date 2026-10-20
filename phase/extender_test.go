@@ -41,6 +41,7 @@ func TestExtender(t *testing.T) {
 	spec.Run(t, "unit-new-extender", testExtenderFactory, spec.Report(report.Terminal{}))
 	spec.Run(t, "unit-extender", testExtender, spec.Sequential(), spec.Report(report.Terminal{}))
 	spec.Run(t, "unit-is-root", testIsRoot, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "unit-set-image-env-vars", testSetImageEnvVars, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
@@ -985,4 +986,39 @@ func imageWithPasswd(t *testing.T, passwd string) v1.Image {
 	img, err := mutate.AppendLayers(empty.Image, layer)
 	h.AssertNil(t, err)
 	return img
+}
+
+func testSetImageEnvVars(t *testing.T, when spec.G, it spec.S) {
+	when("#SetImageEnvVarsInCurrentContext", func() {
+		testCases := []struct {
+			env      string
+			key      string
+			expected string
+		}{
+			{env: "PORT=8080", key: "PORT", expected: "8080"},
+			{env: "EMPTY=", key: "EMPTY", expected: ""},
+			{env: "JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8", key: "JAVA_TOOL_OPTIONS", expected: "-Dfile.encoding=UTF-8"},
+			{env: "GO_LDFLAGS=-X main.version=1.2.3", key: "GO_LDFLAGS", expected: "-X main.version=1.2.3"},
+			{env: "BASE64_TOKEN=YWJjZA==", key: "BASE64_TOKEN", expected: "YWJjZA=="},
+		}
+
+		for _, tc := range testCases {
+			it(fmt.Sprintf("sets %q", tc.env), func() {
+				t.Setenv(tc.key, "")
+				image, err := mutate.Config(empty.Image, v1.Config{Env: []string{tc.env}})
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, phase.SetImageEnvVarsInCurrentContext(image))
+				h.AssertEq(t, os.Getenv(tc.key), tc.expected)
+			})
+		}
+
+		it("errors when an entry has no separator", func() {
+			image, err := mutate.Config(empty.Image, v1.Config{Env: []string{"NO_SEPARATOR"}})
+			h.AssertNil(t, err)
+
+			err = phase.SetImageEnvVarsInCurrentContext(image)
+			h.AssertError(t, err, "parsing env 'NO_SEPARATOR': expected format 'key=value'")
+		})
+	})
 }
