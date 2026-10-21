@@ -4,7 +4,7 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.12.0
-	github.com/buildpacks/imgutil v0.0.0-20260821195038-6047007ed8ea
+	github.com/buildpacks/imgutil v0.0.0-20261021214501-195bdfd62620
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.36
 	github.com/golang/mock v1.6.0
