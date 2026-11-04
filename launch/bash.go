@@ -23,9 +23,9 @@ type BashShell struct {
 func (b *BashShell) Launch(proc ShellProcess) error {
 	var launcher strings.Builder
 	for _, profile := range proc.Profiles {
-		launcher.WriteString(fmt.Sprintf("source \"%s\"\n", profile))
+		fmt.Fprintf(&launcher, "source \"%s\"\n", profile)
 	}
-	launcher.WriteString(fmt.Sprintf("cd \"%s\"\n", proc.WorkingDirectory))
+	fmt.Fprintf(&launcher, "cd \"%s\"\n", proc.WorkingDirectory)
 	var bashCommand string
 	if proc.Script {
 		bashCommand = bashCommandWithScript
@@ -57,7 +57,7 @@ func bashCommandWithTokens(nTokens int) string {
 	var commandScript strings.Builder
 	commandScript.WriteString(`"$(eval echo \"$0\")"`)
 	for i := 1; i < nTokens; i++ {
-		commandScript.WriteString(fmt.Sprintf(` "$(eval echo \"${%d}\")"`, i))
+		fmt.Fprintf(&commandScript, ` "$(eval echo \"${%d}\")"`, i)
 	}
 	return fmt.Sprintf(`exec bash -c '%s' "${@:1}"`, commandScript.String())
 }

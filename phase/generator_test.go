@@ -415,15 +415,15 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 
 					type testCase struct {
 						before                    func()
+						assertAfter               func()
 						descCondition             string
 						descResult                string
-						aDockerfiles              []buildpack.DockerfileInfo
-						bDockerfiles              []buildpack.DockerfileInfo
 						expectedRunImageImage     string
 						expectedRunImageReference string
-						expectedRunImageExtend    bool
 						expectedErr               string
-						assertAfter               func()
+						aDockerfiles              []buildpack.DockerfileInfo
+						bDockerfiles              []buildpack.DockerfileInfo
+						expectedRunImageExtend    bool
 					}
 					for _, tc := range []testCase{
 						{
