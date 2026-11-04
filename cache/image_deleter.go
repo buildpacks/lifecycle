@@ -18,8 +18,8 @@ type ImageDeleter interface {
 // ImageDeleterImpl is a component to manage cache image deletion
 type ImageDeleterImpl struct {
 	logger          log.Logger
-	deletionEnabled bool
 	comparer        ImageComparer
+	deletionEnabled bool
 }
 
 // NewImageDeleter creates a new ImageDeleter implementation
