@@ -159,7 +159,7 @@ func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {
 	}
 	defer rc.Close()
 
-	return layers.Extract(rc, r.LayersDir)
+	return layers.ExtractConfined(rc, r.LayersDir)
 }
 
 func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (platform.CacheMetadata, error) {

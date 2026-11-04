@@ -98,7 +98,7 @@ func (r *DefaultSBOMRestorer) RestoreFromCache(cache Cache, layerDigest string) 
 // a build that ships without its SBOM is worse than one that says so in the log. The
 // message names both roots so a CNB_LAYERS_DIR relocation is diagnosable from the log.
 func (r *DefaultSBOMRestorer) extract(rc io.Reader, source string) error {
-	if err := layers.Extract(rc, r.LayersDir); err != nil {
+	if err := layers.ExtractConfined(rc, r.LayersDir); err != nil {
 		if errors.Is(err, archive.ErrEscapesRoot) {
 			r.Logger.Warnf("Skipping SBOM data from %s: %s. The current layers directory is %q.", source, err, r.LayersDir)
 			return nil
