@@ -34,7 +34,7 @@ func testLayersExtract(t *testing.T, when spec.G, it spec.S) {
 		_ = os.RemoveAll(artifactsDir)
 	})
 
-	when("#Extract with a confinement root", func() {
+	when("#ExtractConfined", func() {
 		it("extracts a layer whose entries live under the root (including parent dirs)", func() {
 			src := filepath.Join(layersDir, "sbom", "launch")
 			h.Mkdir(t, src)
@@ -50,7 +50,7 @@ func testLayersExtract(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			defer func() { _ = rc.Close() }()
 
-			h.AssertNil(t, layers.Extract(rc, layersDir))
+			h.AssertNil(t, layers.ExtractConfined(rc, layersDir))
 
 			got := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "some-file"))
 			h.AssertEq(t, string(got), "bom-data")
@@ -69,9 +69,59 @@ func testLayersExtract(t *testing.T, when spec.G, it spec.S) {
 			}))
 			h.AssertNil(t, tw.Close())
 
-			h.AssertError(t, layers.Extract(&buf, layersDir), "escapes destination root")
+			h.AssertError(t, layers.ExtractConfined(&buf, layersDir), "escapes destination root")
 
 			_, statErr := os.Lstat(escapeTarget)
+			h.AssertError(t, statErr, "no such file or directory")
+		})
+	})
+
+	when("#Extract", func() {
+		var destDir string
+
+		it.Before(func() {
+			var err error
+			destDir, err = os.MkdirTemp("", "lifecycle.extract.dest.")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			_ = os.RemoveAll(destDir)
+		})
+
+		it("extracts the layer entries relative to the destination directory", func() {
+			src := filepath.Join(layersDir, "sbom", "launch")
+			h.Mkdir(t, src)
+			h.Mkfile(t, "bom-data", filepath.Join(src, "some-file"))
+
+			factory := &layers.Factory{ArtifactsDir: artifactsDir}
+			layer, err := factory.DirLayer("launch.sbom", src, "")
+			h.AssertNil(t, err)
+
+			rc, err := os.Open(layer.TarPath)
+			h.AssertNil(t, err)
+			defer func() { _ = rc.Close() }()
+
+			h.AssertNil(t, layers.Extract(rc, destDir))
+
+			got := h.MustReadFile(t, filepath.Join(destDir, src, "some-file"))
+			h.AssertEq(t, string(got), "bom-data")
+		})
+
+		it("rejects an entry that escapes the destination directory", func() {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			h.AssertNil(t, tw.WriteHeader(&tar.Header{
+				Name:     "../lifecycle-escaped-file",
+				Typeflag: tar.TypeReg,
+				Mode:     0644,
+				Size:     0,
+			}))
+			h.AssertNil(t, tw.Close())
+
+			h.AssertError(t, layers.Extract(&buf, destDir), "escapes destination root")
+
+			_, statErr := os.Lstat(filepath.Join(filepath.Dir(destDir), "lifecycle-escaped-file"))
 			h.AssertError(t, statErr, "no such file or directory")
 		})
 	})
