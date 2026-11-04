@@ -71,7 +71,7 @@ func (a *DockerfileApplier) Apply(dockerfile extend.Dockerfile, toBaseImage v1.I
 		return nil, err
 	}
 
-	return mutate.CreatedAt(extendedImage, v1.Time{})
+	return mutate.CreatedAt(extendedImage.Image, v1.Time{})
 }
 
 func inContainer() bool {
