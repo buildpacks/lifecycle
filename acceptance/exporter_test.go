@@ -544,24 +544,25 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					layers, err = remoteImage.Layers()
 					h.AssertNil(t, err)
 					type testCase struct {
-						expectedDigest string
+						expectedDiffID string
 						layerIndex     int
 					}
+					// Compare DiffIDs (uncompressed) rather than digests: gzip output differs between Go releases.
 					testCases := []testCase{
 						{
-							expectedDigest: "sha256:08e7ad5ce17cf5e5f70affe68b341a93de86ee2ba074932c3a05b8770f66d772", // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/65c2873d397056a5cb4169790654d787579b005f18b903082b177d4d9b4aecf5 after un-compressing, zeroing timestamps, and re-compressing
+							expectedDiffID: "sha256:fb54d2566824d6630d94db0b008d9a544a94d3547a424f52e2fd282b648c0601", // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/65c2873d397056a5cb4169790654d787579b005f18b903082b177d4d9b4aecf5 after un-compressing and zeroing timestamps
 							layerIndex:     1,
 						},
 						{
-							expectedDigest: "sha256:0e74ef444ea437147e3fa0ce2aad371df5380c26b96875ae07b9b67f44cdb2ee", // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/0fb9b88c9cbe9f11b4c8da645f390df59f5949632985a0bfc2a842ef17b2ad18 after un-compressing, zeroing timestamps, and re-compressing
+							expectedDiffID: "sha256:1018c7d3584c4f7fa3ef4486d1a6a11b93956b9d8bfe0898a3e0fbd248c984d8", // from testdata/exporter/container/layers/some-extended-dir/run/sha256_<c72eda1c>/blobs/sha256/0fb9b88c9cbe9f11b4c8da645f390df59f5949632985a0bfc2a842ef17b2ad18 after un-compressing and zeroing timestamps
 							layerIndex:     2,
 						},
 					}
 					for _, tc := range testCases {
 						layer := layers[tc.layerIndex]
-						digest, err := layer.Digest()
+						diffID, err := layer.DiffID()
 						h.AssertNil(t, err)
-						h.AssertEq(t, digest.String(), tc.expectedDigest)
+						h.AssertEq(t, diffID.String(), tc.expectedDiffID)
 					}
 					t.Log("sets the layers metadata label according to the new spec")
 					var lmd files.LayersMetadata
