@@ -5,7 +5,6 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.12.0
 	github.com/buildpacks/imgutil v0.0.0-20261021214501-195bdfd62620
-	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/platforms v1.0.0-rc.5
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.7.0
@@ -15,6 +14,7 @@ require (
 	github.com/moby/buildkit v0.34.1
 	github.com/moby/moby/api v1.56.1
 	github.com/moby/moby/client v0.6.2
+	github.com/osscontainertools/docker-credential-acr v1.0.1
 	github.com/osscontainertools/kaniko v1.29.0
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
@@ -41,7 +41,7 @@ require (
 	github.com/Antonboom/nilnil v1.1.2 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.24.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.15.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.13.0 // indirect
@@ -122,7 +122,7 @@ require (
 	github.com/dimchansky/utfbom v1.2.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
-	github.com/docker/cli v29.9.2+incompatible // indirect
+	github.com/docker/cli v29.9.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.12 // indirect
 	github.com/docker/go-connections v0.8.2 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -229,7 +229,6 @@ require (
 	github.com/nunnatsa/ginkgolinter v0.24.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/osscontainertools/docker-credential-acr v1.0.0 // indirect
 	github.com/otiai10/copy v1.14.1 // indirect
 	github.com/otiai10/mint v1.6.3 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
@@ -267,7 +266,7 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/spf13/pflag v1.1.0 // indirect
 	github.com/spf13/viper v1.18.2 // indirect
 	github.com/ssgreg/nlreturn/v2 v2.2.1 // indirect
 	github.com/stbenjam/no-sprintf-host-port v0.3.1 // indirect
@@ -310,7 +309,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.11.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e // indirect
 	golang.org/x/exp/typeparams v0.0.0-20260811152304-ee035b5b010f // indirect
