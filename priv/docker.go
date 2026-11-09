@@ -3,6 +3,7 @@ package priv
 import (
 	"context"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"sync/atomic"
@@ -54,10 +55,17 @@ func connectSockOpt(host *url.URL) (client.Opt, error) {
 		return nil, err
 	}
 	c := &unclosableConn{Conn: socketConn, inUse: 0}
-	return client.WithDialContext(func(ctx context.Context, network, addr string) (conn net.Conn, err error) {
-		if !atomic.CompareAndSwapInt32(&c.inUse, 0, 1) {
-			return nil, errors.New("singleton connection already in use")
-		}
-		return c, nil
+	return client.WithHTTPClient(&http.Client{
+		Transport: &http.Transport{
+			DisableCompression: true,
+			MaxIdleConns:       1,
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				if !atomic.CompareAndSwapInt32(&c.inUse, 0, 1) {
+					return nil, errors.New("singleton connection already in use")
+				}
+				return c, nil
+			},
+		},
+		CheckRedirect: client.CheckRedirect,
 	}), nil
 }
