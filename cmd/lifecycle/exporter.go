@@ -298,6 +298,11 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed, logger log.Log
 		return nil, "", cmd.FailErr(err, " image")
 	}
 
+	// Identifier() returns an empty ID without an error when the run image is missing from the daemon
+	if !appImage.Found() {
+		return nil, "", cmd.FailErr(fmt.Errorf("run image %q not found in daemon", e.RunImageRef), "access run image")
+	}
+
 	runImageID, err := appImage.Identifier()
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "get run image ID")
