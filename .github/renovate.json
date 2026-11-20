@@ -1,0 +1,35 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    ":gitSignOff"
+  ],
+  "labels": ["dependencies", "go"],
+  "enabledManagers": ["gomod", "dockerfile"],
+  "packageRules": [
+    {
+      "description": "Default-deny everything so Renovate never overlaps with Dependabot",
+      "matchPackageNames": ["*"],
+      "enabled": false
+    },
+    {
+      "description": "Manage Go runtime in go.mod using Docker Hub golang tags so both files resolve the same version, grouped with the Dockerfile rule below",
+      "matchManagers": ["gomod"],
+      "matchFileNames": ["go.mod"],
+      "matchDepTypes": ["golang"],
+      "enabled": true,
+      "overrideDatasource": "docker",
+      "overridePackageName": "golang",
+      "rangeStrategy": "bump",
+      "groupName": "Go runtime"
+    },
+    {
+      "description": "Manage golang builder image in launcher acceptance test Dockerfile in lock-step with go.mod",
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": ["acceptance/testdata/launcher/Dockerfile"],
+      "matchPackageNames": ["golang"],
+      "enabled": true,
+      "pinDigests": false,
+      "groupName": "Go runtime"
+    }
+  ]
+}
