@@ -671,6 +671,37 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							}, br)
 						})
 
+						it("includes SBOM files for layers whose name contains a period", func() {
+							buildpackID := descriptor.Buildpack.ID
+							descriptor.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json;version=1.3"}
+							layerName := "jdk-21.0.2"
+
+							h.Mkdir(t,
+								filepath.Join(layersDir, buildpackID))
+							h.Mkfile(t, `{"key": "some-bom-content"}`,
+								filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)),
+							)
+
+							h.Mkdir(t,
+								filepath.Join(layersDir, buildpackID, layerName))
+							h.Mkfile(t, "[types]\n  launch = true",
+								filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
+
+							br, err := executor.Build(descriptor, inputs, logger)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, buildpack.BuildOutputs{
+								BOMFiles: []buildpack.BOMFile{
+									{
+										BuildpackID: buildpackID,
+										LayerName:   layerName,
+										LayerType:   buildpack.LayerTypeLaunch,
+										Path:        filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)),
+									},
+								},
+							}, br)
+						})
+
 						it("errors if there are unsupported extensions", func() {
 							buildpackID := descriptor.Buildpack.ID
 							descriptor.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json", "application/spdx+json", "application/vnd.syft+json"}

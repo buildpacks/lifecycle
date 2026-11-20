@@ -106,6 +106,17 @@ func sbomGlob(layersDir string) (matches []string, err error) {
 	return
 }
 
+// layerNameFromSBOMFile returns the layer name for an SBOM file named
+// <layer>.sbom.<ext>.json. Layer names may contain periods, so the name is
+// everything before the final ".sbom." rather than everything before the first
+// period.
+func layerNameFromSBOMFile(file string) string {
+	if idx := strings.LastIndex(file, ".sbom."); idx >= 0 {
+		return file[:idx]
+	}
+	return strings.SplitN(file, ".", 2)[0]
+}
+
 func (d *BpDescriptor) processSBOMFiles(layersDir string, bp GroupElement, bpLayers map[string]LayerMetadataFile, logger log.Logger) ([]BOMFile, error) {
 	var (
 		files []BOMFile
@@ -118,7 +129,7 @@ func (d *BpDescriptor) processSBOMFiles(layersDir string, bp GroupElement, bpLay
 
 	for _, m := range matches {
 		layerDir, file := filepath.Split(m)
-		layerName := strings.SplitN(file, ".", 2)[0]
+		layerName := layerNameFromSBOMFile(file)
 
 		if layerName == "launch" {
 			files = append(files, BOMFile{
